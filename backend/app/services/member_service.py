@@ -65,7 +65,7 @@ async def _member_scope_filter(
     return false()
 
 
-def _members_stmt(ctx: AuthContext) -> Select[tuple[WorkspaceMember, User]]:
+def _members_stmt(ctx: AuthContext) -> Select[WorkspaceMember, User]:
     return (
         select(WorkspaceMember, User)
         .join(User, User.id == WorkspaceMember.user_id)

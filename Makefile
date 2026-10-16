@@ -23,7 +23,7 @@ test:           ## Chạy test backend trong container
 	$(ADMIN) pytest -q -p no:cacheprovider
 
 lint:
-	$(ADMIN) sh -c "ruff check app tests migrations && ruff format --check app tests migrations"
+	$(ADMIN) sh -c "ruff check app tests migrations && ruff format --check app tests migrations && mypy app"
 
 migrate:        ## Chạy migration (tài khoản quản trị)
 	$(ADMIN) alembic upgrade head
