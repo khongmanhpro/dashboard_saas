@@ -21,6 +21,8 @@ FROM base AS prod
 RUN uv sync --frozen --no-dev
 COPY app ./app
 COPY scripts ./scripts
+COPY migrations ./migrations
+COPY alembic.ini ./
 RUN useradd --system --uid 10001 --no-create-home appuser
 USER appuser
 CMD ["sh", "scripts/start.sh"]
