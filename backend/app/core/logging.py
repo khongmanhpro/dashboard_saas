@@ -75,3 +75,5 @@ def setup_logging(level: str = "INFO") -> None:
         logger = logging.getLogger(name)
         logger.handlers[:] = []
         logger.propagate = True
+    # Access log do Caddy ghi; ở đây chỉ làm nhiễu (healthcheck mỗi 5 giây).
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
