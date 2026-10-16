@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Kết nối Facebook</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F6F8;font-family:'Be Vietnam Pro',system-ui,sans-serif;color:#101828}
+a{color:#1F63B8;text-decoration:none}a:hover{color:#174C8E}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F5F6F8; font-family: 'Be Vietnam Pro', system-ui, sans-serif; color: #101828; display: flex; flex-direction: column; align-items: center; padding: 40px 16px; box-sizing: border-box; gap: 24px">
+
+  <div style="width: 100%; max-width: 880px; display: flex; justify-content: space-between; align-items: center">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <div aria-hidden="true" style="width: 32px; height: 32px; border-radius: 8px; background: #1F63B8; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px">P</div>
+      <div style="font-weight: 700; font-size: 16px">[Tên sản phẩm]</div>
+    </div>
+    <a href="Main.dc.html" style="font-size: 13px">Bỏ qua, vào dashboard</a>
+  </div>
+
+  <ol aria-label="Các bước" style="width: 100%; max-width: 880px; margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 8px">
+    <sc-for list="{{steps}}" as="s" hint-placeholder-count="4">
+      <li>
+        <button type="button" onClick="{{s.pick}}" aria-current="{{s.current}}" style="{{s.style}}">
+          <span style="{{s.numStyle}}">{{s.num}}</span>
+          <span style="display: flex; flex-direction: column; text-align: left"><span style="font-weight: 600; font-size: 14px">{{s.title}}</span><span style="font-size: 12px; color: #667085">{{s.sub}}</span></span>
+        </button>
+      </li>
+    </sc-for>
+  </ol>
+
+  <section style="width: 100%; max-width: 880px; box-sizing: border-box; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; gap: 20px">
+
+    <sc-if value="{{isStep0}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 16px">
+        <h1 style="margin: 0; font-size: 22px">Tạo workspace cho doanh nghiệp</h1>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #344054">Tên doanh nghiệp<input type="text" value="Workman JSC" style="min-height: 44px; padding: 0 12px; border: 1px solid #D0D5DD; border-radius: 10px; font: inherit; font-size: 14px"></label>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #344054">Lĩnh vực<select style="min-height: 44px; padding: 0 12px; border: 1px solid #D0D5DD; border-radius: 10px; font: inherit; font-size: 14px; background: #FFFFFF"><option>Bán lẻ</option><option>Dịch vụ</option><option>Agency quản lý nhiều thương hiệu</option></select></label>
+        <button type="button" onClick="{{next}}" style="align-self: flex-start; min-height: 44px; padding: 0 20px; border: 0; border-radius: 10px; background: #1F63B8; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer">Tiếp tục</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isStep1}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 16px; align-items: flex-start">
+        <h1 style="margin: 0; font-size: 22px">Kết nối tài khoản Facebook</h1>
+        <p style="margin: 0; font-size: 14px; color: #475467; max-width: 620px">Đăng nhập bằng tài khoản quản trị Business Manager. Bạn chọn chính xác Trang và tài khoản quảng cáo nào được chia sẻ ở bước sau, và có thể thu hồi bất cứ lúc nào.</p>
+        <button type="button" onClick="{{next}}" style="display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 22px; border: 0; border-radius: 10px; background: #1877F2; color: #FFFFFF; font: inherit; font-weight: 600; font-size: 15px; cursor: pointer">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2"><path d="M15 3h-2a4 4 0 0 0-4 4v3H7v4h2v7h4v-7h3l1-4h-4V7a1 1 0 0 1 1-1h2z"></path></svg>
+          Tiếp tục với Facebook</button>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; width: 100%">
+          <div style="padding: 14px; border-radius: 12px; background: #F9FAFB; font-size: 13px; color: #475467"><b style="color: #101828; display: block; margin-bottom: 4px">Chỉ đọc là mặc định</b>Đọc số liệu Trang, bài viết và quảng cáo. Quyền trả lời tin nhắn, đăng bài bật riêng.</div>
+          <div style="padding: 14px; border-radius: 12px; background: #F9FAFB; font-size: 13px; color: #475467"><b style="color: #101828; display: block; margin-bottom: 4px">Không lưu mật khẩu</b>Đăng nhập qua Facebook Login for Business, token được mã hóa.</div>
+          <div style="padding: 14px; border-radius: 12px; background: #F9FAFB; font-size: 13px; color: #475467"><b style="color: #101828; display: block; margin-bottom: 4px">Thu hồi một chạm</b>Ngắt kết nối trong Cài đặt hoặc trong Business Manager.</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isStep2}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 10px">
+          <div style="display: flex; flex-direction: column; gap: 4px"><h1 style="margin: 0; font-size: 22px">Chọn Trang và tài khoản quảng cáo</h1><span style="font-size: 13px; color: #667085">Tìm thấy 13 Trang và 3 tài khoản quảng cáo trong BM-01-doanh nghiệp</span></div>
+          <span style="font-size: 13px; color: #475467">Đã chọn <b style="color: #101828">{{selectedCount}}</b> / 200 Trang của gói</span>
+        </div>
+        <div style="display: flex; flex-direction: column; border: 1px solid #E4E7EC; border-radius: 12px; overflow: hidden">
+          <label style="display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 16px; background: #F9FAFB; font-size: 13px; font-weight: 600; color: #344054"><input type="checkbox" checked="{{allOn}}" onChange="{{toggleAll}}">Chọn tất cả Trang</label>
+          <sc-for list="{{pages}}" as="p" hint-placeholder-count="6">
+            <label style="display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px; border-top: 1px solid #EEF0F3; font-size: 14px; cursor: pointer">
+              <input type="checkbox" checked="{{p.on}}" onChange="{{p.toggle}}">
+              <span style="flex: 1">{{p.name}}</span>
+              <span style="{{p.noteStyle}}">{{p.note}}</span>
+            </label>
+          </sc-for>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <span style="font-size: 13px; font-weight: 600; color: #344054">Tài khoản quảng cáo</span>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap">
+            <label style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px solid #D0D5DD; border-radius: 10px; font-size: 14px"><input type="checkbox" checked="{{true}}">FACEBOOK ADS 2001</label>
+            <label style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px solid #D0D5DD; border-radius: 10px; font-size: 14px"><input type="checkbox" checked="{{true}}">2207517656115508</label>
+            <label style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px solid #D0D5DD; border-radius: 10px; font-size: 14px"><input type="checkbox">BM-01</label>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap">
+          <button type="button" onClick="{{back}}" style="min-height: 44px; padding: 0 18px; border: 1px solid #D0D5DD; border-radius: 10px; background: #FFFFFF; font: inherit; color: #344054; cursor: pointer">Quay lại</button>
+          <button type="button" onClick="{{next}}" style="min-height: 44px; padding: 0 20px; border: 0; border-radius: 10px; background: #1F63B8; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer">Kết nối và lấy dữ liệu 90 ngày</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isStep3}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 16px">
+        <h1 style="margin: 0; font-size: 22px">Mời đội ngũ</h1>
+        <p style="margin: 0; font-size: 14px; color: #475467">Dữ liệu đang được lấy về, thường mất 5–15 phút. Trong lúc chờ, mời người cùng quản lý.</p>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap">
+          <label style="flex: 1 1 260px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #344054">Email<input type="email" placeholder="ten@congty.vn" style="min-height: 44px; padding: 0 12px; border: 1px solid #D0D5DD; border-radius: 10px; font: inherit; font-size: 14px"></label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #344054">Vai trò<select style="min-height: 44px; padding: 0 12px; border: 1px solid #D0D5DD; border-radius: 10px; font: inherit; font-size: 14px; background: #FFFFFF"><option>Quản lý</option><option>Nhân viên</option><option>Chỉ xem</option></select></label>
+        </div>
+        <a href="Main.dc.html" style="align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 10px; background: #1F63B8; color: #FFFFFF; font-weight: 600">Vào dashboard</a>
+      </div>
+    </sc-if>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.state = { step: 2, picked: [true, true, true, true, false, false, false, false, false, false, false, false, false] };
+  }
+  renderVals() {
+    const defs = [['Workspace', 'Tên doanh nghiệp'], ['Facebook', 'Đăng nhập an toàn'], ['Tài sản', 'Chọn Trang, quảng cáo'], ['Đội ngũ', 'Mời thành viên']];
+    const step = this.state.step;
+    const steps = defs.map(([title, sub], i) => {
+      const cur = i === step, done = i < step;
+      return { title, sub, num: done ? '✓' : String(i + 1), current: cur ? 'step' : 'false',
+        pick: () => this.setState({ step: i }),
+        style: 'display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 8px 12px; border-radius: 12px; font: inherit; color: #101828; cursor: pointer; ' + (cur ? 'border: 1px solid #1F63B8; background: #EAF2FC' : 'border: 1px solid #E4E7EC; background: #FFFFFF'),
+        numStyle: 'width: 28px; height: 28px; flex: none; border-radius: 99px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; ' + (cur || done ? 'background: #1F63B8; color: #FFFFFF' : 'background: #F2F4F7; color: #475467') };
+    });
+    const names = ['Phần Mềm Giá Rẻ', 'FISS - Giải pháp Tài chính & Bảo hiểm thông minh', 'Shop Thỏ - Phụ kiện thời trang & Quà tặng', 'Mua Sắm Thông Minh', 'Didongfix', 'Màn Hình Android Xe Ô Tô Chính Hãng', 'Cửa Hít Ô Tô Cao Cấp', 'Phụ Kiện Xe Hơi - ZKar Auto', 'Nam Phát ESP', 'Smartkey Xe Máy', 'Món Ngon Miền Quê', 'Studentech', 'Mì Hoành Thánh & Sủi Cảo Minh Nhi'];
+    const picked = this.state.picked;
+    const pages = names.slice(0, 8).map((name, i) => ({
+      name, on: picked[i],
+      toggle: () => { const p = picked.slice(); p[i] = !p[i]; this.setState({ picked: p }); },
+      note: i === 6 ? 'Thiếu quyền Thông tin chi tiết' : 'Đủ quyền',
+      noteStyle: 'font-size: 12px; ' + (i === 6 ? 'color: #8A5300' : 'color: #667085'),
+    }));
+    const allOn = picked.every(Boolean);
+    return {
+      steps, pages, allOn, selectedCount: String(picked.filter(Boolean).length),
+      toggleAll: () => this.setState({ picked: picked.map(() => !allOn) }),
+      isStep0: step === 0, isStep1: step === 1, isStep2: step === 2, isStep3: step === 3,
+      next: () => this.setState({ step: Math.min(3, step + 1) }),
+      back: () => this.setState({ step: Math.max(0, step - 1) }),
+    };
+  }
+}
+</script>
+</body>
+</html>

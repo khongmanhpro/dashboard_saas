@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Hồ sơ khách</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F6F8;font-family:'Be Vietnam Pro',system-ui,sans-serif;color:#101828}
+a{color:#1F63B8;text-decoration:none}a:hover{color:#174C8E}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F5F6F8; font-family: 'Be Vietnam Pro', system-ui, sans-serif; color: #101828">
+
+  <nav aria-label="Điều hướng chính" style="flex: 1 1 232px; max-width: 260px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E4E7EC; padding: 20px 14px; display: flex; flex-direction: column; gap: 18px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 6px">
+      <div aria-hidden="true" style="width: 32px; height: 32px; border-radius: 8px; background: #1F63B8; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px">P</div>
+      <div style="font-weight: 700; font-size: 16px">[Tên sản phẩm]</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border-radius: 8px; color: #344054; font-size: 14px"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>Tổng quan</a>
+      <a href="Staff.dc.html" style="display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border-radius: 8px; color: #344054; font-size: 14px"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .7 3.2 2.5 3.5 5.2"></path></svg>Nhân viên</a>
+      <a href="Leads.dc.html" aria-current="page" style="display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border-radius: 8px; background: #EAF2FC; color: #1F63B8; font-weight: 600; font-size: 14px"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4h18l-7 8v6l-4 2v-8z"></path></svg>Khách hàng<span style="margin-left: auto; font-size: 11px; font-weight: 600; background: #EB6834; color: #FFFFFF; border-radius: 99px; padding: 1px 7px">47</span></a>
+      <a href="Pages.dc.html" style="display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border-radius: 8px; color: #344054; font-size: 14px"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"></path><path d="M4 9h16M9 9v11"></path></svg>Fanpage</a>
+      <a href="Ads.dc.html" style="display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border-radius: 8px; color: #344054; font-size: 14px"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l15-6v14L3 13z"></path><path d="M7 13v5"></path></svg>Quảng cáo</a>
+      <a href="Inbox.dc.html" style="display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border-radius: 8px; color: #667085; font-size: 14px"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v11H8l-4 4z"></path></svg>Inbox<span style="margin-left: auto; font-size: 11px; color: #667085; border: 1px solid #D0D5DD; border-radius: 99px; padding: 0 6px">Sau</span></a>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; padding-top: 12px; border-top: 1px solid #EEF0F3">
+      <a href="BMs.dc.html" style="display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border-radius: 8px; color: #344054; font-size: 14px"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"></path><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg>Kết nối BM</a>
+      <a href="Settings.dc.html" style="display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border-radius: 8px; color: #344054; font-size: 14px"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path></svg>Cài đặt</a>
+    </div>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 48px; display: flex; flex-direction: column; gap: 16px">
+    <div style="font-size: 13px; color: #667085"><a href="Leads.dc.html">Khách hàng</a> <span aria-hidden="true">/</span> [Khách 1036]</div>
+
+    <header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px">
+      <div style="display: flex; gap: 14px; align-items: center">
+        <div aria-hidden="true" style="width: 52px; height: 52px; border-radius: 99px; background: #E9EDF2; color: #344054; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px">K</div>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+            <h1 style="margin: 0; font-size: 24px; font-weight: 700">[Khách 1036]</h1>
+            <span style="{{statusPill}}">{{statusText}}</span>
+            <span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #FEF0E8; color: #9A3B12">Dữ liệu mẫu</span>
+          </div>
+          <div style="font-size: 13px; color: #475467">Nhắn lần đầu 15/10 09:12 · Trang Didongfix · phụ trách <a href="StaffDetail.dc.html">Vũ Ngọc Mai</a></div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <a href="#" style="display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #D0D5DD; background: #FFFFFF; color: #344054; font-size: 14px; font-weight: 500">Mở hội thoại trong Business Suite <span aria-hidden="true">↗</span></a>
+      </div>
+    </header>
+
+    <sc-if value="{{overdue}}" hint-placeholder-val="{{true}}">
+      <div role="status" style="display: flex; gap: 12px; align-items: center; padding: 12px 16px; border-radius: 12px; background: #FCEBEA; border: 1px solid #F4C7C3; color: #7A1F18; font-size: 14px">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l10 18H2z"></path><path d="M12 10v4M12 17.5v.5"></path></svg>
+        <span><b>Quá 48 giờ chưa có kết quả.</b> Khách đã để lại số điện thoại nhưng chưa được đánh dấu là đã gọi. Việc này đang trừ điểm "Cập nhật đúng hạn" của người phụ trách.</span>
+      </div>
+    </sc-if>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+
+      <section aria-labelledby="tl" style="flex: 999 1 520px; min-width: 0; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap">
+          <h2 id="tl" style="margin: 0; font-size: 16px; font-weight: 600">Diễn biến</h2>
+          <span style="font-size: 12px; color: #667085">Tin nhắn chỉ để xem · trả lời khách trong Business Suite như bình thường</span>
+        </div>
+        <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+          <sc-for list="{{events}}" as="e" hint-placeholder-count="7">
+            <li style="display: flex; gap: 14px">
+              <div style="display: flex; flex-direction: column; align-items: center; flex: none; width: 28px">
+                <span aria-hidden="true" style="{{e.dot}}">{{e.icon}}</span>
+                <span aria-hidden="true" style="{{e.line}}"></span>
+              </div>
+              <div style="flex: 1; min-width: 0; padding-bottom: 18px; display: flex; flex-direction: column; gap: 6px">
+                <div style="display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap"><span style="font-size: 14px; font-weight: 600">{{e.who}}</span><span style="font-size: 12px; color: #667085; font-variant-numeric: tabular-nums">{{e.time}}</span><span style="{{e.tagStyle}}">{{e.tag}}</span></div>
+                <div style="{{e.bodyStyle}}">{{e.body}}</div>
+              </div>
+            </li>
+          </sc-for>
+        </ol>
+      </section>
+
+      <aside style="flex: 1 1 340px; max-width: 420px; display: flex; flex-direction: column; gap: 16px">
+
+        <section aria-labelledby="res" style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <h2 id="res" style="margin: 0; font-size: 16px; font-weight: 600">Cập nhật kết quả</h2>
+            <span style="font-size: 12px; color: #667085">Còn quá hạn 1 giờ 28 phút · cập nhật trong 48 giờ để được tính đúng hạn</span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; background: #F9FAFB; border: 1px solid #EEF0F3">
+            <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Đã gọi cho khách</span><span style="font-size: 12px; color: #667085">SĐT 09•• ••• 218 · lấy từ tin nhắn</span></span>
+            <button type="button" role="switch" aria-checked="{{calledStr}}" aria-label="Đã gọi cho khách" onClick="{{toggleCall}}" style="{{switchStyle}}"><span aria-hidden="true" style="{{knobStyle}}"></span></button>
+          </div>
+
+          <div role="group" aria-label="Kết quả" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+            <sc-for list="{{results}}" as="r" hint-placeholder-count="3">
+              <button type="button" onClick="{{r.pick}}" aria-pressed="{{r.on}}" style="{{r.style}}">{{r.label}}</button>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{isWon}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; color: #344054">Giá trị đơn
+                <span style="display: flex; align-items: center; min-height: 44px; border: 1px solid #D0D5DD; border-radius: 10px; padding: 0 12px; background: #FFFFFF"><input inputmode="numeric" value="2.450.000" style="flex: 1; border: 0; outline: none; font: inherit; font-size: 15px; font-variant-numeric: tabular-nums; background: transparent"><span style="color: #667085">₫</span></span>
+              </label>
+              <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; color: #344054">Sản phẩm / dịch vụ
+                <select style="min-height: 44px; border: 1px solid #D0D5DD; border-radius: 10px; padding: 0 10px; font: inherit; background: #FFFFFF"><option>Thay màn hình</option><option>Thay pin</option><option>Sửa main</option></select>
+              </label>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isLater}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; color: #344054">Hẹn gọi lại lúc
+                <input type="datetime-local" value="2026-10-18T10:00" style="min-height: 44px; border: 1px solid #D0D5DD; border-radius: 10px; padding: 0 12px; font: inherit; background: #FFFFFF">
+              </label>
+              <span style="font-size: 12px; color: #667085">Ứng dụng sẽ nhắc người phụ trách trước 15 phút.</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isLost}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <span style="font-size: 13px; font-weight: 500; color: #344054">Lý do hủy</span>
+              <div role="group" aria-label="Lý do hủy" style="display: flex; flex-wrap: wrap; gap: 6px">
+                <sc-for list="{{reasons}}" as="x" hint-placeholder-count="5">
+                  <button type="button" onClick="{{x.pick}}" aria-pressed="{{x.on}}" style="{{x.style}}">{{x.label}}</button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; color: #344054">Ghi chú
+            <textarea rows="2" placeholder="Ví dụ: khách muốn mang máy qua cửa hàng chiều thứ Bảy" style="border: 1px solid #D0D5DD; border-radius: 10px; padding: 10px 12px; font: inherit; font-size: 14px; resize: vertical"></textarea>
+          </label>
+
+          <button type="button" aria-disabled="{{saveDisabled}}" style="{{saveStyle}}">{{saveLabel}}</button>
+        </section>
+
+        <section aria-labelledby="src" style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px">
+          <h2 id="src" style="margin: 0; font-size: 16px; font-weight: 600">Nguồn &amp; chi phí</h2>
+          <dl style="margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 10px 14px; font-size: 13px">
+            <dt style="color: #667085">Chiến dịch</dt><dd style="margin: 0; font-weight: 500">Thay màn hình T10</dd>
+            <dt style="color: #667085">Quảng cáo</dt><dd style="margin: 0; font-weight: 500">Video 15s – iPhone 13</dd>
+            <dt style="color: #667085">Tài khoản QC</dt><dd style="margin: 0">TKQC-02 · BM Workman</dd>
+            <dt style="color: #667085">Chi phí ước tính</dt><dd style="margin: 0; font-weight: 600; font-variant-numeric: tabular-nums">38.400 ₫ / khách</dd>
+            <dt style="color: #667085">Trả lời đầu</dt><dd style="margin: 0"><span style="font-weight: 600; color: #1F5F33">19 phút</span> <span style="color: #667085">· dưới ngưỡng 30 phút</span></dd>
+          </dl>
+          <p style="margin: 0; font-size: 12px; color: #667085; line-height: 1.5">Chi phí ước tính = chi tiêu quảng cáo của chiến dịch trong ngày ÷ số khách mới nhắn từ chiến dịch đó.</p>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1050}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { called: false, result: '', reason: -1 }; }
+  renderVals() {
+    const s = this.state;
+    const tag = (bg, fg) => 'display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; background: ' + bg + '; color: ' + fg;
+    const dot = (bg, fg) => 'width: 28px; height: 28px; border-radius: 99px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; background: ' + bg + '; color: ' + fg;
+    const bubble = (mine) => 'font-size: 14px; line-height: 1.5; padding: 10px 12px; border-radius: 10px; max-width: 560px; ' + (mine ? 'background: #EAF2FC; color: #102A4C' : 'background: #F2F4F7; color: #101828');
+    const note = 'font-size: 13px; line-height: 1.5; color: #475467';
+    const ev = [
+      { who: 'Hệ thống', time: '15/10 09:12', tag: 'Từ quảng cáo', tagStyle: tag('#FEF0E8', '#9A3B12'), icon: '★', dot: dot('#FEF0E8', '#9A3B12'), body: 'Khách bấm "Gửi tin nhắn" trên quảng cáo "Video 15s – iPhone 13". Tự gắn cho người phụ trách Trang Didongfix.', bodyStyle: note },
+      { who: 'Khách', time: '15/10 09:12', tag: '', tagStyle: 'display: none', icon: 'K', dot: dot('#E9EDF2', '#344054'), body: 'Cho mình hỏi thay màn iPhone 13 bao nhiêu vậy shop?', bodyStyle: bubble(false) },
+      { who: 'Vũ Ngọc Mai', time: '15/10 09:31', tag: 'Trả lời sau 19 phút', tagStyle: tag('#E7F4EC', '#1F5F33'), icon: 'NM', dot: dot('#EAF2FC', '#1F63B8'), body: 'Dạ iPhone 13 thay màn zin bên em 2.450.000đ, bảo hành 12 tháng ạ. Anh cho em xin số để kỹ thuật tư vấn kỹ hơn nhé.', bodyStyle: bubble(true) },
+      { who: 'Khách', time: '15/10 09:40', tag: '', tagStyle: 'display: none', icon: 'K', dot: dot('#E9EDF2', '#344054'), body: '09•• ••• 218, chiều gọi mình nhé.', bodyStyle: bubble(false) },
+      { who: 'Hệ thống', time: '15/10 09:40', tag: 'Đã nhận SĐT', tagStyle: tag('#E7F4EC', '#1F5F33'), icon: '✓', dot: dot('#E7F4EC', '#1F5F33'), body: 'Tự nhận ra số điện thoại trong tin nhắn và lưu vào hồ sơ khách.', bodyStyle: note },
+      { who: 'Vũ Ngọc Mai', time: '15/10 09:42', tag: '', tagStyle: 'display: none', icon: 'NM', dot: dot('#EAF2FC', '#1F63B8'), body: 'Dạ vâng, chiều em gọi anh ạ.', bodyStyle: bubble(true) },
+      { who: 'Hệ thống', time: '17/10 09:40', tag: 'Quá 48 giờ', tagStyle: tag('#FCEBEA', '#9B2A22'), icon: '!', dot: dot('#FCEBEA', '#9B2A22'), body: 'Chưa có kết quả và chưa đánh dấu đã gọi. Đã nhắc người phụ trách trên ứng dụng điện thoại.', bodyStyle: note },
+    ];
+    const events = ev.map((e, i) => ({ ...e, line: i === ev.length - 1 ? 'display: none' : 'flex: 1; width: 2px; background: #E4E7EC; margin: 4px 0' }));
+
+    const R = [['won', 'Chốt', '#1F5F33', '#E7F4EC', '#1BAF7A'], ['later', 'Hẹn lại', '#174C8E', '#EAF2FC', '#2A78D6'], ['lost', 'Hủy', '#9B2A22', '#FCEBEA', '#E34948']];
+    const results = R.map(([k, label, fg, bg, bd]) => {
+      const on = s.result === k;
+      return { label, on: String(on), pick: () => this.setState({ result: on ? '' : k }),
+        style: 'min-height: 48px; border-radius: 10px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; ' + (on ? 'border: 2px solid ' + bd + '; background: ' + bg + '; color: ' + fg : 'border: 1px solid #D0D5DD; background: #FFFFFF; color: #344054') };
+    });
+    const reasons = ['Giá cao', 'Ngoài khu vực', 'Không nghe máy', 'Đã mua nơi khác', 'Khác'].map((label, i) => {
+      const on = s.reason === i;
+      return { label, on: String(on), pick: () => this.setState({ reason: i }),
+        style: 'min-height: 36px; padding: 0 12px; border-radius: 99px; font: inherit; font-size: 13px; cursor: pointer; ' + (on ? 'border: 1px solid #9B2A22; background: #FCEBEA; color: #9B2A22; font-weight: 600' : 'border: 1px solid #D0D5DD; background: #FFFFFF; color: #344054') };
+    });
+
+    const statusMap = { '': ['Đã liên hệ', 'background: #EEECFB; color: #3D2F9E'], won: ['Chốt', 'background: #E7F4EC; color: #1F5F33'], later: ['Hẹn lại', 'background: #EAF2FC; color: #174C8E'], lost: ['Hủy', 'background: #F2F4F7; color: #475467'] };
+    const st = statusMap[s.result];
+    const canSave = s.result !== '' && (s.result !== 'lost' || s.reason >= 0);
+    return {
+      events, results, reasons,
+      isWon: s.result === 'won', isLater: s.result === 'later', isLost: s.result === 'lost',
+      overdue: s.result === '' && !s.called,
+      statusText: st[0], statusPill: 'display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; ' + st[1],
+      calledStr: String(s.called), toggleCall: () => this.setState({ called: !s.called }),
+      switchStyle: 'flex: none; width: 46px; height: 28px; border-radius: 99px; border: 0; padding: 3px; cursor: pointer; display: flex; ' + (s.called ? 'background: #1F63B8; justify-content: flex-end' : 'background: #D0D5DD; justify-content: flex-start'),
+      knobStyle: 'width: 22px; height: 22px; border-radius: 99px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(16,24,40,.2)',
+      saveDisabled: String(!canSave),
+      saveLabel: canSave ? 'Lưu kết quả' : (s.result === 'lost' ? 'Chọn lý do hủy để lưu' : 'Chọn kết quả để lưu'),
+      saveStyle: 'min-height: 48px; border: 0; border-radius: 10px; font: inherit; font-size: 15px; font-weight: 600; ' + (canSave ? 'background: #1F63B8; color: #FFFFFF; cursor: pointer' : 'background: #F2F4F7; color: #98A2B3; cursor: not-allowed'),
+    };
+  }
+}
+</script>
+</body>
+</html>

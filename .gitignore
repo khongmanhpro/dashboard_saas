@@ -1,0 +1,38 @@
+# --- Bí mật: không bao giờ commit ---
+.env
+.env.*
+!.env.example
+.dev-credentials
+**/.dev-credentials
+*.pem
+*.key
+secrets/
+
+# --- Hệ điều hành / IDE ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# --- Node / frontend ---
+node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+frontend/e2e/.auth/
+
+# --- Dữ liệu cục bộ ---
+*.log
+*.sqlite3
+/data/
