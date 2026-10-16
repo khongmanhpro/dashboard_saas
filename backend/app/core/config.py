@@ -113,8 +113,6 @@ class Settings(BaseSettings):
         problems: list[str] = []
         if not self.app_base_url.startswith("https://"):
             problems.append("APP_BASE_URL phải dùng https")
-        if not self.postgres_password.get_secret_value():
-            problems.append("POSTGRES_PASSWORD đang trống")
         if not self.postgres_app_password.get_secret_value():
             problems.append("POSTGRES_APP_PASSWORD đang trống")
         if self.postgres_app_user == self.postgres_user:

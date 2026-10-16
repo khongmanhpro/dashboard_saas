@@ -67,7 +67,6 @@ def test_accepts_multiple_fernet_keys_for_rotation() -> None:
     ("override", "message"),
     [
         ({"app_base_url": "http://app.example.vn"}, "https"),
-        ({"postgres_password": ""}, "POSTGRES_PASSWORD"),
         ({"postgres_app_password": ""}, "POSTGRES_APP_PASSWORD"),
         ({"postgres_app_user": "fanpage"}, "RLS"),
     ],

@@ -25,5 +25,3 @@ os.environ["POSTGRES_APP_USER"] = os.environ.get("TEST_POSTGRES_APP_USER", "fanp
 os.environ["POSTGRES_APP_PASSWORD"] = secrets.token_urlsafe(24)
 _redis = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 os.environ["REDIS_URL"] = re.sub(r"/\d+$", "", _redis) + "/15"
-
-pytest_plugins = ["tests.integration.fixtures"]

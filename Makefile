@@ -1,7 +1,8 @@
 COMPOSE := docker compose
-BACKEND := $(COMPOSE) exec -T backend
+# Container quản trị (có mật khẩu quản trị DB): test, CLI, migration.
+ADMIN := $(COMPOSE) run --rm -T migrate
 
-.PHONY: env up down logs ps test lint
+.PHONY: env up down logs ps test lint migrate
 
 env:            ## Tạo .env dev với bí mật ngẫu nhiên (không ghi đè)
 	python3 scripts/init_env.py
@@ -19,8 +20,10 @@ ps:
 	$(COMPOSE) ps
 
 test:           ## Chạy test backend trong container
-	$(BACKEND) pytest -q -p no:cacheprovider
+	$(ADMIN) pytest -q -p no:cacheprovider
 
 lint:
-	$(BACKEND) ruff check app tests
-	$(BACKEND) ruff format --check app tests
+	$(ADMIN) sh -c "ruff check app tests migrations && ruff format --check app tests migrations"
+
+migrate:        ## Chạy migration (tài khoản quản trị)
+	$(ADMIN) alembic upgrade head
