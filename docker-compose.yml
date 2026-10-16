@@ -93,6 +93,29 @@ services:
     <<: *backend
     command: ["arq", "app.workers.settings.WorkerSettings"]
 
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    command: ["sh", "-c", "npm ci --no-audit --no-fund && npm run dev -- --host 0.0.0.0"]
+    environment:
+      BACKEND_URL: http://backend:8000
+    volumes:
+      - ./frontend:/app
+      # node_modules riêng cho Linux, không dùng chung với máy macOS/Windows.
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5173/"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+    restart: unless-stopped
+
 volumes:
   pgdata:
   redisdata:
+  frontend_node_modules:

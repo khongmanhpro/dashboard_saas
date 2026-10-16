@@ -1,0 +1,41 @@
+/* Design token theo docs/design/README.md. Chỉ sửa ở đây, không viết cứng màu trong component. */
+:root {
+  --font-sans: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-primary: #1f63b8;
+  --color-primary-hover: #174c8e;
+  --color-primary-soft: #eaf2fc;
+  --color-accent: #eb6834;
+
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-border: #e4e7ec;
+  --color-border-strong: #d0d5dd;
+  --color-divider: #eef0f3;
+
+  --color-text: #101828;
+  --color-text-secondary: #475467;
+  --color-text-muted: #667085;
+  --color-text-nav: #344054;
+
+  --color-good-bg: #e7f4ec;
+  --color-good-fg: #1f5f33;
+  --color-bad-bg: #fcebea;
+  --color-bad-fg: #9b2a22;
+  --color-warn-bg: #fff4e0;
+  --color-warn-fg: #8a5300;
+  --color-sample-bg: #fef0e8;
+  --color-sample-fg: #9a3b12;
+
+  --color-tier-a: #1c5cab;
+  --color-tier-b: #2a78d6;
+  --color-tier-c: #86b6ef;
+  --color-tier-d: #cde2fb;
+
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --radius-pill: 99px;
+
+  --control-height: 40px;
+  --control-height-touch: 48px;
+}
