@@ -3,13 +3,15 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
-from app.api import auth, health, public
+from app.api import auth, health, members, public
 from app.core.config import get_settings
 from app.core.db import dispose_engines
 from app.core.logging import setup_logging
 from app.core.redis import close_redis
+from app.services.errors import ServiceError
 
 
 @asynccontextmanager
@@ -33,6 +35,14 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(public.router)
     app.include_router(auth.router)
+    app.include_router(members.router)
+
+    @app.exception_handler(ServiceError)
+    async def _service_error(_request: Request, exc: ServiceError) -> JSONResponse:
+        return JSONResponse(
+            status_code=exc.status_code, content={"detail": {"code": exc.code, **exc.extra}}
+        )
+
     return app
 
 

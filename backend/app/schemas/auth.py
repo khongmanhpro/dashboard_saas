@@ -40,7 +40,8 @@ class MeResponse(BaseModel):
     workspace: WorkspaceOut
     member: MembershipOut
     must_change_password: bool
-    permissions: list[str]
+    # {quyền: phạm vi}, ví dụ {"lead.view": "own"}. Giao diện dùng để ẩn/hiện menu.
+    permissions: dict[str, str]
 
 
 class LoginResponse(MeResponse):

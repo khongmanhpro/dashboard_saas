@@ -2,7 +2,7 @@ COMPOSE := docker compose
 # Container quản trị (có mật khẩu quản trị DB): test, CLI, migration.
 ADMIN := $(COMPOSE) run --rm -T migrate
 
-.PHONY: env up down logs ps test lint migrate
+.PHONY: env up down logs ps test lint migrate bootstrap seed
 
 env:            ## Tạo .env dev với bí mật ngẫu nhiên (không ghi đè)
 	python3 scripts/init_env.py
@@ -27,3 +27,9 @@ lint:
 
 migrate:        ## Chạy migration (tài khoản quản trị)
 	$(ADMIN) alembic upgrade head
+
+bootstrap:      ## Tạo workspace + chủ sở hữu đầu tiên từ BOOTSTRAP_* trong .env
+	$(ADMIN) python -m app.cli bootstrap-owner
+
+seed:           ## Dữ liệu demo cho máy dev (mật khẩu ghi vào backend/.dev-credentials)
+	$(ADMIN) python -m app.mock.seed

@@ -159,7 +159,8 @@ async def login(
         raise InvalidCredentials(InvalidCredentials.code)
 
     await redis.delete(_email_key(email))
-    await set_tenant(db, TenantContext(workspace_id=member.workspace_id, user_id=user.id))
+    # Từ đây chỉ đặt workspace: policy "member_self_read" (theo user) không còn mở rộng phạm vi.
+    await set_tenant(db, TenantContext(workspace_id=member.workspace_id, user_id=None))
 
     now = _now()
     s = get_settings()
@@ -211,7 +212,8 @@ async def resolve_session(db: AsyncSession, token: str) -> ResolvedSession | Non
     if session is None or now >= session.expires_at or now >= session.idle_expires_at:
         return None
 
-    await set_tenant(db, TenantContext(workspace_id=session.workspace_id, user_id=session.user_id))
+    # Chỉ đặt workspace, không đặt user: request chỉ thấy đúng một workspace.
+    await set_tenant(db, TenantContext(workspace_id=session.workspace_id, user_id=None))
     user = await db.get(User, session.user_id)
     member = await db.get(WorkspaceMember, session.member_id)
     workspace = await db.get(Workspace, session.workspace_id)

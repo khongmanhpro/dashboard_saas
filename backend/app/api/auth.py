@@ -12,6 +12,7 @@ from app.api.deps import (
     client_ip,
     set_auth_cookies,
 )
+from app.core.rbac import permissions_for
 from app.core.redis import get_redis
 from app.core.security import PasswordPolicyError
 from app.schemas.auth import ChangePasswordRequest, LoginRequest, LoginResponse, MeResponse
@@ -29,7 +30,7 @@ def build_me(resolved: ResolvedSession) -> MeResponse:
             "workspace": {"id": ws.id, "name": ws.name, "timezone": ws.timezone},
             "member": {"id": member.id, "role": member.role, "team_id": member.team_id},
             "must_change_password": user.must_change_password,
-            "permissions": [],
+            "permissions": permissions_for(member.role),
         }
     )
 

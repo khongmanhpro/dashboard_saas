@@ -10,6 +10,7 @@ trong hai dependency trên.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Annotated, Any
 from urllib.parse import urlsplit
@@ -19,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.db import get_db
+from app.core.rbac import Perm, Scope, scope_of
 from app.models import MemberRole
 from app.services import auth_service
 from app.services.auth_service import ResolvedSession
@@ -109,6 +111,12 @@ class AuthContext:
     def team_id(self) -> uuid.UUID | None:
         return self.resolved.member.team_id
 
+    def scope(self, perm: Perm) -> Scope | None:
+        return scope_of(self.role, perm)
+
+    def can(self, perm: Perm) -> bool:
+        return self.scope(perm) is not None
+
 
 async def get_session_context(request: Request, db: DbSession) -> AuthContext:
     token = request.cookies.get(session_cookie_name())
@@ -134,3 +142,16 @@ async def get_auth_context(ctx: SessionContext) -> AuthContext:
 
 
 CurrentContext = Annotated[AuthContext, Depends(get_auth_context)]
+
+
+def require(perm: Perm) -> Callable[[AuthContext], Awaitable[AuthContext]]:
+    """Dependency kiểm tra quyền hành động. Phạm vi dữ liệu do service áp trong truy vấn."""
+
+    async def dependency(ctx: CurrentContext) -> AuthContext:
+        if not ctx.can(perm):
+            raise api_error(status.HTTP_403_FORBIDDEN, "forbidden", permission=perm.value)
+        return ctx
+
+    dependency.__name__ = f"require_{perm.name.lower()}"
+    dependency.required_permission = perm  # type: ignore[attr-defined]
+    return dependency
