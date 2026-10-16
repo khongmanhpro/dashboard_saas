@@ -2,7 +2,7 @@ COMPOSE := docker compose
 # Container quản trị (có mật khẩu quản trị DB): test, CLI, migration.
 ADMIN := $(COMPOSE) run --rm -T migrate
 
-.PHONY: env up down logs ps test lint migrate bootstrap seed
+.PHONY: env up down logs ps test test-frontend e2e lint migrate bootstrap seed
 
 env:            ## Tạo .env dev với bí mật ngẫu nhiên (không ghi đè)
 	python3 scripts/init_env.py
@@ -21,6 +21,12 @@ ps:
 
 test:           ## Chạy test backend trong container
 	$(ADMIN) pytest -q -p no:cacheprovider
+
+test-frontend:  ## Test đơn vị giao diện (vitest) và kiểm tra kiểu
+	cd frontend && npm run typecheck && npm test
+
+e2e:            ## Playwright (cần stack đang chạy)
+	cd frontend && npm run e2e
 
 lint:
 	$(ADMIN) sh -c "ruff check app tests migrations && ruff format --check app tests migrations && mypy app"
