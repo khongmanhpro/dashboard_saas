@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 
 import asyncpg
+import httpx
 import pytest
 from alembic import command
 from alembic.config import Config
@@ -99,3 +100,12 @@ async def admin_db() -> AsyncIterator[AsyncSession]:
 @pytest.fixture
 async def redis() -> AsyncIterator[Redis]:
     yield get_redis()
+
+
+@pytest.fixture
+async def client() -> AsyncIterator[httpx.AsyncClient]:
+    from app.main import app
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as c:
+        yield c
