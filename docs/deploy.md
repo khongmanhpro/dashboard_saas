@@ -83,14 +83,9 @@ Kiểm tra:
 2. `docker compose -f docker-compose.prod.yml -f docker-compose.tunnel.yml ps`: `backend` là `healthy`. `backup` sao lưu ngay ở lần đầu nên phải lên `healthy`. Nếu `unhealthy` thì xem `logs backup`, thường do thiếu biến R2.
 3. Cloudflare R2: bucket có một file `fanpage-….dump.age`.
 
-## 5. Nối webhook Meta
+## 5. Cài đặt phía Meta
 
-Ứng dụng Meta → Webhooks → Page:
-
-- Callback URL: `https://app.vidu.vn/webhooks/meta`
-- Verify token: giá trị `META_WEBHOOK_VERIFY_TOKEN` trong `.env` (xem bằng `grep META_WEBHOOK_VERIFY_TOKEN .env`).
-
-Sau đó làm theo README mục "Nối với Meta thật".
+Làm theo **[docs/meta-setup.md](meta-setup.md)**: ứng dụng Meta, webhook, chuyển Live, người dùng hệ thống "Dashboard", kết nối BM, thử với khách thật, xin Advanced Access nếu cần.
 
 ## 6. Cập nhật bản mới
 
