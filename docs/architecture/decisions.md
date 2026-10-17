@@ -193,4 +193,12 @@ Thay quyết định #4 và mục F phần "xếp phần trăm".
 | So với kỳ trước | Kỳ trước bằng 0 hoặc kỳ này gấp từ 10 lần trở lên thì ghi "Mới" thay vì %; rê chuột thấy số kỳ trước. Áp dụng mọi trang báo cáo (dùng chung `metricDelta`). | |
 | ROAS | Doanh thu nhân viên nhập của khách chốt gắn với quảng cáo ÷ chi tiêu, hiện dạng "2,4×", ở bảng và thẻ chỉ số. Thiếu tỉ giá hoặc chi tiêu bằng 0 thì "–". Trang Quảng cáo có ô giải thích "Kết quả" (Facebook đếm) khác "Khách" (app ghi nhận). | |
 | Dẫn đầu / Cần hỗ trợ | "Dẫn đầu": tối đa 5 người hạng A/B. "Cần hỗ trợ": tối đa 5 người hạng C/D, điểm thấp nhất trước. Không ai thì ghi rõ. Một người không nằm ở cả hai khối. | |
-| Bộ lọc trên điện thoại | Dưới 640px, các ô chọn của Khách hàng, Nhân viên, Fanpage, Quảng cáo, Tổng quan gom vào nút "Lọc (n)", mở bảng chọn từ dưới lên, có "Áp dụng" và "Xóa lọc". Ô tìm kiếm và chip nhanh để ngoài. | |
+| Bộ lọc trên điện thoại | Dưới 640px, các ô chọn của Khách hàng, Nhân viên, Fanpage, Quảng cáo, Tổng quan gom vào nút "Lọc (n)", mở bảng chọn từ dưới lên, có "Xong" và "Xóa lọc" (mục N). Ô tìm kiếm và chip nhanh để ngoài. | |
+
+## N. Bảng "Lọc" trên điện thoại sau review (sếp duyệt 17/10/2026)
+
+| Chủ đề | Quyết định | Lý do |
+|---|---|---|
+| Nút đóng bảng | Đổi "Áp dụng" thành "Xong". Chọn ô nào lọc ngay ô đó, đóng bảng (nút Xong, chạm nền tối, phím Esc) không hoàn tác. | Bộ lọc vốn áp dụng ngay; chữ "Áp dụng" làm người dùng tưởng đóng bảng là hủy. |
+| "Lọc (n)" ở Fanpage | Không đếm cách sắp xếp; "Xóa lọc" không đổi cách sắp xếp. | Sắp xếp không thu hẹp danh sách. |
+| Hành vi bảng chọn | Mở bảng thì con trỏ vào bảng, Tab chỉ đi trong bảng, trang phía sau không cuộn; đóng thì con trỏ về nút "Lọc". Màn hình rộng ra từ 640px (xoay ngang) thì bảng tự đóng. Dùng chung kiểu bảng chọn của ứng dụng nhân viên (`m-sheet`), có chừa thanh vuốt iPhone. Màu nền tối là token `--color-overlay`. | Phát hiện khi review mục M. |
