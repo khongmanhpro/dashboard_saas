@@ -175,17 +175,16 @@ Sau bước 7: chạy thử 2 tuần với 4 Trang và 4–10 nhân viên thật
 
 ## 10. Trạng thái hiện tại và cách làm việc (bàn giao, cập nhật 17/10/2026)
 
-Đọc mục này trước khi làm tiếp. Chi tiết từng quyết định ở `docs/architecture/decisions.md` (mục A–H, **ưu tiên hơn CLAUDE.md** nếu khác nhau), mô hình dữ liệu ở `data-model.md`, phân quyền ở `rbac.md`, cách chạy ở `README.md`.
+Đọc mục này trước khi làm tiếp. Chi tiết từng quyết định ở `docs/architecture/decisions.md` (mục A–I, **ưu tiên hơn CLAUDE.md** nếu khác nhau), mô hình dữ liệu ở `data-model.md`, phân quyền ở `rbac.md`, cách chạy ở `README.md`.
 
 ### Tiến độ
-- **Xong Bước 1–6** (mục 8), đã đẩy lên `origin/main`. Commit đầu mỗi bước là `docs: chốt quyết định Bước N`.
-- **Bước 7 chưa làm.** Đã tạo sẵn bảng `ad_accounts`, `sync_runs`; chưa có `campaigns`, `ad_sets`, `ads`, `ad_insights_daily`, `fx_rates`, `page_posts`, `page_insights_daily`, `alert_rules`, `alert_deliveries`, `member_telegram` (thiết kế ở `data-model.md`).
+- **Xong Bước 1–7** (mục 8). Commit đầu mỗi bước là `docs: chốt quyết định Bước N`. Bước 7: quyết định ở `decisions.md` mục I, migration 0008.
 - Việc còn nợ:
-  - Thử với Meta thật khi ứng dụng Live: webhook trên 4 Trang demo, kết nối BM bằng mã thật (README mục "Nối với Meta thật").
+  - Thử với Meta thật khi ứng dụng Live: webhook trên 4 Trang demo, kết nối BM bằng mã thật (README mục "Nối với Meta thật"). Kiểm lại tên metric Trang/bài đăng trong `PAGE_METRICS` và `post_media_view` (`app/meta/graph.py`), và cách Meta trả `actions` của insights.
+  - Thử Telegram thật (README mục "Bật cảnh báo Telegram thật").
   - Cài PWA lên Android/iPhone thật qua HTTPS (README mục "Kiểm tra cài lên điện thoại thật").
-  - Tiêu chí "Chăm Trang" đang được chia lại trọng số cho tới khi Bước 7 đồng bộ bài đăng.
-  - Đổi sang gửi link đặt mật khẩu qua email (#20) khi có SMTP.
-  - Ô "Sản phẩm / dịch vụ" khi chốt đơn chưa làm.
+  - Đổi sang gửi link đặt mật khẩu qua email (#20) và email báo cáo tuần khi có SMTP.
+  - Ô "Sản phẩm / dịch vụ" khi chốt đơn chưa làm. Tab Đối tượng, Lịch đăng của Chi tiết Trang, Telegram riêng từng nhân viên (`member_telegram`): giai đoạn sau.
 
 ### Cách làm việc đã thống nhất với sếp
 - Giao tiếp bằng **tiếng Việt**, câu ngắn, rõ.
@@ -203,12 +202,13 @@ Sau bước 7: chạy thử 2 tuần với 4 Trang và 4–10 nhân viên thật
 - **Frontend:** mọi chữ giao diện nằm trong `frontend/src/i18n/vi.ts`; test `i18n.test.ts` fail nếu có chữ tiếng Việt ở chỗ khác. Màu lấy từ `styles/tokens.css`.
 - **Mọi route phải có `require(Perm.X)`** (`test_route_protection`). Thêm quyền thì sửa đồng thời `core/rbac.py`, `tests/unit/test_rbac.py`, `docs/architecture/rbac.md`.
 - Lỗi 422 không được trả lại giá trị người dùng gửi (đã có handler trong `main.py`).
-- **MOCK_MODE:** client Graph giả đọc `backend/tests/fixtures/meta/graph_mock.json`; mã giả `MOCK-BM-1` (BM demo, seed tự gắn), `MOCK-BM-2`, `MOCK-BM-NOLEADS`, `MOCK-INVALID`, `MOCK-BM-E2E` (chỉ cho e2e).
+- **MOCK_MODE:** client Graph giả đọc `backend/tests/fixtures/meta/graph_mock.json`; mã giả `MOCK-BM-1` (BM demo, seed tự gắn), `MOCK-BM-2`, `MOCK-BM-NOLEADS`, `MOCK-INVALID`, `MOCK-BM-E2E` và `MOCK-BM-E2E-ADS` (chỉ cho e2e). Số liệu QC/bài đăng giả sinh từ mục `content`, cố định theo ngày. Telegram giả: không gửi thật.
+- **Báo cáo:** khoảng thời gian dùng `app/services/report_range.py`; số liệu QC dùng chung `app/services/ads_service.py` (Tổng quan, Quảng cáo, cảnh báo đều qua `level_stats`). Handler/service ghi phải tự `db.commit()`.
 - **E2E:** `frontend/e2e/global-setup.ts` gọi `python -m app.cli e2e-seed` để tạo tài khoản và khách mới mỗi lần chạy; test phải chạy lại nhiều lần vẫn pass.
 
 ### Chuyển sang máy khác
 1. Cài Docker Desktop, Node 22, Python 3. Rồi `git clone` repo.
 2. `make env`: tạo `.env` mới với bí mật ngẫu nhiên, gồm cả khóa VAPID và `META_APP_SECRET` giả cho MOCK_MODE. `.env` không nằm trong git.
-3. `make up`, rồi `make seed`, rồi `make simulate` (kết quả phải là 14/14).
+3. `make up`, rồi `make seed`, rồi `make simulate` (kết quả phải là 15/15).
 4. Chạy test giao diện: `cd frontend && npm ci && npx playwright install chromium`, rồi `make test-frontend` và `make e2e`.
 5. DB dev không đi theo git: máy mới bắt đầu từ dữ liệu demo do seed tạo. Mã Meta thật (nếu có) phải dán lại trên máy mới, vì `TOKEN_ENCRYPTION_KEY` mới không giải mã được dữ liệu cũ.

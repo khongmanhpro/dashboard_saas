@@ -29,6 +29,8 @@ Bên dưới hai lớp này còn **Row-Level Security** của Postgres: mỗi re
 | `report.view` | all | all | team | – | all |
 | `notification.receive` (nhắc việc của mình) | own | own | own | own | own |
 
+Màn hình Bước 7: Tổng quan và Fanpage cần `report.view` (Trưởng nhóm: nhóm mình); Quảng cáo, chi phí trên Tổng quan và chi phí ước tính trong Hồ sơ khách cần `ads.cost.view`; cấu hình cảnh báo Telegram và tỉ giá cần `settings.manage`; ô gán người phụ trách trên Fanpage cần `page.assign`.
+
 Vì sao `lead.update` của Trưởng nhóm là `own`: Trưởng nhóm có thể phụ trách Trang (quyết định #14) nên tự cập nhật khách của mình, nhưng không sửa kết quả thay nhân viên trong nhóm.
 
 ## Quy tắc về vai trò

@@ -2,7 +2,7 @@
 
 Bối cảnh sản phẩm và quy tắc nghiệp vụ: [CLAUDE.md](CLAUDE.md). Các quyết định đã chốt: [docs/architecture/decisions.md](docs/architecture/decisions.md). Mô hình dữ liệu cho cả 7 bước: [docs/architecture/data-model.md](docs/architecture/data-model.md). Phân quyền: [docs/architecture/rbac.md](docs/architecture/rbac.md).
 
-**Trạng thái:** xong Bước 1–6 (khung dự án, webhook Meta và thời gian trả lời, Khách hàng, điểm và xếp hạng, ứng dụng điện thoại, nhiều BM và nhập Excel). Còn Bước 7 (quảng cáo, Tổng quan, Fanpage, cảnh báo Telegram).
+**Trạng thái:** xong Bước 1–7 (khung dự án, webhook Meta và thời gian trả lời, Khách hàng, điểm và xếp hạng, ứng dụng điện thoại, nhiều BM và nhập Excel, quảng cáo, Tổng quan, Fanpage, cảnh báo Telegram). Tiếp theo: chạy thử 2 tuần với Meta thật (CLAUDE.md mục 8).
 
 ## Chạy trên máy dev
 
@@ -11,7 +11,7 @@ Cần Docker Desktop, Python 3 (chỉ để chạy script tạo `.env`) và Node
 ```bash
 make env     # tạo .env với bí mật ngẫu nhiên (không ghi đè nếu đã có)
 make up      # db, redis, migrate, backend, worker, frontend
-make seed    # dữ liệu demo: 5 vai trò, 4 Trang demo, mật khẩu ghi vào backend/.dev-credentials
+make seed    # dữ liệu demo: 5 vai trò, 4 Trang demo, 30 ngày khách mẫu, quảng cáo giả; mật khẩu ghi vào backend/.dev-credentials
 make simulate  # giả lập webhook cho 4 Trang demo, in số phút trả lời so với mong đợi
 ```
 
@@ -80,13 +80,31 @@ Việc cài cần HTTPS, nên làm trên bản production (`APP_DOMAIN`), không
 - Mã BM và mã Trang lưu dạng Fernet, giao diện chỉ hiện 4 ký tự cuối. Gửi mã cho Meta qua header `Authorization`, kèm `appsecret_proof`.
 - Job `check_bms` chạy mỗi 6 giờ: kiểm tra mã và quyền, nhận Trang mới, lấy bù form leadgen, nhắc Chủ sở hữu khi BM thiếu quyền hoặc mất kết nối.
 - Màn hình Nhân viên: "Nhập từ Excel" (file mẫu có sẵn danh sách Trang) và "+ Thêm nhân viên". File mật khẩu tạm của tài khoản mới chỉ tải được một lần.
-- MOCK_MODE dùng client Graph giả (`backend/tests/fixtures/meta/graph_mock.json`). Mã giả để thử: `MOCK-BM-2` (BM thứ hai, 3 Trang), `MOCK-BM-NOLEADS` (thiếu quyền form), `MOCK-INVALID` (mã sai).
+- MOCK_MODE dùng client Graph giả (`backend/tests/fixtures/meta/graph_mock.json`). Mã giả để thử: `MOCK-BM-2` (BM thứ hai, 3 Trang), `MOCK-BM-NOLEADS` (thiếu quyền form), `MOCK-INVALID` (mã sai). Số liệu quảng cáo, bài đăng, số liệu Trang giả sinh từ mục `content` của file này, cố định theo ngày.
 
 ### Nối với Meta thật (khi ứng dụng đã Live)
 
 1. Trong `.env`: `MOCK_MODE=false`, `META_APP_ID`, `META_APP_SECRET`, `META_GRAPH_VERSION` (ví dụ `v23.0`), `META_WEBHOOK_VERIFY_TOKEN`.
 2. Trang quản lý ứng dụng Meta → Webhooks → đối tượng **Page**: URL gọi lại `https://<tên miền>/webhooks/meta`, mã xác minh = `META_WEBHOOK_VERIFY_TOKEN`; đăng ký các trường `messages`, `message_echoes`, `messaging_referrals`, `leadgen`, `feed`.
 3. Trong từng BM: tạo người dùng hệ thống "Dashboard" (vai trò Nhân viên), gán Trang và tài khoản quảng cáo với đúng các quyền ở bước 2 của màn hình Kết nối BM, tạo mã (thời hạn Không bao giờ) rồi Chủ sở hữu dán vào màn hình Kết nối BM. Hệ thống tự đăng ký webhook cho từng Trang.
+
+## Quảng cáo, Tổng quan, Fanpage, cảnh báo (Bước 7)
+
+- Màn hình `/overview` (Tổng quan; màn hình hẹp tự đổi sang bố cục điện thoại, có menu dưới), `/pages` và `/pages/:id` (Fanpage, Chi tiết Trang), `/ads` (Quảng cáo), mục Cảnh báo và Tỉ giá trong `/settings`.
+- API `GET /api/reports/overview`, `/api/reports/pages`, `/api/reports/pages/{id}`, `/api/reports/ads`; xuất Excel `/api/reports/overview.xlsx`, `/api/reports/pages.xlsx`. Cấu hình: `/api/settings/alerts`, `/api/settings/fx-rates`, `/api/alerts/rules`.
+- Job `sync_meta` (mỗi giờ, phút 40): cấu trúc và chi tiêu quảng cáo theo ngày ở 3 cấp, bài đăng, số liệu Trang; gắn khách với quảng cáo qua `fb_ad_id`. Lần đầu lấy bù 30 ngày, sau đó lấy lại 3 ngày gần nhất.
+- Job `send_alerts` (mỗi giờ, phút 0): cảnh báo Telegram theo quy tắc, tóm tắt hôm qua từ 08:00. Mỗi quy tắc × đối tượng × ngày gửi một lần; gửi lỗi thì lần sau thử lại. BM xấu đi thì job `check_bms` báo ngay.
+- Chi phí mỗi khách = chi tiêu chiến dịch trong ngày ÷ khách mới của chiến dịch cùng ngày; chi phí mỗi khách chốt = chi tiêu trong kỳ ÷ khách chốt. Tài khoản QC không dùng VND cần Chủ sở hữu nhập tỉ giá (Cài đặt → Tỉ giá); thiếu tỉ giá thì số đó chưa được cộng và giao diện ghi rõ.
+- Chăm Trang tính vào điểm theo số bài trên Trang lúc người đó phụ trách: `min(bài / mục tiêu, 1) × 100`.
+- Chi tiết các quyết định: `docs/architecture/decisions.md`, mục I.
+
+### Bật cảnh báo Telegram thật
+
+1. Tạo bot qua @BotFather, đặt mã vào `TELEGRAM_BOT_TOKEN` trong `.env` rồi `docker compose up -d` (mã bot không bao giờ ghi vào log).
+2. Thêm bot vào nhóm Telegram của sếp, lấy chat ID của nhóm (dạng `-100…`).
+3. Chủ sở hữu vào Cài đặt → Cảnh báo, dán chat ID, bấm "Lưu cảnh báo" rồi "Gửi thử".
+
+Ở `MOCK_MODE=true` hệ thống không gửi Telegram thật, chỉ ghi nhật ký gửi với trạng thái "Giả lập".
 
 ## Lệnh quản trị
 
