@@ -170,5 +170,229 @@
       ],
       "ad_accounts": []
     }
+  },
+  "content": {
+    "_ghi_chu": "Tham số sinh số liệu giả theo ngày (MockGraphClient). Mỗi (đối tượng, ngày) cho cùng một số liệu ở mọi lần chạy. daily_budget và daily.spend theo đơn vị nhỏ nhất của tiền tệ tài khoản (VND: đồng, USD: cent).",
+    "ad_accounts": {
+      "act_200000000000001": {
+        "campaigns": [
+          {
+            "id": "23800000000000001",
+            "name": "[Tin nhắn - Phần mềm bản quyền]",
+            "objective": "OUTCOME_ENGAGEMENT",
+            "status": "ACTIVE",
+            "daily_budget": 600000,
+            "daily": {
+              "spend": 520000,
+              "impressions": 38000,
+              "reach": 17000,
+              "clicks": 520,
+              "messaging": 30,
+              "leads": 0
+            },
+            "adsets": [
+              {
+                "id": "23800000000000011",
+                "name": "[Nhóm QC - Hà Nội]",
+                "ads": [
+                  {
+                    "id": "23800000000000111",
+                    "name": "[QC ảnh - Phần mềm 01]",
+                    "page_id": "100000000000101"
+                  },
+                  {
+                    "id": "23800000000000112",
+                    "name": "[QC video - Phần mềm 02]",
+                    "page_id": "100000000000101"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "23800000000000002",
+            "name": "[Tin nhắn - Giải pháp tài chính]",
+            "objective": "OUTCOME_ENGAGEMENT",
+            "status": "ACTIVE",
+            "daily_budget": 450000,
+            "daily": {
+              "spend": 430000,
+              "impressions": 29000,
+              "reach": 14500,
+              "clicks": 380,
+              "messaging": 18,
+              "leads": 0
+            },
+            "adsets": [
+              {
+                "id": "23800000000000021",
+                "name": "[Nhóm QC - Toàn quốc]",
+                "ads": [
+                  {
+                    "id": "23800000000000101",
+                    "name": "[QC tin nhắn - FISS 01]",
+                    "page_id": "100000000000102"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "23800000000000003",
+            "name": "[Khách tiềm năng - Bảo hiểm]",
+            "objective": "OUTCOME_LEADS",
+            "status": "ACTIVE",
+            "daily_budget": 700000,
+            "daily": {
+              "spend": 690000,
+              "impressions": 41000,
+              "reach": 21000,
+              "clicks": 300,
+              "messaging": 0,
+              "leads": 21
+            },
+            "adsets": [
+              {
+                "id": "23800000000000031",
+                "name": "[Nhóm QC - Form]",
+                "ads": [
+                  {
+                    "id": "23800000000000102",
+                    "name": "[QC form - FISS 02]",
+                    "page_id": "100000000000102"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "23800000000000004",
+            "name": "[Lượt tương tác - Thương hiệu]",
+            "objective": "OUTCOME_ENGAGEMENT",
+            "status": "PAUSED",
+            "daily_budget": null,
+            "daily": {
+              "spend": 120000,
+              "impressions": 15000,
+              "reach": 9000,
+              "clicks": 310,
+              "messaging": 0,
+              "leads": 0
+            },
+            "adsets": [
+              {
+                "id": "23800000000000041",
+                "name": "[Nhóm QC - Tương tác]",
+                "daily_budget": 120000,
+                "ads": [
+                  {
+                    "id": "23800000000000141",
+                    "name": "[QC bài viết - Mua Sắm 01]",
+                    "page_id": "100000000000104"
+                  }
+                ]
+              }
+            ],
+            "paused_days": 10
+          }
+        ]
+      },
+      "act_200000000000002": {
+        "campaigns": [
+          {
+            "id": "23800000000000005",
+            "name": "[Tin nhắn - Phụ kiện thỏ]",
+            "objective": "OUTCOME_ENGAGEMENT",
+            "status": "ACTIVE",
+            "daily_budget": 1500,
+            "daily": {
+              "spend": 1400,
+              "impressions": 21000,
+              "reach": 9800,
+              "clicks": 250,
+              "messaging": 12,
+              "leads": 0
+            },
+            "adsets": [
+              {
+                "id": "23800000000000051",
+                "name": "[Nhóm QC - Miền Nam]",
+                "ads": [
+                  {
+                    "id": "23800000000000151",
+                    "name": "[QC ảnh - Shop Thỏ 01]",
+                    "page_id": "100000000000103"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "act_200000000000003": {
+        "campaigns": [
+          {
+            "id": "23800000000000006",
+            "name": "[Tin nhắn - Miền Nam]",
+            "objective": "OUTCOME_ENGAGEMENT",
+            "status": "ACTIVE",
+            "daily_budget": 300000,
+            "daily": {
+              "spend": 280000,
+              "impressions": 20000,
+              "reach": 9500,
+              "clicks": 210,
+              "messaging": 11,
+              "leads": 0
+            },
+            "adsets": [
+              {
+                "id": "23800000000000061",
+                "name": "[Nhóm QC - TP.HCM]",
+                "ads": [
+                  {
+                    "id": "23800000000000161",
+                    "name": "[QC ảnh - Trang demo 5]",
+                    "page_id": "100000000000105"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "pages": {
+      "100000000000101": {
+        "posts_per_week": 6,
+        "views": 42000,
+        "followers": 12480,
+        "trend": 0.01
+      },
+      "100000000000102": {
+        "posts_per_week": 5,
+        "views": 28000,
+        "followers": 8650,
+        "trend": 0.0
+      },
+      "100000000000103": {
+        "posts_per_week": 2,
+        "views": 15000,
+        "followers": 5120,
+        "trend": 0.0
+      },
+      "100000000000104": {
+        "posts_per_week": 4,
+        "views": 33000,
+        "followers": 9870,
+        "trend": -0.035
+      },
+      "100000000000105": {
+        "posts_per_week": 3,
+        "views": 9000,
+        "followers": 2300,
+        "trend": 0.0
+      }
+    }
   }
 }
