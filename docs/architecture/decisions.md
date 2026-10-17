@@ -181,3 +181,16 @@ Thay quyết định #4 và mục F phần "xếp phần trăm".
 | So sánh điểm khác công thức | Không tính lại tuần đã chốt (mục F). Chỗ so sánh ▲▼ với tuần trước và biểu đồ điểm theo tuần ghi chú "khác công thức" khi tuần đó dùng phiên bản công thức khác phiên bản đang áp dụng. | |
 | Kỳ đếm bài đăng | Fanpage đếm bài cùng kỳ 7 ngày với các cột khác (thay "Bài tuần này"); mục tiêu quy theo số ngày như điểm Chăm Trang. Tổng quan, Nhân viên, Fanpage cùng một cách đếm. | |
 | E2E tự dọn | `make e2e` chạy xong (pass hay fail) gọi `make e2e-down`: gỡ container e2e, xóa DB `fanpage_e2e_test`, dọn Redis db 13 (`python -m app.mock.sandbox drop`, chỉ nhận DB `_test` và Redis khác db 0). Khi bật, DB e2e luôn tạo lại từ đầu. `app.cli e2e-seed` từ chối DB không có đuôi `_test`. | Trước khi có stack riêng, `e2e-seed` ghi vào DB dev: workspace "E2E Playwright" (228 khách, 8 tài khoản, 3.078 dòng) đã được sao lưu rồi xóa ngày 17/10/2026. |
+
+## M. Sửa giao diện theo góp ý (sếp duyệt 17/10/2026)
+
+| Chủ đề | Quyết định | Lý do |
+|---|---|---|
+| Màn hình 640–1023px | Menu thu thành cột icon 64px bên trái, nội dung bên phải; rê chuột hiện tên mục; số đỏ vẫn hiện trên icon Khách hàng. Dưới 640px giữ thanh điều hướng dưới đáy. | Trước đây ở độ rộng này menu bị đẩy lên trên, nội dung rơi xuống dưới. |
+| Số đỏ ở menu Khách hàng | Giữ cách đếm tất cả thời gian. Bấm vào số mở `/leads?chip=overdue&period=all` nên số khớp thẻ "Quá 48 giờ"; rê chuột ghi "tất cả thời gian". | Trang Khách hàng mặc định kỳ 7 ngày nên số khác nhau. |
+| Cột Hẹn lại | Xếp hẹn đã qua lên đầu (quá lâu nhất trước), rồi hẹn sắp tới (gần nhất trước). Hẹn đã qua gắn nhãn đỏ "Quá hẹn X ngày" (dưới 1 ngày: "X giờ"). Áp dụng cả ứng dụng nhân viên. | |
+| Dòng sự kiện | Mọi mã sự kiện và loại nhắc việc có chữ tiếng Việt. Nhắc việc gửi cùng lúc cho một khách gộp thành một dòng. | Hồ sơ khách từng hiện mã thô `reminder_sent`. |
+| So với kỳ trước | Kỳ trước bằng 0 hoặc kỳ này gấp từ 10 lần trở lên thì ghi "Mới" thay vì %; rê chuột thấy số kỳ trước. Áp dụng mọi trang báo cáo (dùng chung `metricDelta`). | |
+| ROAS | Doanh thu nhân viên nhập của khách chốt gắn với quảng cáo ÷ chi tiêu, hiện dạng "2,4×", ở bảng và thẻ chỉ số. Thiếu tỉ giá hoặc chi tiêu bằng 0 thì "–". Trang Quảng cáo có ô giải thích "Kết quả" (Facebook đếm) khác "Khách" (app ghi nhận). | |
+| Dẫn đầu / Cần hỗ trợ | "Dẫn đầu": tối đa 5 người hạng A/B. "Cần hỗ trợ": tối đa 5 người hạng C/D, điểm thấp nhất trước. Không ai thì ghi rõ. Một người không nằm ở cả hai khối. | |
+| Bộ lọc trên điện thoại | Dưới 640px, các ô chọn của Khách hàng, Nhân viên, Fanpage, Quảng cáo, Tổng quan gom vào nút "Lọc (n)", mở bảng chọn từ dưới lên, có "Áp dụng" và "Xóa lọc". Ô tìm kiếm và chip nhanh để ngoài. | |
