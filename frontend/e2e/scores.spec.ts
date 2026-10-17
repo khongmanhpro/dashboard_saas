@@ -62,6 +62,49 @@ test("Chủ sở hữu đổi trọng số: xem thử khớp bảng xếp hạng
   await expect(page.getByRole("status").filter({ hasText: "Đã lưu và tính lại điểm." })).toBeVisible();
 });
 
+test("Chủ sở hữu đổi ngưỡng chấm điểm: xem thử khớp bảng xếp hạng sau khi lưu", async ({ page }) => {
+  await login(page, "owner");
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "Về mặc định" }).click();
+  const closeFull = page.getByTestId("threshold-close_rate_full");
+  await expect(closeFull).toHaveValue("30");
+  await expect(page.locator(".preview")).toHaveAttribute("aria-busy", "false");
+  const before = new Map<string, string>();
+  for (const row of await page.getByTestId("preview-row").all()) {
+    before.set((await row.locator("span").first().innerText()).trim(), (await row.getByTestId("preview-new").innerText()).trim());
+  }
+
+  // Ngưỡng ngược (0 điểm ≥ 100 điểm): không cho lưu.
+  await page.getByTestId("threshold-close_rate_zero").fill("40");
+  await expect(page.getByRole("button", { name: /Ngưỡng chưa hợp lệ/ })).toBeDisabled();
+  await page.getByTestId("threshold-close_rate_zero").fill("5");
+
+  // Nâng ngưỡng 100 điểm của tỉ lệ chốt: điểm xem thử thấp hơn, khớp bảng xếp hạng sau khi lưu.
+  await closeFull.fill("80");
+  await expect(page.locator(".preview")).toHaveAttribute("aria-busy", "false");
+  const expected = new Map<string, string>();
+  for (const row of await page.getByTestId("preview-row").all()) {
+    const name = (await row.locator("span").first().innerText()).trim();
+    expected.set(name, (await row.getByTestId("preview-new").innerText()).trim());
+  }
+  expect(expected.size).toBeGreaterThanOrEqual(1);
+  const [someone, lowered] = [...expected.entries()][0]!;
+  expect(Number(lowered.replace(",", "."))).toBeLessThanOrEqual(Number((before.get(someone) ?? "100").replace(",", ".")));
+
+  await page.getByRole("button", { name: "Lưu công thức" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Đã lưu và tính lại điểm." })).toBeVisible();
+  await page.goto("/staff");
+  for (const [name, score] of expected) {
+    const row = page.getByTestId("staff-row").filter({ hasText: name });
+    await expect(row.locator(".score-cell b")).toHaveText(score);
+  }
+
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "Về mặc định" }).click();
+  await page.getByRole("button", { name: "Lưu công thức" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Đã lưu và tính lại điểm." })).toBeVisible();
+});
+
 test("Nhân viên chỉ thấy điểm của mình, người khác chỉ tên và hạng", async ({ page }) => {
   await login(page, "owner");
   await page.goto("/staff");

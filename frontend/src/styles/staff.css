@@ -589,3 +589,48 @@
 .trend__labels {
   padding-left: 6.5%;
 }
+
+/* Ngưỡng chấm điểm (Cài đặt → Công thức điểm, decisions.md mục K). */
+.thresholds {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-divider);
+}
+.threshold-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 1.3fr) minmax(0, 1.6fr);
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+}
+.threshold-row__name { font-weight: 600; }
+.threshold-row__cell {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--color-text-secondary);
+}
+.threshold-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.threshold-input input {
+  width: 76px;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  font: inherit;
+}
+
+/* Nhân viên: lượt phụ trách Trang đã kết thúc trong kỳ (mục K). */
+.past-page {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}

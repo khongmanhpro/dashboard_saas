@@ -117,6 +117,8 @@ export interface PageReportRow {
   owner: NamedRef | null;
   owner_total: Num | null;
   owner_tier: Tier | null;
+  /** Chỉ có khi khách của Trang trong kỳ thuộc hơn một người (null = chưa có người phụ trách). */
+  owners_in_range: { member: NamedRef | null; leads: number }[];
   leads_7d: number;
   median_response_seconds: number | null;
   won_7d: number;

@@ -59,6 +59,18 @@ function Spark({ row }: { row: PageReportRow }) {
   );
 }
 
+function Shares({ row }: { row: PageReportRow }) {
+  if (row.owners_in_range.length === 0) return null;
+  return (
+    <span className="owner-shares" data-testid="owner-shares">
+      {t.pages.sharesLabel}{" "}
+      {row.owners_in_range
+        .map((s) => format(t.pages.share, { name: s.member?.name ?? t.pages.shareUnassigned, n: s.leads }))
+        .join(" · ")}
+    </span>
+  );
+}
+
 function OwnerCell({
   row,
   canAssign,
@@ -292,6 +304,7 @@ export function PagesPage() {
                     onAssign={(memberId) => assign(row.id, memberId)}
                     busy={setOwner.isPending}
                   />
+                  <Shares row={row} />
                 </td>
                 <td className="num">
                   <b>{formatNumber(row.leads_7d)}</b>

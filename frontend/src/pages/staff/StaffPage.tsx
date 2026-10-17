@@ -273,7 +273,16 @@ export function StaffPage() {
                       </span>
                     )}
                   </td>
-                  <td>{row.pages.join(", ") || <span className="muted">{t.staff.noPage}</span>}</td>
+                  <td>
+                    {row.pages.length || !row.past_pages.length ? (
+                      row.pages.join(", ") || <span className="muted">{t.staff.noPage}</span>
+                    ) : null}
+                    {row.past_pages.map((p) => (
+                      <span key={`${p.name}-${p.until}`} className="past-page" data-testid="past-page">
+                        {format(t.staff.pastPage, { page: p.name, time: formatDateTime(p.until, timeZone) })}
+                      </span>
+                    ))}
+                  </td>
                   <td>
                     {visible ? <ScoreCell row={row} /> : <TierBadge tier={row.tier} />}
                   </td>

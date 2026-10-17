@@ -1,5 +1,5 @@
 // Định dạng số cho màn hình Nhân viên và Cài đặt. Hàm thuần để test được.
-import type { Formula, Tier, Weights } from "../api/staff";
+import type { Formula, Thresholds, Tier, Weights } from "../api/staff";
 import { CRITERIA } from "../api/staff";
 import { format, t } from "../i18n";
 
@@ -57,13 +57,27 @@ export function sameWeights(a: Weights, b: Weights): boolean {
   return CRITERIA.every((c) => a[c] === b[c]);
 }
 
+export function sameThresholds(a: Thresholds, b: Thresholds): boolean {
+  return (Object.keys(a) as (keyof Thresholds)[]).every((k) => a[k] === b[k]);
+}
+
+/** Ngưỡng hợp lệ: số nguyên, "0 điểm" < "100 điểm", tỉ lệ trong 0–100 (cùng kiểm tra với backend). */
+export function thresholdsValid(th: Thresholds): boolean {
+  const ints = Object.values(th).every((v) => Number.isInteger(v) && v >= 0);
+  const rates = (["close_rate", "phone_rate", "on_time"] as const).every(
+    (k) => th[`${k}_zero`] < th[`${k}_full`] && th[`${k}_full`] <= 100,
+  );
+  return ints && rates && th.speed_full_minutes < th.speed_zero_minutes && th.speed_zero_minutes <= 1440 && th.revenue_full_vnd > 0;
+}
+
 /** Đổi trọng số theo bước 5, giữ trong 0–100. */
 export function stepWeight(w: Weights, key: keyof Weights, delta: number): Weights {
   return { ...w, [key]: Math.max(0, Math.min(100, w[key] + delta)) };
 }
 
 /** Nhãn nút Lưu theo tổng trọng số. */
-export function saveLabel(total: number, changed: boolean): { ok: boolean; label: string } {
+export function saveLabel(total: number, changed: boolean, thresholdsOk = true): { ok: boolean; label: string } {
+  if (!thresholdsOk) return { ok: false, label: t.settings.score.thresholdInvalid };
   if (total !== 100) {
     const diff = total < 100 ? format(t.settings.score.missing, { n: 100 - total }) : format(t.settings.score.extra, { n: total - 100 });
     return { ok: false, label: format(t.settings.score.mustBe100, { diff }) };

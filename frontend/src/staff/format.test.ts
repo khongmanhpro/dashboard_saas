@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_WEIGHTS } from "../api/staff";
+import { DEFAULT_THRESHOLDS, DEFAULT_WEIGHTS } from "../api/staff";
 import {
   formatCompactVnd,
   formatDelta,
   formatPercent,
   formatScore,
   saveLabel,
+  sameThresholds,
   sameWeights,
+  thresholdsValid,
   stepWeight,
   tierRanges,
   trendPoints,
@@ -61,12 +63,31 @@ describe("trọng số công thức", () => {
   it("nhãn nút lưu", () => {
     expect(saveLabel(105, true)).toEqual({ ok: false, label: "Tổng phải bằng 100% (còn thừa 5%)" });
     expect(saveLabel(95, true)).toEqual({ ok: false, label: "Tổng phải bằng 100% (còn thiếu 5%)" });
-    expect(saveLabel(100, false)).toEqual({ ok: false, label: "Chưa đổi trọng số" });
+    expect(saveLabel(100, false)).toEqual({ ok: false, label: "Chưa đổi công thức" });
     expect(saveLabel(100, true)).toEqual({ ok: true, label: "Lưu công thức" });
   });
 
   it("toạ độ đường điểm", () => {
     expect(trendPoints([100, 50, 0], 100, 100)).toBe("0.0,0.0 50.0,50.0 100.0,100.0");
     expect(trendPoints([null, 80], 100, 100)).toBe("100.0,20.0");
+  });
+});
+
+describe("ngưỡng chấm điểm", () => {
+  it("mặc định hợp lệ, so sánh được", () => {
+    expect(thresholdsValid(DEFAULT_THRESHOLDS)).toBe(true);
+    expect(sameThresholds(DEFAULT_THRESHOLDS, { ...DEFAULT_THRESHOLDS })).toBe(true);
+    expect(sameThresholds(DEFAULT_THRESHOLDS, { ...DEFAULT_THRESHOLDS, close_rate_full: 40 })).toBe(false);
+  });
+  it("chặn ngưỡng ngược hoặc ngoài khoảng", () => {
+    expect(thresholdsValid({ ...DEFAULT_THRESHOLDS, close_rate_zero: 30 })).toBe(false);
+    expect(thresholdsValid({ ...DEFAULT_THRESHOLDS, phone_rate_full: 120 })).toBe(false);
+    expect(thresholdsValid({ ...DEFAULT_THRESHOLDS, speed_full_minutes: 130 })).toBe(false);
+    expect(thresholdsValid({ ...DEFAULT_THRESHOLDS, revenue_full_vnd: 0 })).toBe(false);
+    expect(thresholdsValid({ ...DEFAULT_THRESHOLDS, on_time_zero: 2.5 })).toBe(false);
+  });
+  it("nút Lưu báo ngưỡng sai trước", () => {
+    expect(saveLabel(100, true, false).ok).toBe(false);
+    expect(saveLabel(100, true, true).ok).toBe(true);
   });
 });

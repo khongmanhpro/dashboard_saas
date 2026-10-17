@@ -39,13 +39,16 @@ function rawText(part: ScorePart): string {
 function howText(part: ScorePart, data: StaffDetail): string {
   if (part.score === null) return t.staffDetail.how.none;
   const score = formatScore(part.score);
-  if (part.method === "linear") {
-    return format(t.staffDetail.how.linear, { full: data.speed_full_minutes, zero: data.speed_zero_minutes, score });
-  }
   if (part.method === "target") {
     return format(t.staffDetail.how.target, { target: formatScore(data.posts_target), score });
   }
-  return format(t.staffDetail.how.percentile, { pos: part.position ?? "–", peers: part.peers ?? "–", score });
+  const zero = formatScore(part.zero);
+  const full = formatScore(part.full);
+  if (part.key === "response_speed") return format(t.staffDetail.how.speed, { zero, full, score });
+  if (part.key === "revenue") {
+    return format(t.staffDetail.how.revenue, { full: formatCompactVnd(Number(part.full ?? 0)), score });
+  }
+  return format(t.staffDetail.how.rate, { zero, full, score });
 }
 
 export function Parts({ data, canFormula }: { data: StaffDetail; canFormula: boolean }) {
