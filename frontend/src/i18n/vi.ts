@@ -26,7 +26,7 @@ export const vi = {
     button: "Lọc",
     buttonCount: "Lọc ({n})",
     title: "Bộ lọc",
-    apply: "Áp dụng",
+    done: "Xong",
     clear: "Xóa lọc",
   },
   roles: {

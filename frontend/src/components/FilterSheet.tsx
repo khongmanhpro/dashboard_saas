@@ -61,7 +61,7 @@ export function FilterSheet({
               {t.filterSheet.clear}
             </button>
             <button type="button" className="btn btn--primary" onClick={() => setOpen(false)}>
-              {t.filterSheet.apply}
+              {t.filterSheet.done}
             </button>
           </div>
         </div>

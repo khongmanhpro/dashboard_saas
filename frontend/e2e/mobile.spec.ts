@@ -118,7 +118,7 @@ test("điện thoại: bộ lọc Khách hàng gom vào nút Lọc", async ({ pa
   await toggle.click();
   const sheet = page.getByRole("dialog", { name: "Bộ lọc" });
   await sheet.getByLabel("Nguồn").selectOption("ad");
-  await sheet.getByRole("button", { name: "Áp dụng" }).click();
+  await sheet.getByRole("button", { name: "Xong" }).click();
   await expect(sheet).toBeHidden();
   await expect(toggle).toHaveText("Lọc (1)");
   await toggle.click();
