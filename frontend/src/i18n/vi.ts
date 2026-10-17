@@ -683,6 +683,8 @@ export const vi = {
     campaignCols: { name: "Chiến dịch", spend: "Chi tiêu", leads: "Khách", won: "Chốt", cpw: "Chi phí / chốt" },
     topTitle: "{n} nhân viên dẫn đầu",
     bottomTitle: "{n} nhân viên cần hỗ trợ",
+    topEmpty: "Chưa ai đạt hạng A hoặc B trong kỳ.",
+    bottomEmpty: "Không ai ở hạng C hoặc D trong kỳ.",
     boardSame: "Điểm cùng kỳ {from}–{to}",
     boardOther: "Điểm 7 ngày {from}–{to} (kỳ đang xem quá ngắn để xếp hạng)",
     boardLink: "Bảng xếp hạng",

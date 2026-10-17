@@ -31,6 +31,7 @@ from app.models import (
     PagePost,
     PeriodType,
     Team,
+    Tier,
     User,
     Workspace,
     WorkspaceMember,
@@ -291,13 +292,9 @@ async def _boards(
             note_value=Decimal(raw) if raw is not None else None,
         )
 
-    # Ít người có điểm thì chia đôi, để "cần hỗ trợ" không trống khi ai cũng lọt top 5.
-    top_size = min(BOARD_SIZE, (len(ranked) + 1) // 2)
-    top = [row(s, True) for s in ranked[:top_size]]
-    top_ids = {b.member.id for b in top}
-    bottom = [row(s, False) for s in reversed(ranked) if s.metrics.member_id not in top_ids][
-        :BOARD_SIZE
-    ]
+    # Mục M: "Dẫn đầu" chỉ hạng A/B, "Cần hỗ trợ" chỉ hạng C/D (điểm thấp nhất trước).
+    top = [row(s, True) for s in ranked if s.tier in (Tier.A, Tier.B)][:BOARD_SIZE]
+    bottom = [row(s, False) for s in reversed(ranked) if s.tier in (Tier.C, Tier.D)][:BOARD_SIZE]
     return Boards(
         period=live.period.type,
         first_day=live.period.first_day,

@@ -64,10 +64,14 @@ async def test_overview_numbers_for_owner(as_user: Any, demo: Demo) -> None:
     assert alerts["unassigned_pages"] == 1
     assert alerts["bm_disconnected"] == 0
     assert body["is_mock"] is True
-    # Hai người có điểm: chia đôi để mục "cần hỗ trợ" không trống.
+    # Mục M: "Dẫn đầu" chỉ hạng A/B (cao trước), "Cần hỗ trợ" chỉ hạng C/D (thấp trước).
     top, bottom = body["boards"]["top"], body["boards"]["bottom"]
-    assert len(top) == 1 and len(bottom) == 1
-    assert Decimal(top[0]["total"]) >= Decimal(bottom[0]["total"])
+    assert all(b["tier"] in ("A", "B") for b in top)
+    assert all(b["tier"] in ("C", "D") for b in bottom)
+    top_totals = [Decimal(b["total"]) for b in top]
+    bottom_totals = [Decimal(b["total"]) for b in bottom]
+    assert top_totals == sorted(top_totals, reverse=True)
+    assert bottom_totals == sorted(bottom_totals)
     assert {b["member"]["name"] for b in top + bottom} == {
         demo.accounts["s1"].user.full_name,
         demo.accounts["s2"].user.full_name,

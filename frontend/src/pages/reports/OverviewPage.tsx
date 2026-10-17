@@ -346,7 +346,19 @@ function Campaigns({ data }: { data: Overview }) {
   );
 }
 
-function Board({ title, period, rows, weak }: { title: string; period: string; rows: BoardRow[]; weak: boolean }) {
+function Board({
+  title,
+  period,
+  rows,
+  weak,
+  empty,
+}: {
+  title: string;
+  period: string;
+  rows: BoardRow[];
+  weak: boolean;
+  empty: string;
+}) {
   return (
     <div className="card card--tight">
       <div className="card__head">
@@ -355,7 +367,7 @@ function Board({ title, period, rows, weak }: { title: string; period: string; r
         </h2>
         <Link to="/staff">{t.overview.boardLink}</Link>
       </div>
-      {rows.length === 0 ? <p className="muted">{t.overview.boardEmpty}</p> : null}
+      {rows.length === 0 ? <p className="muted">{empty}</p> : null}
       <div>
         {rows.map((r) => {
           const note = noteText(r);
@@ -429,6 +441,8 @@ export function OverviewPage() {
   const overview = useOverview(range, teamId);
   const data = overview.data;
   const error = overview.error instanceof ApiError ? overview.error : null;
+  // Ai có điểm cũng thuộc một trong hai khối (A/B hoặc C/D), nên cả hai trống nghĩa là chưa có điểm.
+  const noScores = !data || (data.boards.top.length === 0 && data.boards.bottom.length === 0);
 
   return (
     <>
@@ -480,12 +494,14 @@ export function OverviewPage() {
               period={boardPeriod(data)}
               rows={data.boards.top}
               weak={false}
+              empty={noScores ? t.overview.boardEmpty : t.overview.topEmpty}
             />
             <Board
               title={format(t.overview.bottomTitle, { n: data.boards.bottom.length })}
               period={boardPeriod(data)}
               rows={data.boards.bottom}
               weak
+              empty={noScores ? t.overview.boardEmpty : t.overview.bottomEmpty}
             />
           </section>
         </>
