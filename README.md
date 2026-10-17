@@ -95,6 +95,17 @@ Việc cài cần HTTPS, nên làm trên bản production (`APP_DOMAIN`), không
 2. **iPhone (Safari, iOS 16.4 trở lên):** mở `https://<tên miền>/m` → nút Chia sẻ → "Thêm vào MH chính". **Mở app từ màn hình chính** rồi vào Tài khoản → Bật thông báo (Safari thường không bật được thông báo đẩy).
 3. Thử nhận thông báo: Quản lý mở một khách của nhân viên trên máy tính → "Nhắc người phụ trách". Điện thoại nhân viên phải hiện thông báo; bấm vào thì mở đúng khách.
 
+### Demo từ máy dev qua Cloudflare
+
+Cloudflare quick tunnel cho một link HTTPS tạm (`https://<tên ngẫu nhiên>.trycloudflare.com`) trỏ về máy dev, không cần tài khoản hay tên miền. Dùng để demo cho người khác hoặc thử PWA trên điện thoại khi chưa có VPS.
+
+1. `brew install cloudflared` (một lần), stack dev đang chạy (`make up`).
+2. `cloudflared tunnel --no-autoupdate --url http://localhost:5173`, chép link `trycloudflare.com` in ra.
+3. Trong `.env` đặt `APP_BASE_URL=<link đó>`, rồi `docker compose up -d backend worker`. Không đổi thì mọi thao tác ghi bị chặn (`origin_not_allowed`).
+4. Demo xong: tắt `cloudflared` (Ctrl+C), trả `APP_BASE_URL=http://localhost:5173`, chạy lại `docker compose up -d backend worker`.
+
+Lưu ý: link đổi mỗi lần chạy; máy phải bật suốt lúc demo; ai có link đều mở được trang đăng nhập (tài khoản demo ở `backend/.dev-credentials`). Không dùng link này cho webhook Meta lâu dài. Chạy `make test` sau khi đã trả `APP_BASE_URL` về `localhost`.
+
 ## Kết nối BM và nhập Excel (Bước 6)
 
 - Màn hình `/bm`: Chủ sở hữu thêm BM bằng mã của người dùng hệ thống "Dashboard" (4 bước theo thiết kế), đổi mã, kiểm tra lại, ngắt kết nối. Quản lý xem và gán người phụ trách Trang.
