@@ -30,12 +30,14 @@ test:           ## Chạy test backend trong container
 test-frontend:  ## Test đơn vị giao diện (vitest) và kiểm tra kiểu
 	cd frontend && npm run typecheck && npm test
 
-e2e:            ## Playwright trên stack e2e riêng (DB fanpage_e2e_test, :5174), không đụng DB dev
+e2e:            ## Playwright trên stack e2e riêng (DB fanpage_e2e_test, :5174), chạy xong tự dọn
 	$(COMPOSE) --profile e2e up -d --build --wait backend-e2e worker-e2e frontend-e2e
-	cd frontend && E2E_BASE_URL=http://localhost:5174 npm run e2e
+	cd frontend && E2E_BASE_URL=http://localhost:5174 npm run e2e; status=$$?; \
+		cd .. && $(MAKE) --no-print-directory e2e-down; exit $$status
 
-e2e-down:       ## Dừng stack e2e
-	$(COMPOSE) --profile e2e stop backend-e2e worker-e2e frontend-e2e
+e2e-down:       ## Gỡ stack e2e, xóa DB fanpage_e2e_test và Redis db 13
+	$(COMPOSE) --profile e2e rm -sf backend-e2e worker-e2e frontend-e2e e2e-migrate
+	$(COMPOSE) --profile e2e run --rm -T e2e-migrate python -m app.mock.sandbox drop
 
 lint:
 	$(ADMIN) sh -c "ruff check app tests migrations && ruff format --check app tests migrations && mypy app"

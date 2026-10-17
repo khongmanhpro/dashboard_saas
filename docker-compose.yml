@@ -132,7 +132,8 @@ services:
       APP_BASE_URL: http://localhost:5174
     volumes:
       - ./backend:/app
-    command: ["python", "-m", "app.mock.sandbox", "prepare"]
+    # Tạo lại từ đầu: lần chạy trước bị ngắt (Ctrl+C) chưa kịp dọn cũng không để lại dữ liệu.
+    command: ["python", "-m", "app.mock.sandbox", "prepare", "--recreate"]
     depends_on:
       db:
         condition: service_healthy

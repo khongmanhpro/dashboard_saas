@@ -2,9 +2,11 @@
 
     POSTGRES_DB=fanpage_e2e_test POSTGRES_APP_USER=fanpage_app_e2e \
         python -m app.mock.sandbox prepare
+    ... python -m app.mock.sandbox drop    # dọn sau e2e: xóa DB test và Redis db của nó
 
-Chỉ nhận DB có tên kết thúc bằng `_test`. Role ứng dụng (POSTGRES_APP_USER) tạo nếu chưa có, không
-có quyền superuser hay bỏ qua RLS, như role ứng dụng của dev.
+Chỉ nhận DB có tên kết thúc bằng `_test` (và Redis khác db 0 khi dọn). Role ứng dụng
+(POSTGRES_APP_USER) tạo nếu chưa có, không có quyền superuser hay bỏ qua RLS, như role ứng dụng
+của dev.
 """
 
 from __future__ import annotations
@@ -13,19 +15,30 @@ import argparse
 import asyncio
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import asyncpg  # type: ignore[import-untyped]
 from alembic import command
 from alembic.config import Config
+from redis.asyncio import Redis
 
 from app.core.config import get_settings
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 
 
+def is_test_database(name: str) -> bool:
+    return name.endswith("_test")
+
+
+def redis_db_index(url: str) -> int:
+    path = urlsplit(url).path.strip("/")
+    return int(path) if path else 0
+
+
 def _guard(name: str) -> None:
     # Chặn tuyệt đối việc tạo lại hay migrate nhầm DB dev hoặc production.
-    if not name.endswith("_test"):
+    if not is_test_database(name):
         raise SystemExit(f"Từ chối: DB không phải DB test: {name}")
 
 
@@ -83,13 +96,36 @@ async def prepare(*, recreate: bool = False) -> None:
     await asyncio.to_thread(command.upgrade, alembic_config(s.database_admin_url), "head")
 
 
-def main() -> int:
+async def drop() -> None:
+    """Xóa DB test và dọn Redis db của cấu hình hiện tại: e2e chạy xong không để lại dữ liệu."""
+    s = get_settings()
+    _guard(s.postgres_db)
+    if redis_db_index(s.redis_url) == 0:
+        raise SystemExit("Từ chối: Redis db 0 là của dev")
+    conn = await _admin_connect()
+    try:
+        await conn.execute(f'DROP DATABASE IF EXISTS "{s.postgres_db}" WITH (FORCE)')
+    finally:
+        await conn.close()
+    redis = Redis.from_url(s.redis_url)
+    try:
+        await redis.flushdb()
+    finally:
+        await redis.aclose()
+
+
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.mock.sandbox")
-    parser.add_argument("action", choices=["prepare"])
+    parser.add_argument("action", choices=["prepare", "drop"])
     parser.add_argument("--recreate", action="store_true", help="xóa DB test rồi tạo lại")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    name = get_settings().postgres_db
+    if args.action == "drop":
+        asyncio.run(drop())
+        print(f"Đã xóa DB test {name} và dọn Redis db {redis_db_index(get_settings().redis_url)}")
+        return 0
     asyncio.run(prepare(recreate=args.recreate))
-    print(f"DB test sẵn sàng: {get_settings().postgres_db}")
+    print(f"DB test sẵn sàng: {name}")
     return 0
 
 
