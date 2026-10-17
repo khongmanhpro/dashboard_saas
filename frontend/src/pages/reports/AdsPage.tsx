@@ -14,6 +14,7 @@ import {
   type RangeParams,
   type RuleType,
 } from "../../api/reports";
+import { FilterSheet } from "../../components/FilterSheet";
 import { PageHeader } from "../../components/PageHeader";
 import { errorMessage, format, t } from "../../i18n";
 import { formatMoney, formatMoneyShort, formatNumber, formatRate, formatRoas, metricDelta, shortDate } from "../../reports/format";
@@ -271,17 +272,19 @@ export function AdsPage() {
         </div>
         <div className="row-actions">
           {data && data.accounts.length > 1 ? (
-            <label className="report-select">
-              {t.ads.account}
-              <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-                <option value="">{format(t.ads.allAccounts, { n: data.accounts.length })}</option>
-                {data.accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <FilterSheet active={accountId ? 1 : 0} onClear={() => setAccountId("")}>
+              <label className="report-select">
+                {t.ads.account}
+                <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+                  <option value="">{format(t.ads.allAccounts, { n: data.accounts.length })}</option>
+                  {data.accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </FilterSheet>
           ) : null}
           <RangePicker keys={RANGE_KEYS} value={range} onChange={setRange} />
         </div>

@@ -15,6 +15,7 @@ import {
   type PageTab,
 } from "../../api/reports";
 import type { Me } from "../../api/types";
+import { FilterSheet } from "../../components/FilterSheet";
 import { PageHeader } from "../../components/PageHeader";
 import { errorMessage, format, t } from "../../i18n";
 import { formatDuration } from "../../leads/format";
@@ -227,42 +228,47 @@ export function PagesPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </label>
-        {data && data.bms.length > 1 ? (
+        <FilterSheet
+          active={[query.bm_id, query.team_id, query.sort !== "leads"].filter(Boolean).length}
+          onClear={() => update({ bm_id: "", team_id: "", sort: "leads" })}
+        >
+          {data && data.bms.length > 1 ? (
+            <label className="report-select">
+              {t.pages.bm}
+              <select value={query.bm_id} onChange={(e) => update({ bm_id: e.target.value })}>
+                <option value="">{t.pages.allBms}</option>
+                {data.bms.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          {data && data.teams.length > 1 ? (
+            <label className="report-select">
+              {t.reports.team}
+              <select value={query.team_id} onChange={(e) => update({ team_id: e.target.value })}>
+                <option value="">{t.reports.allTeams}</option>
+                {data.teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label className="report-select">
-            {t.pages.bm}
-            <select value={query.bm_id} onChange={(e) => update({ bm_id: e.target.value })}>
-              <option value="">{t.pages.allBms}</option>
-              {data.bms.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
+            {t.pages.sort}
+            <select value={query.sort} onChange={(e) => update({ sort: e.target.value as PageSort })}>
+              {PAGE_SORTS.map((s) => (
+                <option key={s} value={s}>
+                  {t.pages.sorts[s]}
                 </option>
               ))}
             </select>
           </label>
-        ) : null}
-        {data && data.teams.length > 1 ? (
-          <label className="report-select">
-            {t.reports.team}
-            <select value={query.team_id} onChange={(e) => update({ team_id: e.target.value })}>
-              <option value="">{t.reports.allTeams}</option>
-              {data.teams.map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-        <label className="report-select">
-          {t.pages.sort}
-          <select value={query.sort} onChange={(e) => update({ sort: e.target.value as PageSort })}>
-            {PAGE_SORTS.map((s) => (
-              <option key={s} value={s}>
-                {t.pages.sorts[s]}
-              </option>
-            ))}
-          </select>
-        </label>
+        </FilterSheet>
       </div>
 
       {notice ? <div className="notice notice--info" role="status">{notice}</div> : null}

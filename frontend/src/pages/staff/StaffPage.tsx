@@ -13,6 +13,7 @@ import {
   type Tier,
 } from "../../api/staff";
 import type { Me } from "../../api/types";
+import { FilterSheet } from "../../components/FilterSheet";
 import { PageHeader } from "../../components/PageHeader";
 import { errorMessage, format, t } from "../../i18n";
 import { formatDateTime, formatDuration, initials } from "../../leads/format";
@@ -207,30 +208,38 @@ export function StaffPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </label>
-        {data && data.teams.length > 1 ? (
+        <FilterSheet
+          active={[teamId, tier].filter(Boolean).length}
+          onClear={() => {
+            setTeamId("");
+            setTier("");
+          }}
+        >
+          {data && data.teams.length > 1 ? (
+            <label className="select">
+              {t.staff.team}
+              <select value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+                <option value="">{t.staff.allTeams}</option>
+                {data.teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label className="select">
-            {t.staff.team}
-            <select value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-              <option value="">{t.staff.allTeams}</option>
-              {data.teams.map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.name}
+            {t.staff.tier}
+            <select value={tier} onChange={(e) => setTier(e.target.value as Tier | "")}>
+              <option value="">{t.staff.allTiers}</option>
+              {TIERS.map((x) => (
+                <option key={x} value={x}>
+                  {x}
                 </option>
               ))}
             </select>
           </label>
-        ) : null}
-        <label className="select">
-          {t.staff.tier}
-          <select value={tier} onChange={(e) => setTier(e.target.value as Tier | "")}>
-            <option value="">{t.staff.allTiers}</option>
-            {TIERS.map((x) => (
-              <option key={x} value={x}>
-                {x}
-              </option>
-            ))}
-          </select>
-        </label>
+        </FilterSheet>
         <PeriodSwitch value={period} onChange={setPeriod} />
       </div>
 

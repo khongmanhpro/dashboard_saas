@@ -14,6 +14,7 @@ import {
   type SourceFilter,
 } from "../../api/leads";
 import type { Me } from "../../api/types";
+import { FilterSheet } from "../../components/FilterSheet";
 import { PageHeader } from "../../components/PageHeader";
 import { t } from "../../i18n";
 import { cardTimer, displayName, initials, sourceLabel, timerClass } from "../../leads/format";
@@ -288,51 +289,61 @@ function LeadsView() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </label>
-        <label className="select">
-          {t.leads.filters.page}
-          <select value={pageId} onChange={(e) => setPageId(e.target.value)}>
-            <option value="">{t.leads.filters.all}</option>
-            {options.data?.pages.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {options.data && options.data.owners.length > 1 ? (
+        <FilterSheet
+          active={[pageId, ownerId, source, period !== "7d"].filter(Boolean).length}
+          onClear={() => {
+            setPageId("");
+            setOwnerId("");
+            setSource("");
+            setPeriod("7d");
+          }}
+        >
           <label className="select">
-            {t.leads.filters.owner}
-            <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
+            {t.leads.filters.page}
+            <select value={pageId} onChange={(e) => setPageId(e.target.value)}>
               <option value="">{t.leads.filters.all}</option>
-              {options.data.owners.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
+              {options.data?.pages.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
                 </option>
               ))}
             </select>
           </label>
-        ) : null}
-        <label className="select">
-          {t.leads.filters.source}
-          <select value={source} onChange={(e) => setSource(e.target.value as SourceFilter | "")}>
-            <option value="">{t.leads.filters.allSources}</option>
-            {(["ad", "organic", "form"] as const).map((s) => (
-              <option key={s} value={s}>
-                {t.leads.filters.sources[s]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="select">
-          {t.leads.filters.period}
-          <select value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
-            {(["today", "7d", "30d", "all"] as const).map((p) => (
-              <option key={p} value={p}>
-                {t.leads.filters.periods[p]}
-              </option>
-            ))}
-          </select>
-        </label>
+          {options.data && options.data.owners.length > 1 ? (
+            <label className="select">
+              {t.leads.filters.owner}
+              <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
+                <option value="">{t.leads.filters.all}</option>
+                {options.data.owners.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <label className="select">
+            {t.leads.filters.source}
+            <select value={source} onChange={(e) => setSource(e.target.value as SourceFilter | "")}>
+              <option value="">{t.leads.filters.allSources}</option>
+              {(["ad", "organic", "form"] as const).map((s) => (
+                <option key={s} value={s}>
+                  {t.leads.filters.sources[s]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="select">
+            {t.leads.filters.period}
+            <select value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
+              {(["today", "7d", "30d", "all"] as const).map((p) => (
+                <option key={p} value={p}>
+                  {t.leads.filters.periods[p]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </FilterSheet>
       </div>
 
       {view === "board" ? (

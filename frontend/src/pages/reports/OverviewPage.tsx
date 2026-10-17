@@ -9,6 +9,7 @@ import {
   type RangeKey,
   type RangeParams,
 } from "../../api/reports";
+import { FilterSheet } from "../../components/FilterSheet";
 import { PageHeader } from "../../components/PageHeader";
 import { errorMessage, format, t } from "../../i18n";
 import { formatDuration, initials } from "../../leads/format";
@@ -456,17 +457,19 @@ export function OverviewPage() {
         <div className="row-actions">
           <RangePicker keys={RANGE_KEYS} value={range} onChange={setRange} />
           {data && data.teams.length > 1 ? (
-            <label className="report-select only-desktop">
-              {t.reports.team}
-              <select value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-                <option value="">{t.reports.allTeams}</option>
-                {data.teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <FilterSheet active={teamId ? 1 : 0} onClear={() => setTeamId("")}>
+              <label className="report-select">
+                {t.reports.team}
+                <select value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+                  <option value="">{t.reports.allTeams}</option>
+                  {data.teams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </FilterSheet>
           ) : null}
           <a className="btn btn--primary btn--link only-desktop" href={overviewExportUrl(range, teamId)} download>
             {t.reports.export}

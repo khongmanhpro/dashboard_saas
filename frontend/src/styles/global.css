@@ -370,3 +370,80 @@ input {
     padding: 20px 24px;
   }
 }
+
+/* ---------- Bộ lọc gom vào nút "Lọc" trên điện thoại (components/FilterSheet.tsx) ---------- */
+.filter-toggle,
+.filter-sheet__backdrop,
+.filter-sheet__head,
+.filter-sheet__foot {
+  display: none;
+}
+.filter-sheet,
+.filter-sheet__panel,
+.filter-sheet__body {
+  display: contents;
+}
+
+@media (max-width: 639px) {
+  .filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .filter-sheet {
+    display: none;
+  }
+  .filter-sheet--open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+  }
+  .filter-sheet--open .filter-sheet__backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    background: rgba(16, 24, 40, 0.45);
+  }
+  .filter-sheet--open .filter-sheet__panel {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    inset: auto 0 0 0;
+    max-height: 85vh;
+    background: var(--color-surface);
+    border-radius: 16px 16px 0 0;
+    padding: 16px 16px 24px;
+    gap: 14px;
+  }
+  .filter-sheet--open .filter-sheet__head {
+    display: block;
+    font-size: 16px;
+  }
+  .filter-sheet--open .filter-sheet__body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+  }
+  .filter-sheet--open .filter-sheet__body label {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    font-size: 13px;
+    text-align: left;
+  }
+  .filter-sheet__body select {
+    width: 100%;
+    min-height: var(--control-height-touch);
+  }
+  .filter-sheet--open .filter-sheet__foot {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .filter-sheet__foot .btn {
+    min-height: var(--control-height-touch);
+  }
+}

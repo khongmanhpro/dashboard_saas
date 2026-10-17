@@ -22,6 +22,13 @@ export const vi = {
     settings: "Cài đặt",
     overdueBadge: "{n} khách quá 48 giờ chưa có kết quả · tất cả thời gian",
   },
+  filterSheet: {
+    button: "Lọc",
+    buttonCount: "Lọc ({n})",
+    title: "Bộ lọc",
+    apply: "Áp dụng",
+    clear: "Xóa lọc",
+  },
   roles: {
     owner: "Chủ sở hữu",
     manager: "Quản lý",
