@@ -81,18 +81,19 @@ Mở đợt mới: khóa dòng `contacts` (`SELECT … FOR UPDATE`) rồi mới 
 | Bảng | Cột chính |
 |---|---|
 | `campaigns` / `ad_sets` / `ads` | fb_id, ad_account_id, cấp cha, name, objective, status, daily_budget_minor; `ads.page_id` |
-| `ad_insights_daily` | level, object_id, date, spend_minor, currency, **spend_vnd**, impressions, reach, clicks, results, messaging_starts, leads. unique(level, object_id, date). |
-| `fx_rates` | date, currency, vnd_per_unit numeric. **Toàn cục.** |
-| `page_posts` | page_id, fb_post_id (unique), created_time, type, excerpt, permalink, reactions, comments, shares, views |
+| `ad_insights_daily` | level, object_id, ad_account_id, date (theo múi giờ tài khoản QC), spend_minor, currency, **spend_vnd** (NULL khi thiếu tỉ giá), impressions, reach, clicks, results, messaging_starts, leads. unique(workspace_id, level, object_id, date). |
+| `fx_rates` | currency, effective_from (date), vnd_per_unit numeric. **Theo workspace** (quyết định mục I): Chủ sở hữu nhập. |
+| `page_posts` | page_id, fb_post_id (unique trong workspace), created_time, type, excerpt (≤ 200 ký tự), permalink, reactions, comments, shares, views |
 | `page_insights_daily` | page_id, date, followers, new_follows, views, reach, engagements, video_views |
-| `alert_rules` | type, enabled, params jsonb, channels |
-| `alert_deliveries` | rule_id, target, payload, status, sent_at |
-| `member_telegram` | member_id, chat_id |
+| `alert_rules` | type (unique trong workspace), enabled, params jsonb |
+| `alert_deliveries` | rule_type, dedupe_key (unique trong workspace), target, payload jsonb (không SĐT, không nội dung tin nhắn), status (`sent`/`failed`/`mock`), error, sent_at |
+
+`leads` thêm `ad_id`, `campaign_id` (gắn qua `fb_ad_id`). `workspace_settings` thêm `telegram_chat_id`. Bảng `member_telegram` (Telegram riêng từng người) để giai đoạn sau.
 
 ## Ngoại lệ của quy tắc "workspace_id + RLS"
 
 | Bảng | Lý do |
 |---|---|
-| `users`, `password_tokens`, `fx_rates` | Dữ liệu toàn cục, không thuộc workspace nào. |
+| `users`, `password_tokens` | Dữ liệu toàn cục, không thuộc workspace nào. |
 | `auth_sessions` | Có `workspace_id` nhưng không bật RLS: phải tra theo token trước khi biết workspace. |
 | `workspaces` | Bản thân nó là tenant; RLS theo `id`. |

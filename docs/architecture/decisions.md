@@ -117,3 +117,28 @@ Sếp duyệt ngày 17/10/2026, cùng lúc duyệt kế hoạch Bước 1. Nếu
 | Thư viện | `openpyxl` + `defusedxml` (đọc .xlsx an toàn), `httpx` chuyển sang thư viện chạy thật. File tải lên gửi dạng nhị phân thô, không cần `python-multipart`. | |
 | Thêm nhân viên | Nút "+ Thêm nhân viên" trên màn hình Nhân viên, dùng API tạo thành viên của Bước 1. | |
 | Giả lập | Mã giả `MOCK-BM-1` (BM demo), `MOCK-BM-2` (BM thứ hai, 3 Trang mới), `MOCK-BM-NOLEADS` (thiếu quyền form), `MOCK-INVALID`. Chỉ nhận khi `MOCK_MODE=true`. | |
+
+## I. Bước 7 (sếp duyệt 17/10/2026)
+
+| Chủ đề | Quyết định | Lý do |
+|---|---|---|
+| Mức lưu số liệu QC | `ad_insights_daily` lưu cả 3 cấp (chiến dịch, nhóm, quảng cáo) theo ngày. Mỗi giờ lấy lại hôm nay và 2 ngày trước; lần đầu lấy bù 30 ngày. | Meta còn sửa số liệu vài ngày sau. |
+| "Kết quả" | Tin nhắn bắt đầu + khách tiềm năng. Chiến dịch mục tiêu khác hiện "–". | Theo ghi chú trong Ads.dc.html. |
+| Tần suất, ROAS | Tần suất nhiều ngày là **ước tính** (lượt hiển thị ÷ tổng tiếp cận theo ngày), giao diện ghi rõ. ROAS hiện "–". | Meta không cho cộng dồn tiếp cận. |
+| Tỉ giá | `fx_rates` **theo workspace** (có RLS, khác data-model ban đầu). Chủ sở hữu nhập trong Cài đặt. Thiếu tỉ giá thì `spend_vnd = NULL` và cảnh báo "Thiếu tỉ giá". Không gọi API tỉ giá bên ngoài. | SaaS: không ai được sửa bảng toàn cục. |
+| Gắn khách với QC | `leads.fb_ad_id` → `ads` → `ad_sets` → `campaigns`, ghi `leads.ad_id`, `leads.campaign_id`. Gắn ngay khi khách đến nếu QC đã có; chưa có thì job đồng bộ gắn bù. | |
+| Chi phí mỗi khách | Chi tiêu chiến dịch trong ngày ÷ khách mới của chiến dịch trong ngày; "ngày" theo múi giờ tài khoản QC. Chi phí mỗi khách chốt = chi tiêu trong kỳ ÷ khách chốt trong tập khách có tin đầu tiên trong kỳ (như mục F). | CLAUDE.md mục 3 "Quảng cáo". |
+| Bài đăng, insights Trang | Đồng bộ mỗi giờ, lấy bù 30 ngày. Tên metric của Meta kiểm lại khi ứng dụng Live; hiện chạy bằng fixture. | |
+| Chăm Trang | Theo #5: `min(số bài trong kỳ / mục tiêu của kỳ, 1) × 100`, mục tiêu theo tuần quy đổi theo số ngày của kỳ. Bài tính cho người phụ trách Trang lúc đăng. Trang chưa đồng bộ được bài thì "chưa có dữ liệu", chia lại trọng số như mục F. Tuần đã chốt không tính lại. | Code Bước 4 đang xếp phần trăm, lệch #5. |
+| Tab lọc Fanpage | Chưa có người phụ trách · Ít đăng bài (< 3 bài tuần này) · Giảm tương tác (lượt xem 7 ngày giảm ≥ 30% so với 7 ngày trước) · Mất kết nối. | |
+| Thao tác hàng loạt trên Fanpage | Bỏ "Gán nhóm" / "Đổi người phụ trách" hàng loạt. Trang chưa có người thì chọn người ngay trên dòng (`page.assign`). Có "Xuất Excel". | Nhóm thuộc nhân viên, không thuộc Trang; 1 người – 1 Trang. |
+| Chi tiết Trang | Làm tab Tổng quan và Bài viết; Đối tượng và Lịch đăng gắn "Sau". Bỏ "Lên lịch bài đăng" (chỉ có quyền đọc). Bảng nhiệt giờ đăng từ bài 30 ngày; dưới 10 bài thì "Chưa đủ bài để phân tích". | |
+| Quy tắc trên màn Quảng cáo | Chỉ là cảnh báo (bật/tắt): chi phí/kết quả vượt ngưỡng, tần suất cao, chi phí/khách chốt cao. Không tạm dừng, không đổi ngân sách. | Quyết định #7. |
+| Bảng chiến dịch | Thêm cột Khách · Chốt · Chi phí/khách chốt. Không làm "Chọn cột". | Mục tiêu chính của CLAUDE.md. |
+| Tổng quan | Hôm nay / 7 ngày / 30 ngày / Tùy chọn (tối đa 90 ngày), so với kỳ liền trước cùng độ dài, lọc nhóm. Phễu bấm được, mở `/leads` đã lọc. Top / cần hỗ trợ lấy từ điểm 7 hoặc 30 ngày. "Xuất báo cáo" tải Excel. | |
+| Theo vai trò | Trưởng nhóm: Tổng quan và Fanpage chỉ nhóm mình, backend không trả số tiền QC. Chỉ xem: tất cả. Nhân viên: không vào. Không thêm quyền mới; cấu hình cảnh báo dùng `settings.manage`. | |
+| Điện thoại của sếp | Không làm app riêng. Tổng quan tự đổi bố cục khi màn hẹp (< 640px) theo Mobile.dc.html, thanh menu dưới. `/m` vẫn chỉ cho nhân viên. | |
+| Telegram | Một bot cho cả hệ thống (`TELEGRAM_BOT_TOKEN` trong `.env`). Mỗi workspace một chat ID do Chủ sở hữu nhập, có nút "Gửi thử". Chưa tạo `member_telegram`. Email báo cáo tuần để sau (chưa có SMTP). | |
+| Loại cảnh báo | BM mất kết nối / thiếu quyền; chiến dịch chi phí/kết quả > 25.000 ₫ khi đã chi ≥ 300.000 ₫ trong ngày; chi phí/khách chốt 7 ngày > ngưỡng; tần suất 7 ngày > 3,5; tóm tắt 08:00 mỗi sáng về hôm qua. Bật/tắt và sửa ngưỡng được. | |
+| Gửi cảnh báo | Mỗi quy tắc × đối tượng × ngày gửi một lần, ghi `alert_deliveries`. Không có SĐT, không có nội dung tin nhắn. Mã bot không vào log, lỗi HTTP không kèm URL. MOCK_MODE không gửi thật, ghi `status = mock`. | |
+| Dữ liệu mẫu | Fixture QC (2 tài khoản, 1 dùng USD), bài đăng, insights cho 4 Trang demo. Seed tạo khoảng 30 ngày khách mẫu rồi chạy đồng bộ một lần. `make simulate` thêm tình huống khách từ QC gắn đúng chiến dịch. | |
