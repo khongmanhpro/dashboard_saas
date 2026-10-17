@@ -16,7 +16,6 @@ from alembic import op
 
 from migrations.helpers import enable_tenant_rls, grant_app, revoke_app
 
-
 revision: str = "0004"
 down_revision: str | None = "0003"
 branch_labels: str | Sequence[str] | None = None
@@ -97,7 +96,7 @@ def upgrade() -> None:
         ondelete="SET NULL (merged_into_lead_id)",
     )
 
-    _replace_event_types(EVENT_TYPES + ("merged",))
+    _replace_event_types((*EVENT_TYPES, "merged"))
     enable_tenant_rls("lead_phones")
     grant_app("lead_phones", "SELECT, INSERT, UPDATE")
 
