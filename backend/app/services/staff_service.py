@@ -15,7 +15,7 @@ from collections import defaultdict
 from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rbac import Perm, Scope
@@ -275,16 +275,35 @@ async def _current_pages(db: AsyncSession) -> dict[uuid.UUID, list[AssignedPage]
 async def _past_pages(
     db: AsyncSession, start: dt.datetime, until: dt.datetime
 ) -> dict[uuid.UUID, list[PastPage]]:
-    """Lượt phụ trách Trang kết thúc trong kỳ, theo người."""
+    """Trang người này đã thôi phụ trách trong kỳ: mỗi Trang một dòng, lần kết thúc gần nhất.
+
+    Trang người đó vẫn đang phụ trách (được gán lại sau) không tính."""
+    current = {
+        (member_id, page_id)
+        for member_id, page_id in (
+            await db.execute(
+                select(PageAssignment.member_id, PageAssignment.page_id).where(
+                    PageAssignment.valid_to.is_(None)
+                )
+            )
+        ).all()
+    }
     rows = await db.execute(
-        select(PageAssignment.member_id, Page.name, PageAssignment.valid_to)
+        select(
+            PageAssignment.member_id,
+            PageAssignment.page_id,
+            Page.name,
+            func.max(PageAssignment.valid_to),
+        )
         .join(Page, Page.id == PageAssignment.page_id)
         .where(PageAssignment.valid_to >= start, PageAssignment.valid_to < until)
-        .order_by(PageAssignment.valid_to)
+        .group_by(PageAssignment.member_id, PageAssignment.page_id, Page.name)
+        .order_by(func.max(PageAssignment.valid_to))
     )
     out: dict[uuid.UUID, list[PastPage]] = defaultdict(list)
-    for member_id, name, until_at in rows.all():
-        out[member_id].append(PastPage(name=name, until=until_at))
+    for member_id, page_id, name, until_at in rows.all():
+        if (member_id, page_id) not in current:
+            out[member_id].append(PastPage(name=name, until=until_at))
     return out
 
 

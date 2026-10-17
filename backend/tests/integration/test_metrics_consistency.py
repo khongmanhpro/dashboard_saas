@@ -260,8 +260,14 @@ async def test_staff_shows_page_ownership_that_ended_in_period(
     mixed: Demo, as_user: Any, admin_db: AsyncSession
 ) -> None:
     acc = mixed.accounts
+    # Đổi qua lại nhiều lần: chỉ hiện một dòng, lần thôi phụ trách gần nhất.
+    await assign_page(admin_db, mixed.pages[SOFTWARE], acc["manager"].member, NOW - 3 * H)
+    await assign_page(admin_db, mixed.pages[SOFTWARE], acc["s1"].member, NOW - 2 * H)
     ended = NOW - H
     await assign_page(admin_db, mixed.pages[SOFTWARE], acc["manager"].member, ended)
+    # Shop Thỏ: Trưởng nhóm thôi rồi được gán lại, vẫn đang phụ trách nên không hiện.
+    await assign_page(admin_db, mixed.pages[RABBIT], acc["viewer"].member, NOW - 3 * H)
+    await assign_page(admin_db, mixed.pages[RABBIT], acc["lead"].member, NOW - 2 * H)
     await admin_db.commit()
     board = await _get(await as_user("owner"), "/api/staff/leaderboard?period=rolling_7")
     rows = {r["member"]["name"]: r for r in board["rows"]}
@@ -270,4 +276,8 @@ async def test_staff_shows_page_ownership_that_ended_in_period(
     assert [p["name"] for p in s1["past_pages"]] == [mixed.pages[SOFTWARE].name]
     assert dt.datetime.fromisoformat(s1["past_pages"][0]["until"]) == ended
     assert rows[acc["manager"].user.full_name]["pages"] == [mixed.pages[SOFTWARE].name]
+    assert rows[acc["lead"].user.full_name]["past_pages"] == []
+    assert [p["name"] for p in rows[acc["viewer"].user.full_name]["past_pages"]] == [
+        mixed.pages[RABBIT].name
+    ]
     assert rows[acc["s2"].user.full_name]["past_pages"] == []
