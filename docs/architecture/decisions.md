@@ -240,3 +240,11 @@ Thay quyết định #4 và mục F phần "xếp phần trăm".
 | R3 | Quyền | Container `backup` dùng tài khoản quản trị DB (như `migrate`), chỉ nhận biến `POSTGRES_*`, `R2_*`, `BACKUP_*`, không đọc cả `.env`. Khóa R2 chỉ cấp quyền đọc/ghi đúng một bucket. | Ít quyền nhất có thể. |
 | R4 | Theo dõi | Sao lưu chỉ tính là xong khi đã mã hóa, ghi trên VPS **và** đẩy lên R2. Healthcheck của `backup` báo `unhealthy` nếu 26 giờ chưa có lần xong; thiếu cấu hình R2 thì cũng `unhealthy`. | Hỏng sao lưu thì `docker compose ps` thấy ngay. |
 | R5 | Khôi phục | `restore.sh <bản> <DB>` giải mã bằng khóa của chủ sở hữu, tạo DB mới và `pg_restore`; ghi đè DB đang có phải thêm `--replace`. `make check-backup` chạy thật cả vòng: sao lưu, đẩy lên kho giả, khôi phục vào `fanpage_restore_test`, so số dòng từng bảng, chính sách RLS và quyền của tài khoản ứng dụng. CI chạy việc này. | Bản sao lưu chưa từng khôi phục thử thì không tin được. |
+
+## S. Đưa lên VPS (sếp duyệt 17/10/2026)
+
+| # | Chủ đề | Quyết định | Lý do |
+|---|---|---|---|
+| S1 | Cập nhật bản mới | Làm tay bằng `scripts/deploy.sh` trên VPS: sao lưu ngay, `git pull --ff-only` nhánh `main`, build, `up -d` (migration tự chạy trước backend), chờ backend khỏe. Có `CLOUDFLARE_TUNNEL_TOKEN` trong `.env` thì tự thêm `docker-compose.tunnel.yml`. Tự động deploy từ GitHub để sau giai đoạn chạy thử. | Ít thành phần; sếp quyết khi nào lên bản mới. |
+| S2 | Cấu hình VPS | Ubuntu 24.04, 2 vCPU, 4 GB RAM, 40 GB SSD, đặt ở Singapore hoặc Việt Nam. Chỉ mở SSH (đăng nhập bằng khóa), tự cài bản vá bảo mật. Hướng dẫn ở `docs/deploy.md`. | Đủ cho 200 Trang; qua tunnel thì không cần mở cổng web. |
+| S3 | `.env` production | `make env-prod DOMAIN=<tên miền>` sinh `.env` với bí mật ngẫu nhiên, `APP_ENV=production`, `MOCK_MODE=false`, không ghi đè `.env` đã có, không in bí mật. Các mã do chủ sở hữu giữ (Meta, tunnel, R2, khóa age công khai, tài khoản chủ sở hữu đầu tiên) để trống, lệnh in tên các biến còn phải điền. | Không ai phải tự nghĩ bí mật; mã thật chỉ chủ sở hữu dán. |
