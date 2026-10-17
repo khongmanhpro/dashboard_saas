@@ -69,3 +69,18 @@ Sếp duyệt ngày 17/10/2026, cùng lúc duyệt kế hoạch Bước 1. Nếu
 | Cập nhật kết quả | Chỉ chọn Hẹn lại / Chốt / Hủy, không quay về Mới / Đã liên hệ. Hẹn lại: giờ hẹn ở tương lai. Chốt: giá trị > 0. Hủy: có lý do, lý do "Khác" bắt buộc ghi chú. `result_at` là lần có kết quả **đầu tiên**, sửa sau không đổi. Nhân viên tự sửa trong 7 ngày kể từ `result_at`, sau đó chỉ Quản lý/Chủ sở hữu. Mọi lần sửa ghi `audit_logs` (không ghi SĐT). | Điểm "đúng hạn" (Bước 4) dựa vào lần cập nhật đầu. |
 | Che SĐT | Backend che cả `leads.phone` lẫn số trong nội dung tin nhắn với người không có quyền xem SĐT của khách đó. | |
 | Mở Business Suite | Nút dẫn tới hộp thư của Trang trong Business Suite. Đường dẫn tới đúng hội thoại kiểm tra lại khi ứng dụng Live. | Chưa xác minh được định dạng. |
+
+## F. Bước 4 (sếp duyệt 17/10/2026)
+
+| Chủ đề | Quyết định | Lý do |
+|---|---|---|
+| Chăm Trang trước Bước 7 | Chưa có số bài đăng: bỏ tiêu chí khỏi tổng, chia lại trọng số của nó cho 5 tiêu chí còn lại theo đúng tỉ lệ. Giao diện ghi "Chưa có dữ liệu (Bước 7)". | Bài đăng chỉ đồng bộ ở Bước 7. |
+| Khách chưa được trả lời | Chờ quá `speed_zero_minutes` (120 phút trong giờ làm việc) mà chưa trả lời thì tính bằng 120 phút (0 điểm tốc độ). Đang chờ ít hơn thì chưa tính. Khách từ form không tính tốc độ. | |
+| Tập khách của kỳ | Khách có tin đầu tiên trong kỳ, gán cho nhân viên đó, không tính đợt form đã gộp. Tỉ lệ chốt = Chốt ÷ khách; Doanh thu = tổng giá trị đơn của các khách đó; % có SĐT = có SĐT ÷ khách; Đúng hạn = có kết quả trước hạn ÷ khách đã qua hạn hoặc đã có kết quả. Tốc độ = trung vị thời gian trả lời. | Mọi chỉ số tính trên cùng một tập khách. |
+| Xếp phần trăm | Chỉ giữa những người đủ số khách tối thiểu: (số người thấp hơn + ½ số người bằng) ÷ (n − 1) × 100; n = 1 thì 100. | Quyết định #4. |
+| Áp dụng công thức mới | Áp dụng ngay cho kỳ chưa chốt; tuần đã chốt (`is_final`) không bao giờ tính lại. Chủ sở hữu có nút "Tính lại ngay". | "Xem thử" phải khớp kết quả job. |
+| Ai được tính điểm | Mọi người có khách trong kỳ hoặc phụ trách Trang trong kỳ (cả Trưởng nhóm/Quản lý, #14). Dưới số khách tối thiểu: "Chưa đủ dữ liệu", không hạng, không thứ hạng. | |
+| Ai thấy bảng xếp hạng | Nhân viên: điểm của mình, tên và hạng top 10 (tắt `staff_can_see_leaderboard` thì chỉ của mình). Trưởng nhóm: người trong nhóm. Quản lý/Chủ sở hữu/Chỉ xem: tất cả. | Quyết định #9. |
+| Ngưỡng hạng | Theo #1–#3 (85/70/50, tối thiểu 10 khách), không theo số mẫu trong `Staff.dc.html`. | |
+| Lịch job | 01:00 giờ Việt Nam mỗi đêm: tính tuần hiện tại và các kỳ tham khảo (7 ngày, 30 ngày, tháng này). Đêm thứ Hai chốt tuần trước. Job xuyên workspace qua `app_active_workspace_ids()` (SECURITY DEFINER, chỉ trả danh sách id). | Worker không dùng tài khoản quản trị DB. |
+| Chưa làm | Ghi chú huấn luyện, mục tiêu tuần, đổi Trang phụ trách / nhập Excel / thêm nhân viên (Bước 6), các phần khác của Cài đặt. | |
