@@ -12,6 +12,7 @@ from app.models.enums import (
     MemberRole,
     MemberStatus,
     MessageDirection,
+    NotificationType,
     PeriodType,
     Tier,
     WebhookEventStatus,
@@ -21,6 +22,7 @@ from app.models.inbound import LeadgenSubmission, WebhookEvent
 from app.models.lead import Contact, Lead, LeadEvent, LeadPhone, Message
 from app.models.member import Team, WorkspaceMember
 from app.models.meta import BusinessManager, Page, PageAssignment
+from app.models.notify import Notification, PushSubscription
 from app.models.score import ScoreFormula, ScoreSnapshot
 from app.models.session import AuthSession
 from app.models.user import User
@@ -46,9 +48,12 @@ __all__ = [
     "MemberStatus",
     "Message",
     "MessageDirection",
+    "Notification",
+    "NotificationType",
     "Page",
     "PageAssignment",
     "PeriodType",
+    "PushSubscription",
     "ScoreFormula",
     "ScoreSnapshot",
     "Team",

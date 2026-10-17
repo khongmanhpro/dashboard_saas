@@ -39,6 +39,7 @@ EXPECTED: dict[Perm, tuple[Scope | None, ...]] = {
     Perm.ADS_COST_VIEW:      (A, A, NO, NO, A),
     Perm.LEADERBOARD_VIEW:   (A, A, T, OWN, A),
     Perm.REPORT_VIEW:        (A, A, T, NO, A),
+    Perm.NOTIFICATION_RECEIVE: (A, OWN, OWN, OWN, OWN),
 }  # fmt: skip
 ROLES = (OW, M, TL, S, V)
 
@@ -93,4 +94,5 @@ def test_permissions_payload_is_plain_strings() -> None:
         "lead.update": "own",
         "lead.phone.view": "own",
         "leaderboard.view": "own",
+        "notification.receive": "own",
     }

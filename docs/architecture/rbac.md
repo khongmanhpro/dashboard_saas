@@ -27,6 +27,7 @@ Bên dưới hai lớp này còn **Row-Level Security** của Postgres: mỗi re
 | `ads.cost.view` | all | all | – | – | all |
 | `leaderboard.view` | all | all | team | own | all |
 | `report.view` | all | all | team | – | all |
+| `notification.receive` (nhắc việc của mình) | own | own | own | own | own |
 
 Vì sao `lead.update` của Trưởng nhóm là `own`: Trưởng nhóm có thể phụ trách Trang (quyết định #14) nên tự cập nhật khách của mình, nhưng không sửa kết quả thay nhân viên trong nhóm.
 

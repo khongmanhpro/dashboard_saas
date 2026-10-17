@@ -35,6 +35,8 @@ class Perm(enum.StrEnum):
     ADS_COST_VIEW = "ads.cost.view"
     LEADERBOARD_VIEW = "leaderboard.view"
     REPORT_VIEW = "report.view"
+    # Nhận nhắc việc và thông báo đẩy của chính mình (Bước 5).
+    NOTIFICATION_RECEIVE = "notification.receive"
 
 
 class Scope(enum.StrEnum):
@@ -64,6 +66,7 @@ ROLE_GRANTS: Final = MappingProxyType(
                 Perm.ADS_COST_VIEW: _A,
                 Perm.LEADERBOARD_VIEW: _A,
                 Perm.REPORT_VIEW: _A,
+                Perm.NOTIFICATION_RECEIVE: _O,
             }
         ),
         MemberRole.TEAM_LEAD: MappingProxyType(
@@ -77,6 +80,7 @@ ROLE_GRANTS: Final = MappingProxyType(
                 Perm.REMINDER_SEND: _T,
                 Perm.LEADERBOARD_VIEW: _T,
                 Perm.REPORT_VIEW: _T,
+                Perm.NOTIFICATION_RECEIVE: _O,
             }
         ),
         MemberRole.STAFF: MappingProxyType(
@@ -85,6 +89,7 @@ ROLE_GRANTS: Final = MappingProxyType(
                 Perm.LEAD_UPDATE: _O,
                 Perm.LEAD_PHONE_VIEW: _O,
                 Perm.LEADERBOARD_VIEW: _O,
+                Perm.NOTIFICATION_RECEIVE: _O,
             }
         ),
         MemberRole.VIEWER: MappingProxyType(
@@ -95,6 +100,7 @@ ROLE_GRANTS: Final = MappingProxyType(
                 Perm.ADS_COST_VIEW: _A,
                 Perm.LEADERBOARD_VIEW: _A,
                 Perm.REPORT_VIEW: _A,
+                Perm.NOTIFICATION_RECEIVE: _O,
             }
         ),
     }

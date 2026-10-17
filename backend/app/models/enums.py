@@ -90,3 +90,16 @@ class Tier(enum.StrEnum):
     B = "B"
     C = "C"
     D = "D"
+
+
+class NotificationType(enum.StrEnum):
+    """Loại nhắc việc (quyết định Bước 5)."""
+
+    WAIT_15 = "wait_15"  # Khách chờ 15 phút chưa được trả lời
+    WAIT_30 = "wait_30"  # Khách chờ 30 phút (ngưỡng trả lời chậm)
+    PHONE_NOT_CALLED = "phone_not_called"  # Có SĐT 2 giờ chưa gọi
+    DUE_SOON = "due_soon"  # Còn 4 giờ tới hạn 48 giờ
+    OVERDUE = "overdue"  # Quá hạn 48 giờ chưa có kết quả
+    CALLBACK_SOON = "callback_soon"  # 15 phút trước giờ hẹn
+    CALLBACK_MISSED = "callback_missed"  # Quá giờ hẹn 24 giờ chưa cập nhật
+    MANUAL = "manual"  # Trưởng nhóm / Quản lý bấm Nhắc
