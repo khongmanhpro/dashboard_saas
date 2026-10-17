@@ -248,3 +248,15 @@ Thay quyết định #4 và mục F phần "xếp phần trăm".
 | S1 | Cập nhật bản mới | Làm tay bằng `scripts/deploy.sh` trên VPS: sao lưu ngay, `git pull --ff-only` nhánh `main`, build, `up -d` (migration tự chạy trước backend), chờ backend khỏe. Có `CLOUDFLARE_TUNNEL_TOKEN` trong `.env` thì tự thêm `docker-compose.tunnel.yml`. Tự động deploy từ GitHub để sau giai đoạn chạy thử. | Ít thành phần; sếp quyết khi nào lên bản mới. |
 | S2 | Cấu hình VPS | Ubuntu 24.04, 2 vCPU, 4 GB RAM, 40 GB SSD, đặt ở Singapore hoặc Việt Nam. Chỉ mở SSH (đăng nhập bằng khóa), tự cài bản vá bảo mật. Hướng dẫn ở `docs/deploy.md`. | Đủ cho 200 Trang; qua tunnel thì không cần mở cổng web. |
 | S3 | `.env` production | `make env-prod DOMAIN=<tên miền>` sinh `.env` với bí mật ngẫu nhiên, `APP_ENV=production`, `MOCK_MODE=false`, không ghi đè `.env` đã có, không in bí mật. Các mã do chủ sở hữu giữ (Meta, tunnel, R2, khóa age công khai, tài khoản chủ sở hữu đầu tiên) để trống, lệnh in tên các biến còn phải điền. | Không ai phải tự nghĩ bí mật; mã thật chỉ chủ sở hữu dán. |
+
+## T. Nhiều BM qua chia sẻ tài sản (sếp duyệt 17/10/2026)
+
+Thay cho cách "mỗi BM một người dùng hệ thống Dashboard" ở CLAUDE.md mục 4 và Bước 6. Cách cũ không làm được với một ứng dụng: Meta chỉ cho gán ứng dụng cho người dùng hệ thống **cùng BM** với ứng dụng ([System Users](https://developers.facebook.com/docs/marketing-api/system-users/overview)). Hướng dẫn từng bước ở `docs/meta-setup.md`.
+
+| # | Chủ đề | Quyết định | Lý do |
+|---|---|---|---|
+| T1 | Cách nối BM khác | Mỗi BM khác **chia sẻ Trang và tài khoản quảng cáo cho BM FISSOLUTION** (Đối tác). Trong BM FISSOLUTION, chủ sở hữu gán các tài sản đó cho người dùng hệ thống `Dashboard` với đúng các quyền một phần như Trang của FISSOLUTION. | Một ứng dụng, một người dùng hệ thống, một mã. |
+| T2 | Trong hệ thống | Chỉ có **một** kết nối BM (FISSOLUTION). Trang và tài khoản quảng cáo của BM khác hiện dưới kết nối đó sau "Kiểm tra lại" hoặc lần kiểm tra 6 giờ, và tự được đăng ký webhook. **Không sửa code**: hệ thống đã đọc `/me/accounts` và `/me/adaccounts` của mã. | Code Bước 6 dùng được nguyên. |
+| T3 | Số người dùng hệ thống | Một `Dashboard` (vai trò Nhân viên). Mức Standard Access của Meta chỉ cho 1 người dùng hệ thống thường và 1 quản trị. | Đủ cho cách làm này. |
+| T4 | Ngoài phạm vi | Bán SaaS cho doanh nghiệp khác cần họ tự cấp quyền cho ứng dụng (Facebook Login for Business hoặc Business On Behalf Of, Tech Provider). Vẫn **chưa làm** (CLAUDE.md mục 1). Màn hình "Kết nối BM" cho nhiều mã vẫn giữ để dùng sau. | |
+| T5 | Chưa thử với Meta thật | Trang được chia sẻ từ BM đối tác có hiện trong `/me/accounts` và đăng ký webhook được không; quyền đọc form khách hàng tiềm năng (Leads Access) trên Trang được chia sẻ. Kiểm lại khi chạy thật. | |
