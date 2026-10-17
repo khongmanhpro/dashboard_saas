@@ -162,6 +162,22 @@ docker compose -f docker-compose.prod.yml run --rm migrate python -m app.cli boo
 
 Caddy tự lấy chứng chỉ HTTPS cho `APP_DOMAIN`. Ở production, ứng dụng từ chối khởi động nếu thiếu bí mật, bí mật yếu, hoặc `APP_BASE_URL` không dùng https.
 
+### Production qua Cloudflare Tunnel
+
+VPS không mở cổng 80/443: `cloudflared` chủ động nối ra Cloudflare, Cloudflare giữ HTTPS (decisions.md mục Q).
+
+1. Tên miền dùng nameserver của Cloudflare.
+2. Cloudflare Zero Trust → Networks → Tunnels → tạo tunnel (loại Cloudflared). Chủ sở hữu tự chép token vào `CLOUDFLARE_TUNNEL_TOKEN` trong `.env` trên VPS.
+3. Trong tunnel, thêm Public hostname: `APP_DOMAIN` → `HTTP` → `caddy:80`.
+4. Cài đặt của tên miền trên Cloudflare: **tắt** Bot Fight Mode (có thể chặn webhook Meta), Rocket Loader và Email Obfuscation (chèn script, trái CSP). Không tạo Cache Rule cho `/api/*`, `/webhooks/*`.
+5. Chạy thêm file chồng:
+
+```bash
+docker compose -f docker-compose.prod.yml -f docker-compose.tunnel.yml up -d --build
+```
+
+Caddy chỉ tin `CF-Connecting-IP` khi request đến từ `cloudflared` (mạng `edge`), rồi ghi đè `X-Forwarded-For` gửi backend, nên giới hạn đăng nhập theo IP và nhật ký thấy IP thật của khách. `make check-caddy` kiểm tra điều này bằng Caddy thật (CI chạy ở việc "Triển khai").
+
 ## Cấu trúc
 
 ```
