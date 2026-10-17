@@ -614,6 +614,8 @@ export const vi = {
     missingFx: "Chưa gồm chi tiêu của tài khoản dùng {currencies}: thiếu tỉ giá. Chủ sở hữu nhập tỉ giá trong Cài đặt → Cảnh báo.",
     deltaPoints: "{sign}{n} điểm",
     deltaPercent: "{sign}{n}%",
+    deltaNew: "Mới",
+    previousValue: "kỳ trước {v}",
     deltaMinutes: "{sign}{n} phút",
     units: { thousand: "N", million: "tr", billion: "tỷ" },
     estimate: "ước tính",
@@ -821,8 +823,17 @@ export const vi = {
       leads: "Khách vào hệ thống",
       won: "Khách chốt",
       cost_per_won_vnd: "Chi phí/khách chốt",
+      roas: "ROAS",
     },
     resultsNote: "tin nhắn + khách tiềm năng",
+    explain: {
+      title: "Vì sao “Kết quả” khác “Khách”?",
+      results:
+        "Kết quả: Facebook đếm theo mục tiêu chiến dịch (cuộc trò chuyện được bắt đầu, form được gửi…), tính theo ngày quảng cáo hiển thị.",
+      leads:
+        "Khách: hệ thống ghi nhận khi khách nhắn tin hoặc gửi form gắn với quảng cáo, tính theo ngày khách nhắn tin đầu tiên. Chốt và doanh thu lấy từ kết quả nhân viên cập nhật.",
+      why: "Hai số lệch nhau khi khách bấm nút nhắn tin nhưng không gửi tin, khách cũ nhắn lại trong vòng 30 ngày (vẫn tính là khách cũ), Trang chưa kết nối hệ thống, hoặc Facebook ghi nhận vào ngày khác ngày khách nhắn.",
+    },
     frequencyNote: "ước tính, trung bình mỗi người",
     better: "(tốt hơn)",
     worse: "(kém hơn)",
@@ -852,7 +863,7 @@ export const vi = {
       cpw: "Chi phí/chốt",
       roas: "ROAS",
     },
-    roasNote: "cần kết nối Conversions API",
+    roasNote: "doanh thu nhân viên nhập ÷ chi tiêu",
     statuses: { ACTIVE: "Đang chạy", PAUSED: "Tạm dừng", over: "Vượt ngưỡng", other: "Khác" },
     objectives: {
       OUTCOME_ENGAGEMENT: "Tương tác / tin nhắn",

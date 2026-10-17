@@ -101,6 +101,13 @@ class Stat:
         return money_ratio(self.spend_vnd, self.won)
 
     @property
+    def roas(self) -> Decimal | None:
+        # Mục M: doanh thu nhân viên nhập ÷ chi tiêu. Thiếu tỉ giá thì chi tiêu chưa đủ, không tính.
+        if self.missing_fx or not self.spend_vnd:
+            return None
+        return (Decimal(self.revenue_vnd) / self.spend_vnd).quantize(Decimal("0.01"))
+
+    @property
     def ctr(self) -> Decimal | None:
         return ratio(self.clicks, self.impressions)
 
@@ -273,6 +280,8 @@ def _kpis(now_total: Stat, prev_total: Stat) -> AdsKpis:
         leads=_metric(now_total.leads, prev_total.leads),
         won=_metric(now_total.won, prev_total.won),
         cost_per_won_vnd=_metric(now_total.cost_per_won, prev_total.cost_per_won),
+        revenue_vnd=_metric(now_total.revenue_vnd, prev_total.revenue_vnd),
+        roas=_metric(now_total.roas, prev_total.roas),
     )
 
 
@@ -349,6 +358,8 @@ async def report(
                 leads=stat.leads,
                 won=stat.won,
                 cost_per_won_vnd=stat.cost_per_won,
+                revenue_vnd=stat.revenue_vnd,
+                roas=stat.roas,
             )
         )
     rows.sort(key=lambda row: (-(row.spend_vnd or 0), row.name))

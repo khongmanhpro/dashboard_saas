@@ -211,6 +211,8 @@ export interface AdsRow {
   leads: number;
   won: number;
   cost_per_won_vnd: number | null;
+  revenue_vnd: number;
+  roas: Num | null;
 }
 
 export interface AdsReport {
@@ -225,7 +227,9 @@ export interface AdsReport {
     | "frequency"
     | "leads"
     | "won"
-    | "cost_per_won_vnd",
+    | "cost_per_won_vnd"
+    | "revenue_vnd"
+    | "roas",
     Metric
   >;
   cost_bars: { id: string; name: string; cost_per_result_vnd: number }[];

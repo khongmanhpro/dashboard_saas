@@ -6,7 +6,7 @@ import type { Me } from "../../api/types";
 import { canSee, NAV } from "../../app/nav";
 import { Icon } from "../../components/Icon";
 import { format, t } from "../../i18n";
-import { metricDelta, type DeltaKind } from "../../reports/format";
+import { formatNumber, metricDelta, type DeltaKind } from "../../reports/format";
 
 export function RangePicker({
   keys,
@@ -82,7 +82,12 @@ export function KpiCard({
       <div className="kpi__value">{value}</div>
       {delta ? (
         <div className={`kpi__delta kpi__delta--${delta.tone}`}>
-          {delta.text} <span className="muted">{t.reports.vsPrevious}</span>
+          {delta.text}{" "}
+          <span className="muted">
+            {delta.isNew && metric?.previous != null
+              ? format(t.reports.previousValue, { v: formatNumber(metric.previous) })
+              : t.reports.vsPrevious}
+          </span>
         </div>
       ) : note ? (
         <div className="kpi__delta muted">{note}</div>

@@ -16,7 +16,7 @@ import {
 } from "../../api/reports";
 import { PageHeader } from "../../components/PageHeader";
 import { errorMessage, format, t } from "../../i18n";
-import { formatMoney, formatMoneyShort, formatNumber, formatRate, metricDelta, shortDate } from "../../reports/format";
+import { formatMoney, formatMoneyShort, formatNumber, formatRate, formatRoas, metricDelta, shortDate } from "../../reports/format";
 import { KpiCard, MissingFx, RangePicker, StatusPill } from "./common";
 
 const RANGE_KEYS: RangeKey[] = ["30d", "7d", "month", "custom"];
@@ -52,7 +52,30 @@ function Kpis({ data }: { data: AdsReport }) {
         kind="percent"
         better="down"
       />
+      <KpiCard
+        label={t.ads.kpis.roas}
+        value={formatRoas(k.roas.value)}
+        metric={k.roas}
+        kind="percent"
+        better="up"
+        note={t.ads.roasNote}
+        hint={t.ads.roasNote}
+      />
     </section>
+  );
+}
+
+/** "Kết quả" do Facebook đếm, "Khách" do hệ thống ghi nhận: giải thích vì sao hai số lệch nhau. */
+function ResultsVsLeads() {
+  return (
+    <details className="card card--tight explain" data-testid="ads-explain">
+      <summary>{t.ads.explain.title}</summary>
+      <ul>
+        <li>{t.ads.explain.results}</li>
+        <li>{t.ads.explain.leads}</li>
+        <li>{t.ads.explain.why}</li>
+      </ul>
+    </details>
   );
 }
 
@@ -213,7 +236,7 @@ function Table({ data, level, onLevel }: { data: AdsReport; level: AdsLevel; onL
                   <td className="num">
                     <b>{formatMoney(row.cost_per_won_vnd)}</b>
                   </td>
-                  <td className="num muted">–</td>
+                  <td className="num">{formatRoas(row.roas)}</td>
                 </tr>
               );
             })}
@@ -272,6 +295,7 @@ export function AdsPage() {
         <>
           <MissingFx currencies={data.missing_fx} />
           <Kpis data={data} />
+          <ResultsVsLeads />
           <section className="report-grid">
             <CostBars data={data} />
             <Rules />

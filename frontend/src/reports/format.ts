@@ -42,11 +42,21 @@ function trim1(n: number): string {
   return String(Math.round(n * 10) / 10).replace(".", ",");
 }
 
+/** ROAS (doanh thu ÷ chi tiêu): "2,4×". */
+export function formatRoas(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return DASH;
+  return `${trim1(Number(value))}×`;
+}
+
 export type DeltaKind = "percent" | "points" | "minutes";
+
+/** Kỳ này gấp từ chừng này lần kỳ trước thì ghi "Mới" thay vì % (decisions.md mục M). */
+export const NEW_RATIO = 10;
 
 /**
  * Mức thay đổi so với kỳ trước. `better`: chiều nào là tốt (doanh thu tăng là tốt, chi phí tăng là xấu).
- * - percent: thay đổi tương đối (%), cần kỳ trước > 0.
+ * - percent: thay đổi tương đối (%). Kỳ trước bằng 0 hoặc kỳ này gấp ≥ NEW_RATIO lần thì ghi "Mới":
+ *   % lúc đó quá lớn để có nghĩa.
  * - points: chênh lệch tỉ lệ, tính bằng điểm phần trăm.
  * - minutes: chênh lệch số giây, hiện bằng phút.
  */
@@ -54,14 +64,17 @@ export function metricDelta(
   m: Metric | null | undefined,
   kind: DeltaKind,
   better: "up" | "down",
-): { text: string; tone: "good" | "bad" | "flat" } | null {
+): { text: string; tone: "good" | "bad" | "flat"; isNew?: boolean } | null {
   if (!m || m.value === null || m.previous === null) return null;
   const value = Number(m.value);
   const previous = Number(m.previous);
   let diff: number;
   let template: string;
   if (kind === "percent") {
-    if (previous === 0) return null;
+    if (previous <= 0 && value <= 0) return null;
+    if (previous <= 0 || value / previous >= NEW_RATIO) {
+      return { text: t.reports.deltaNew, tone: better === "up" ? "good" : "bad", isNew: true };
+    }
     diff = ((value - previous) / previous) * 100;
     template = t.reports.deltaPercent;
   } else if (kind === "points") {

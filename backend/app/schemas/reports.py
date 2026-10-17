@@ -248,6 +248,8 @@ class AdsKpis(BaseModel):
     leads: Metric
     won: Metric
     cost_per_won_vnd: Metric
+    revenue_vnd: Metric
+    roas: Metric  # doanh thu ÷ chi tiêu (lần)
 
 
 class AdsRow(BaseModel):
@@ -267,6 +269,8 @@ class AdsRow(BaseModel):
     leads: int
     won: int
     cost_per_won_vnd: int | None
+    revenue_vnd: int
+    roas: Decimal | None
 
 
 class CostBar(BaseModel):

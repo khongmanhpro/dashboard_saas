@@ -156,6 +156,12 @@ async def test_ads_report_levels_and_account_filter(as_user: Any, demo: Demo) ->
     assert fiss["leads"] == 12 and fiss["won"] == 4
     assert fiss["results"] > 0 and fiss["cost_per_result_vnd"] > 0
     assert fiss["daily_budget_vnd"] == 450_000
+    # ROAS = doanh thu nhân viên nhập (4 × 2 triệu) ÷ chi tiêu chiến dịch.
+    assert fiss["revenue_vnd"] == 8_000_000
+    roas = (Decimal(8_000_000) / fiss["spend_vnd"]).quantize(Decimal("0.01"))
+    assert Decimal(fiss["roas"]) == roas
+    # Tài khoản USD chưa có tỉ giá: tổng chi tiêu chưa đủ nên chưa tính ROAS tổng.
+    assert body["kpis"]["roas"]["value"] is None
     assert body["kpis"]["won"]["value"] == "4"
     assert body["missing_fx"] == ["USD"]
     assert body["cost_threshold_vnd"] == 25_000
@@ -165,6 +171,7 @@ async def test_ads_report_levels_and_account_filter(as_user: Any, demo: Demo) ->
     only_vnd = (await viewer.get(f"/api/reports/ads?range=7d&account_id={vnd['id']}")).json()
     assert only_vnd["missing_fx"] == ["USD"]  # cảnh báo chung, không theo tài khoản
     assert all(r["account"] == vnd["name"] for r in only_vnd["rows"])
+    assert Decimal(only_vnd["kpis"]["roas"]["value"]) > 0
 
     ads = (await viewer.get("/api/reports/ads?range=7d&level=ad")).json()
     assert all(r["parent"] for r in ads["rows"])

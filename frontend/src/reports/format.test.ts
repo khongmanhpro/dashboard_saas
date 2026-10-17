@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { heatLevel, linePoints, metricDelta, noteText, shortDate, trendOf, weekdayShort } from "./format";
+import { formatRoas, heatLevel, linePoints, metricDelta, noteText, shortDate, trendOf, weekdayShort } from "./format";
 
 describe("metricDelta", () => {
   it("phần trăm: doanh thu tăng là tốt", () => {
@@ -20,8 +20,23 @@ describe("metricDelta", () => {
   });
   it("không có kỳ trước thì không so", () => {
     expect(metricDelta({ value: "5", previous: null }, "percent", "up")).toBeNull();
-    expect(metricDelta({ value: "5", previous: "0" }, "percent", "up")).toBeNull();
+    expect(metricDelta({ value: "0", previous: "0" }, "percent", "up")).toBeNull();
     expect(metricDelta(null, "percent", "up")).toBeNull();
+  });
+  it("kỳ trước bằng 0 hoặc kỳ này gấp từ 10 lần: ghi Mới thay vì %", () => {
+    expect(metricDelta({ value: "5", previous: "0" }, "percent", "up")).toEqual({ text: "Mới", tone: "good", isNew: true });
+    expect(metricDelta({ value: "2500000", previous: "100000" }, "percent", "up")?.text).toBe("Mới");
+    expect(metricDelta({ value: "50000", previous: "5000" }, "percent", "down")).toEqual({ text: "Mới", tone: "bad", isNew: true });
+    // Gấp 9,9 lần vẫn hiện %.
+    expect(metricDelta({ value: "990", previous: "100" }, "percent", "up")?.text).toBe("▲ 890%");
+  });
+});
+
+describe("ROAS", () => {
+  it("một chữ số thập phân, dấu phẩy, ký hiệu ×", () => {
+    expect(formatRoas("2.43")).toBe("2,4×");
+    expect(formatRoas("0.00")).toBe("0×");
+    expect(formatRoas(null)).toBe("—");
   });
 });
 

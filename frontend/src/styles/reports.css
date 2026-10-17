@@ -722,3 +722,18 @@
   font-size: 12px;
   color: var(--color-warn-fg);
 }
+
+/* Quảng cáo: giải thích "Kết quả" khác "Khách" (decisions.md mục M). */
+.explain summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+.explain ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--color-text-secondary);
+}
