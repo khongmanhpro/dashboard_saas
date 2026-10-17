@@ -199,7 +199,13 @@ function LeadTable({ filters, timeZone, now }: { filters: LeadFilters; timeZone:
   );
 }
 
+/** Đổi đường dẫn (ví dụ bấm số đỏ ở menu khi đang ở Khách hàng) thì đọc lại bộ lọc từ đường dẫn. */
 export function LeadsPage() {
+  const [params] = useSearchParams();
+  return <LeadsView key={params.toString()} />;
+}
+
+function LeadsView() {
   const me = useOutletContext<Me>();
   const timeZone = me.workspace.timezone;
   const [view, setView] = useState<View>(readView);

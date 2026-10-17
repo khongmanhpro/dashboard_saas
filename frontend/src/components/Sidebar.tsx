@@ -1,41 +1,49 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 
 import { useLeadSummary } from "../api/leads";
 import type { Me } from "../api/types";
 import { visibleNav, type NavItem } from "../app/nav";
 import { useLogout } from "../auth/useAuth";
-import { t } from "../i18n";
+import { format, t } from "../i18n";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
 
-/** Số khách quá 48 giờ chưa có kết quả, trong phạm vi người đang xem (theo thiết kế). */
+/** Lọc sẵn của số đỏ: cùng phạm vi "tất cả thời gian" nên số khớp thẻ "Quá 48 giờ" (decisions.md mục M). */
+export const OVERDUE_LINK = "/leads?chip=overdue&period=all";
+
+/** Số khách quá 48 giờ chưa có kết quả, mọi thời điểm, trong phạm vi người đang xem (theo thiết kế). */
 function OverdueCount() {
   const summary = useLeadSummary({ period: "all" });
   const count = summary.data?.overdue ?? 0;
   if (!count) return null;
+  const label = format(t.nav.overdueBadge, { n: count });
   return (
-    <span className="nav-count" data-testid="nav-overdue">
+    <Link to={OVERDUE_LINK} className="nav-count" data-testid="nav-overdue" title={label} aria-label={label}>
       {count}
-    </span>
+    </Link>
   );
 }
 
 function NavEntry({ item }: { item: NavItem }) {
+  const label = t.nav[item.key];
   if (item.later) {
     return (
-      <span className="nav-link nav-link--disabled" aria-disabled="true">
+      <span className="nav-link nav-link--disabled" aria-disabled="true" title={label}>
         <Icon name={item.icon} />
-        {t.nav[item.key]}
+        <span className="nav-label">{label}</span>
         <span className="nav-tag">{t.app.later}</span>
       </span>
     );
   }
+  // Số đỏ là link riêng (không lồng trong link menu) để mở danh sách đã lọc sẵn.
   return (
-    <NavLink to={item.path} className="nav-link">
-      <Icon name={item.icon} />
-      {t.nav[item.key]}
+    <div className="nav-item">
+      <NavLink to={item.path} className="nav-link" title={label}>
+        <Icon name={item.icon} />
+        <span className="nav-label">{label}</span>
+      </NavLink>
       {item.key === "leads" ? <OverdueCount /> : null}
-    </NavLink>
+    </div>
   );
 }
 

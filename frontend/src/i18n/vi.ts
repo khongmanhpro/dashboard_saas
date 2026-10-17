@@ -20,6 +20,7 @@ export const vi = {
     inbox: "Inbox",
     bm: "Kết nối BM",
     settings: "Cài đặt",
+    overdueBadge: "{n} khách quá 48 giờ chưa có kết quả · tất cả thời gian",
   },
   roles: {
     owner: "Chủ sở hữu",

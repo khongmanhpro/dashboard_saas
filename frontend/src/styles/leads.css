@@ -619,6 +619,19 @@
   color: var(--color-good-fg);
 }
 
+.nav-item {
+  position: relative;
+}
+.nav-item > .nav-count {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+a.nav-count:hover {
+  color: #fff;
+  filter: brightness(0.92);
+}
 .nav-count {
   margin-left: auto;
   font-size: 11px;
