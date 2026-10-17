@@ -299,13 +299,74 @@ input {
   justify-content: center;
 }
 
-@media (max-width: 720px) {
-  .sidebar {
-    max-width: none;
-    border-right: 0;
-    border-bottom: 1px solid var(--color-border);
+.only-rail {
+  display: none;
+}
+
+/* Máy tính bảng 640–1023px: menu thu thành cột icon, nội dung bên phải (decisions.md mục M).
+   Dưới 640px dùng thanh điều hướng dưới đáy (reports.css). */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .shell {
+    flex-wrap: nowrap;
+  }
+  .shell > .sidebar {
+    flex: 0 0 64px;
+    max-width: 64px;
+    padding: 16px 8px;
+    gap: 14px;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar .brand {
+    padding: 0;
+  }
+  .sidebar .brand__logo {
+    height: 26px;
+  }
+  .sidebar .brand__name,
+  .sidebar .nav-label,
+  .sidebar .nav-tag,
+  .sidebar .account__who {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .sidebar .nav-group {
+    align-items: center;
+  }
+  .sidebar .nav-link {
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+  .sidebar .nav-item > .nav-count {
+    top: 0;
+    right: -6px;
+    transform: none;
+    font-size: 10px;
+    padding: 0 5px;
+  }
+  .sidebar .account {
+    padding: 12px 0 0;
+    align-items: center;
+  }
+  .sidebar .account__logout {
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .sidebar .only-rail {
+    display: inline-flex;
   }
   .main {
-    padding: 16px;
+    flex: 1 1 auto;
+    padding: 20px 24px;
   }
 }

@@ -68,7 +68,7 @@ export function Sidebar({ me }: { me: Me }) {
         );
       })}
       <div className="account">
-        <div>
+        <div className="account__who">
           <div className="account__name">{me.user.full_name}</div>
           <div className="account__role" data-testid="current-role">
             {t.roles[me.member.role]}
@@ -76,11 +76,15 @@ export function Sidebar({ me }: { me: Me }) {
         </div>
         <button
           type="button"
-          className="btn"
+          className="btn account__logout"
+          title={t.account.logout}
           disabled={logout.isPending}
           onClick={() => logout.mutate(undefined, { onSettled: () => navigate("/login", { replace: true }) })}
         >
-          {t.account.logout}
+          <span className="only-rail">
+            <Icon name="logout" />
+          </span>
+          <span className="nav-label">{t.account.logout}</span>
         </button>
       </div>
     </nav>
