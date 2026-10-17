@@ -88,18 +88,24 @@ export function FilterSheet({
         <Icon name="leads" />
         {active ? format(t.filterSheet.buttonCount, { n: active }) : t.filterSheet.button}
       </button>
-      <div className={open ? "filter-sheet filter-sheet--open" : "filter-sheet"}>
-        <div className="filter-sheet__backdrop" aria-hidden="true" onClick={() => setOpen(false)} />
+      {/* Mở ra thì thêm lớp .m-sheet: cùng kiểu bảng chọn của ứng dụng nhân viên, có chừa thanh vuốt iPhone. */}
+      <div className={open ? "filter-sheet filter-sheet--open m-sheet" : "filter-sheet"}>
+        <div
+          className={open ? "filter-sheet__backdrop m-sheet__backdrop" : "filter-sheet__backdrop"}
+          aria-hidden="true"
+          onClick={() => setOpen(false)}
+        />
         <div
           ref={panelRef}
           id={id}
-          className="filter-sheet__panel"
+          className={open ? "filter-sheet__panel m-sheet__panel" : "filter-sheet__panel"}
           role={open ? "dialog" : undefined}
           aria-modal={open ? true : undefined}
-          aria-label={open ? t.filterSheet.title : undefined}
+          aria-labelledby={open ? `${id}-title` : undefined}
         >
           <div className="filter-sheet__head">
-            <b>{t.filterSheet.title}</b>
+            <span className="m-sheet__grip" aria-hidden="true" />
+            <h2 id={`${id}-title`}>{t.filterSheet.title}</h2>
           </div>
           <div className="filter-sheet__body">{children}</div>
           <div className="filter-sheet__foot">
