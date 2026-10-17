@@ -2,7 +2,7 @@
 
 Bối cảnh sản phẩm và quy tắc nghiệp vụ: [CLAUDE.md](CLAUDE.md). Các quyết định đã chốt: [docs/architecture/decisions.md](docs/architecture/decisions.md). Mô hình dữ liệu cho cả 7 bước: [docs/architecture/data-model.md](docs/architecture/data-model.md). Phân quyền: [docs/architecture/rbac.md](docs/architecture/rbac.md).
 
-**Trạng thái:** xong Bước 1–5 (khung dự án, webhook Meta và thời gian trả lời, Khách hàng, điểm và xếp hạng, ứng dụng điện thoại). Các màn hình khác đang là trang giữ chỗ.
+**Trạng thái:** xong Bước 1–6 (khung dự án, webhook Meta và thời gian trả lời, Khách hàng, điểm và xếp hạng, ứng dụng điện thoại, nhiều BM và nhập Excel). Còn Bước 7 (quảng cáo, Tổng quan, Fanpage, cảnh báo Telegram).
 
 ## Chạy trên máy dev
 
@@ -73,6 +73,20 @@ Việc cài cần HTTPS, nên làm trên bản production (`APP_DOMAIN`), không
 1. **Android (Chrome):** mở `https://<tên miền>/m` → đăng nhập → menu ⋮ → "Cài đặt ứng dụng" (hoặc "Thêm vào màn hình chính"). Mở app từ màn hình chính → Tài khoản → Bật thông báo.
 2. **iPhone (Safari, iOS 16.4 trở lên):** mở `https://<tên miền>/m` → nút Chia sẻ → "Thêm vào MH chính". **Mở app từ màn hình chính** rồi vào Tài khoản → Bật thông báo (Safari thường không bật được thông báo đẩy).
 3. Thử nhận thông báo: Quản lý mở một khách của nhân viên trên máy tính → "Nhắc người phụ trách". Điện thoại nhân viên phải hiện thông báo; bấm vào thì mở đúng khách.
+
+## Kết nối BM và nhập Excel (Bước 6)
+
+- Màn hình `/bm`: Chủ sở hữu thêm BM bằng mã của người dùng hệ thống "Dashboard" (4 bước theo thiết kế), đổi mã, kiểm tra lại, ngắt kết nối. Quản lý xem và gán người phụ trách Trang.
+- Mã BM và mã Trang lưu dạng Fernet, giao diện chỉ hiện 4 ký tự cuối. Gửi mã cho Meta qua header `Authorization`, kèm `appsecret_proof`.
+- Job `check_bms` chạy mỗi 6 giờ: kiểm tra mã và quyền, nhận Trang mới, lấy bù form leadgen, nhắc Chủ sở hữu khi BM thiếu quyền hoặc mất kết nối.
+- Màn hình Nhân viên: "Nhập từ Excel" (file mẫu có sẵn danh sách Trang) và "+ Thêm nhân viên". File mật khẩu tạm của tài khoản mới chỉ tải được một lần.
+- MOCK_MODE dùng client Graph giả (`backend/tests/fixtures/meta/graph_mock.json`). Mã giả để thử: `MOCK-BM-2` (BM thứ hai, 3 Trang), `MOCK-BM-NOLEADS` (thiếu quyền form), `MOCK-INVALID` (mã sai).
+
+### Nối với Meta thật (khi ứng dụng đã Live)
+
+1. Trong `.env`: `MOCK_MODE=false`, `META_APP_ID`, `META_APP_SECRET`, `META_GRAPH_VERSION` (ví dụ `v23.0`), `META_WEBHOOK_VERIFY_TOKEN`.
+2. Trang quản lý ứng dụng Meta → Webhooks → đối tượng **Page**: URL gọi lại `https://<tên miền>/webhooks/meta`, mã xác minh = `META_WEBHOOK_VERIFY_TOKEN`; đăng ký các trường `messages`, `message_echoes`, `messaging_referrals`, `leadgen`, `feed`.
+3. Trong từng BM: tạo người dùng hệ thống "Dashboard" (vai trò Nhân viên), gán Trang và tài khoản quảng cáo với đúng các quyền ở bước 2 của màn hình Kết nối BM, tạo mã (thời hạn Không bao giờ) rồi Chủ sở hữu dán vào màn hình Kết nối BM. Hệ thống tự đăng ký webhook cho từng Trang.
 
 ## Lệnh quản trị
 

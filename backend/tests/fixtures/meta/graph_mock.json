@@ -2,39 +2,171 @@
   "_ghi_chu": "Dữ liệu Graph API giả cho MOCK_MODE. Mã MOCK-... không phải mã thật. ID và tên đều giả (tên 4 Trang demo theo CLAUDE.md).",
   "tokens": {
     "MOCK-BM-1": {
-      "business": {"id": "900000000000000", "name": "[BM Demo]", "verification_status": "verified"},
-      "system_user": {"id": "61000000000001", "name": "Dashboard"},
-      "scopes": ["pages_show_list", "pages_read_engagement", "read_insights", "pages_read_user_content", "pages_messaging", "pages_manage_metadata", "leads_retrieval", "ads_read", "business_management"],
+      "business": {
+        "id": "900000000000000",
+        "name": "[BM Demo]",
+        "verification_status": "verified"
+      },
+      "system_user": {
+        "id": "61000000000001",
+        "name": "Dashboard"
+      },
+      "scopes": [
+        "pages_show_list",
+        "pages_read_engagement",
+        "read_insights",
+        "pages_read_user_content",
+        "pages_messaging",
+        "pages_manage_metadata",
+        "leads_retrieval",
+        "ads_read",
+        "business_management"
+      ],
       "pages": [
-        {"id": "100000000000101", "name": "Phần Mềm Giá Rẻ", "category": "Software"},
-        {"id": "100000000000102", "name": "FISS", "category": "Financial Service"},
-        {"id": "100000000000103", "name": "Shop Thỏ", "category": "Shopping & Retail"},
-        {"id": "100000000000104", "name": "Mua Sắm Thông Minh", "category": "Shopping & Retail"}
+        {
+          "id": "100000000000101",
+          "name": "Phần Mềm Giá Rẻ",
+          "category": "Software"
+        },
+        {
+          "id": "100000000000102",
+          "name": "FISS",
+          "category": "Financial Service"
+        },
+        {
+          "id": "100000000000103",
+          "name": "Shop Thỏ",
+          "category": "Shopping & Retail"
+        },
+        {
+          "id": "100000000000104",
+          "name": "Mua Sắm Thông Minh",
+          "category": "Shopping & Retail"
+        }
       ],
       "ad_accounts": [
-        {"id": "act_200000000000001", "name": "[TKQC Demo 01]", "currency": "VND", "timezone_name": "Asia/Ho_Chi_Minh"},
-        {"id": "act_200000000000002", "name": "[TKQC Demo 02]", "currency": "USD", "timezone_name": "Asia/Ho_Chi_Minh"}
+        {
+          "id": "act_200000000000001",
+          "name": "[TKQC Demo 01]",
+          "currency": "VND",
+          "timezone_name": "Asia/Ho_Chi_Minh"
+        },
+        {
+          "id": "act_200000000000002",
+          "name": "[TKQC Demo 02]",
+          "currency": "USD",
+          "timezone_name": "Asia/Ho_Chi_Minh"
+        }
       ]
     },
     "MOCK-BM-2": {
-      "business": {"id": "900000000000002", "name": "[BM Demo Miền Nam]", "verification_status": "pending"},
-      "system_user": {"id": "61000000000002", "name": "Dashboard"},
-      "scopes": ["pages_show_list", "pages_read_engagement", "read_insights", "pages_read_user_content", "pages_messaging", "pages_manage_metadata", "leads_retrieval", "ads_read", "business_management"],
+      "business": {
+        "id": "900000000000002",
+        "name": "[BM Demo Miền Nam]",
+        "verification_status": "pending"
+      },
+      "system_user": {
+        "id": "61000000000002",
+        "name": "Dashboard"
+      },
+      "scopes": [
+        "pages_show_list",
+        "pages_read_engagement",
+        "read_insights",
+        "pages_read_user_content",
+        "pages_messaging",
+        "pages_manage_metadata",
+        "leads_retrieval",
+        "ads_read",
+        "business_management"
+      ],
       "pages": [
-        {"id": "100000000000105", "name": "[Trang demo 5]", "category": "Shopping & Retail"},
-        {"id": "100000000000106", "name": "[Trang demo 6]", "category": "Software"},
-        {"id": "100000000000107", "name": "[Trang demo 7]", "category": "Local Business"}
+        {
+          "id": "100000000000105",
+          "name": "[Trang demo 5]",
+          "category": "Shopping & Retail"
+        },
+        {
+          "id": "100000000000106",
+          "name": "[Trang demo 6]",
+          "category": "Software"
+        },
+        {
+          "id": "100000000000107",
+          "name": "[Trang demo 7]",
+          "category": "Local Business"
+        }
       ],
       "ad_accounts": [
-        {"id": "act_200000000000003", "name": "[TKQC Miền Nam]", "currency": "VND", "timezone_name": "Asia/Ho_Chi_Minh"}
+        {
+          "id": "act_200000000000003",
+          "name": "[TKQC Miền Nam]",
+          "currency": "VND",
+          "timezone_name": "Asia/Ho_Chi_Minh"
+        }
       ]
     },
     "MOCK-BM-NOLEADS": {
-      "business": {"id": "900000000000003", "name": "[BM Demo thiếu quyền]", "verification_status": "not_verified"},
-      "system_user": {"id": "61000000000003", "name": "Dashboard"},
-      "scopes": ["pages_show_list", "pages_read_engagement", "read_insights", "pages_read_user_content", "pages_messaging", "pages_manage_metadata", "ads_read", "business_management"],
+      "business": {
+        "id": "900000000000003",
+        "name": "[BM Demo thiếu quyền]",
+        "verification_status": "not_verified"
+      },
+      "system_user": {
+        "id": "61000000000003",
+        "name": "Dashboard"
+      },
+      "scopes": [
+        "pages_show_list",
+        "pages_read_engagement",
+        "read_insights",
+        "pages_read_user_content",
+        "pages_messaging",
+        "pages_manage_metadata",
+        "ads_read",
+        "business_management"
+      ],
       "pages": [
-        {"id": "100000000000108", "name": "[Trang demo 8]", "category": "Local Business"}
+        {
+          "id": "100000000000108",
+          "name": "[Trang demo 8]",
+          "category": "Local Business"
+        }
+      ],
+      "ad_accounts": []
+    },
+    "MOCK-BM-E2E": {
+      "business": {
+        "id": "900000000000009",
+        "name": "[BM E2E thứ hai]",
+        "verification_status": "verified"
+      },
+      "system_user": {
+        "id": "61000000000009",
+        "name": "Dashboard"
+      },
+      "scopes": [
+        "pages_show_list",
+        "pages_read_engagement",
+        "read_insights",
+        "pages_read_user_content",
+        "pages_messaging",
+        "pages_manage_metadata",
+        "leads_retrieval",
+        "ads_read",
+        "business_management"
+      ],
+      "pages": [
+        {
+          "id": "100000000000201",
+          "name": "[Trang E2E BM 1]",
+          "category": "Local Business"
+        },
+        {
+          "id": "100000000000202",
+          "name": "[Trang E2E BM 2]",
+          "category": "Local Business"
+        }
       ],
       "ad_accounts": []
     }
