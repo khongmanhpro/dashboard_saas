@@ -51,9 +51,9 @@ Trong BM FISSOLUTION, vào [business.facebook.com/settings](https://business.fac
 | Tin nhắn (Messages) | Nhận tin của khách (`pages_messaging`) |
 | Hoạt động cộng đồng (Community activity) | Đăng ký webhook cho Trang (Meta yêu cầu quyền MODERATE) |
 | Thông tin chi tiết (Insights) | Số liệu Trang, bài đăng |
-| Quảng cáo (Ads) | Lấy form khách hàng tiềm năng (`leadgen`) **(chưa thử)** |
+| Khách hàng tiềm năng (Leads) | Lấy form khách hàng tiềm năng (`leads_retrieval`) |
 
-   Không bật Nội dung (đăng bài). Hệ thống chỉ đọc.
+   **Không bật:** Nội dung (đăng bài), Quảng cáo, Nội dung người sáng tạo, Quản lý người sáng tạo. Hệ thống chỉ đọc; chi phí quảng cáo lấy từ tài khoản quảng cáo, không cần quyền Quảng cáo trên Trang. Nếu lấy form khách hàng tiềm năng bị lỗi quyền thì mới thêm Quảng cáo **(chưa thử)**.
 4. **Gán tài sản → Tài khoản quảng cáo:** chỉ **Xem hiệu quả** (View performance).
 5. **Tạo mã:**
    - Chọn ứng dụng.
@@ -63,7 +63,9 @@ Trong BM FISSOLUTION, vào [business.facebook.com/settings](https://business.fac
 
 ## 5. Quyền xem form khách hàng tiềm năng
 
-Cài đặt doanh nghiệp → Tích hợp → **Quyền truy cập khách hàng tiềm năng** (Leads Access). Với từng Trang, cho phép ứng dụng và người dùng `Dashboard`. Nếu Trang chưa bật quản lý quyền này thì mặc định ai có quyền Quảng cáo trên Trang cũng đọc được **(chưa thử)**.
+Cài đặt doanh nghiệp → Tích hợp → **Quyền truy cập khách hàng tiềm năng** (Leads Access). Với từng Trang, cho phép ứng dụng và người dùng `Dashboard`.
+
+Meta chỉ cho cài mục này với **Trang do BM sở hữu**. Trang "thuộc sở hữu cá nhân" hoặc chưa bật quản lý quyền này thì bỏ qua bước này: khi đó người có quyền "Khách hàng tiềm năng" trên Trang vẫn đọc được form **(chưa thử)**.
 
 ## 6. Kết nối và thử
 
