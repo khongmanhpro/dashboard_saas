@@ -203,6 +203,7 @@ Sau bước 7: chạy thử 2 tuần với 4 Trang và 4–10 nhân viên thật
 - **Mọi route phải có `require(Perm.X)`** (`test_route_protection`). Thêm quyền thì sửa đồng thời `core/rbac.py`, `tests/unit/test_rbac.py`, `docs/architecture/rbac.md`.
 - Lỗi 422 không được trả lại giá trị người dùng gửi (đã có handler trong `main.py`).
 - **MOCK_MODE:** client Graph giả đọc `backend/tests/fixtures/meta/graph_mock.json`; mã giả `MOCK-BM-1` (BM demo, seed tự gắn), `MOCK-BM-2`, `MOCK-BM-NOLEADS`, `MOCK-INVALID`, `MOCK-BM-E2E` và `MOCK-BM-E2E-ADS` (chỉ cho e2e). Số liệu QC/bài đăng giả sinh từ mục `content`, cố định theo ngày. Telegram giả: không gửi thật.
+- **Số liệu khách và điểm chỉ tính qua `app/services/metrics.py`** (tập khách của kỳ + `summarize`), định nghĩa ở `docs/metrics.md`, quyết định mục J. Không màn nào tự đếm riêng; kỳ chưa chốt tính điểm trực tiếp (`score_service.live_period`). `test_metrics_consistency` kiểm tra Tổng quan = /staff = /pages.
 - **Báo cáo:** khoảng thời gian dùng `app/services/report_range.py`; số liệu QC dùng chung `app/services/ads_service.py` (Tổng quan, Quảng cáo, cảnh báo đều qua `level_stats`). Handler/service ghi phải tự `db.commit()`.
 - **E2E:** `frontend/e2e/global-setup.ts` gọi `python -m app.cli e2e-seed` để tạo tài khoản và khách mới mỗi lần chạy; test phải chạy lại nhiều lần vẫn pass.
 
