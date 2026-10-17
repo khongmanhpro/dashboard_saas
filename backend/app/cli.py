@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import datetime as dt
 import json
 import sys
 from collections.abc import Sequence
@@ -129,8 +130,6 @@ async def _seed_e2e_leads(
     specs: list[dict[str, Any]],
 ) -> dict[str, str]:
     """Mỗi lần chạy tạo khách mới (PSID mới) trên Trang E2E, đi qua đúng service của worker."""
-    import datetime as dt
-
     from app.models import BusinessManager, Contact, Lead, Page
     from app.services import inbound
     from app.services.assignment import assign_page, owner_at
@@ -194,9 +193,41 @@ async def _seed_e2e_leads(
                 raise CliError("không tạo được khách e2e")
             contact.display_name = spec["name"] if count == 1 else f"{spec['name']} {i}"
             lead_id = await db.scalar(select(Lead.id).where(Lead.contact_id == contact.id))
+            if spec.get("ad_id"):
+                # Khách bấm quảng cáo: gắn chiến dịch khi đồng bộ (Bước 7).
+                lead_row = await db.get(Lead, lead_id)
+                if lead_row is not None:
+                    lead_row.fb_ad_id = str(spec["ad_id"])
             if i == 0:
                 lead_ids[spec["key"]] = str(lead_id)
     return lead_ids
+
+
+async def _connect_e2e_ads(db: AsyncSession, ws: Workspace, token: str) -> None:
+    """BM giả có tài khoản quảng cáo cho e2e Bước 7. Chỉ nhận mã `MOCK-...` của client Graph giả."""
+    from app.core.crypto import get_token_cipher, last4
+    from app.meta.graph import MockGraphClient
+    from app.models import BusinessManager
+    from app.services.bm_service import sync_bm
+
+    if not token.startswith("MOCK-") or not get_settings().mock_mode:
+        raise CliError("ads_token chỉ nhận mã giả khi MOCK_MODE=true")
+    info = await MockGraphClient().inspect_token(token)
+    bm = await db.scalar(
+        select(BusinessManager).where(
+            BusinessManager.workspace_id == ws.id,
+            BusinessManager.fb_business_id == info.business_ids[0],
+        )
+    )
+    if bm is None:
+        bm = BusinessManager(
+            workspace_id=ws.id, fb_business_id=info.business_ids[0], name="[BM E2E quảng cáo]"
+        )
+        db.add(bm)
+        await db.flush()
+    bm.token_ciphertext = get_token_cipher().encrypt(token)
+    bm.token_last4 = last4(token)
+    await sync_bm(db, bm, dt.datetime.now(dt.UTC), MockGraphClient(), kind="e2e")
 
 
 async def e2e_seed(payload: dict[str, Any]) -> str:
@@ -221,7 +252,17 @@ async def e2e_seed(payload: dict[str, Any]) -> str:
                 reset_password=True,
             )
         lead_ids = await _seed_e2e_leads(db, ws, members, payload.get("leads", []))
+        if payload.get("ads_token"):
+            await _connect_e2e_ads(db, ws, str(payload["ads_token"]))
         await db.commit()
+    if payload.get("ads_token"):
+        from app.core.db import TenantContext, app_sessionmaker, set_tenant
+        from app.services import meta_sync
+
+        async with app_sessionmaker()() as app_db:
+            await set_tenant(app_db, TenantContext(workspace_id=ws.id, user_id=None))
+            await meta_sync.sync_workspace(app_db, ws.id, dt.datetime.now(dt.UTC))
+            await app_db.commit()
     if payload.get("leads"):
         return json.dumps({"leads": lead_ids})
     return f"Đã chuẩn bị {len(payload['accounts'])} tài khoản e2e."

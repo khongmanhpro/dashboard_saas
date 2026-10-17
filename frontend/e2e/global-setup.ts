@@ -41,7 +41,11 @@ export default function globalSetup(): void {
       // Đủ 10 khách trong tuần để nhân viên và trưởng nhóm có điểm (Bước 4).
       { ...lead("score_staff", "e2e-staff@example.com", "100000000000901", "[Trang E2E 1]", run, "0900 000 944"), count: 10, reply_seconds: 120 },
       { ...lead("score_lead", "e2e-team-lead@example.com", "100000000000902", "[Trang E2E 2]", run, "0900 000 955"), count: 10, reply_seconds: 3600 },
+      // Khách bấm quảng cáo "[E2E - Tin nhắn]" (Bước 7).
+      { ...lead("ad_lead", "e2e-staff@example.com", "100000000000901", "[Trang E2E 1]", run, "0900 000 988"), count: 3, reply_seconds: 300, ad_id: "23800000000000901" },
     ],
+    // BM giả có tài khoản quảng cáo; e2e-seed đồng bộ chi tiêu ngay (client Graph giả).
+    ads_token: "MOCK-BM-E2E-ADS",
   };
   const output = execFileSync(
     "docker",

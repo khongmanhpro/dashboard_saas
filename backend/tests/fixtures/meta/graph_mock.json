@@ -169,6 +169,37 @@
         }
       ],
       "ad_accounts": []
+    },
+    "MOCK-BM-E2E-ADS": {
+      "business": {
+        "id": "900000000000019",
+        "name": "[BM E2E quảng cáo]",
+        "verification_status": "verified"
+      },
+      "system_user": {
+        "id": "61000000000019",
+        "name": "Dashboard"
+      },
+      "scopes": [
+        "pages_show_list",
+        "pages_read_engagement",
+        "read_insights",
+        "pages_read_user_content",
+        "pages_messaging",
+        "pages_manage_metadata",
+        "leads_retrieval",
+        "ads_read",
+        "business_management"
+      ],
+      "pages": [],
+      "ad_accounts": [
+        {
+          "id": "act_200000000000009",
+          "name": "[TKQC E2E]",
+          "currency": "VND",
+          "timezone_name": "Asia/Ho_Chi_Minh"
+        }
+      ]
     }
   },
   "content": {
@@ -354,6 +385,38 @@
                     "id": "23800000000000161",
                     "name": "[QC ảnh - Trang demo 5]",
                     "page_id": "100000000000105"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "act_200000000000009": {
+        "campaigns": [
+          {
+            "id": "23800000000000009",
+            "name": "[E2E - Tin nhắn]",
+            "objective": "OUTCOME_ENGAGEMENT",
+            "status": "ACTIVE",
+            "daily_budget": 200000,
+            "daily": {
+              "spend": 180000,
+              "impressions": 12000,
+              "reach": 6000,
+              "clicks": 150,
+              "messaging": 9,
+              "leads": 0
+            },
+            "adsets": [
+              {
+                "id": "23800000000000091",
+                "name": "[E2E - Nhóm QC]",
+                "ads": [
+                  {
+                    "id": "23800000000000901",
+                    "name": "[E2E - Quảng cáo ảnh]",
+                    "page_id": "100000000000901"
                   }
                 ]
               }
