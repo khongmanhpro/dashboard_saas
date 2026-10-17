@@ -260,6 +260,15 @@ input {
   flex-direction: column;
   gap: 14px;
 }
+.auth-links {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  font-size: 13px;
+}
+.auth-links a {
+  color: var(--color-text-muted);
+}
 
 /* ---------- Điện thoại ---------- */
 .mobile {

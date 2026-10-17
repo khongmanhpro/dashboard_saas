@@ -46,6 +46,8 @@ export const vi = {
     password: "Mật khẩu",
     submit: "Đăng nhập",
     submitting: "Đang đăng nhập…",
+    privacy: "Chính sách quyền riêng tư",
+    dataDeletion: "Xóa dữ liệu",
   },
   changePassword: {
     title: "Đổi mật khẩu",
