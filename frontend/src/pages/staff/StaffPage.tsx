@@ -49,7 +49,16 @@ function ScoreCell({ row }: { row: LeaderboardRow }) {
           <span style={{ width: `${Number(row.total)}%` }} />
         </span>
       ) : null}
-      {delta ? <span className={`delta delta--${delta.dir}`}>{delta.text}</span> : null}
+      {delta ? (
+        <span
+          className={`delta delta--${delta.dir}`}
+          title={row.delta_other_formula ? t.staff.otherFormula : undefined}
+          data-testid={row.delta_other_formula ? "delta-other-formula" : undefined}
+        >
+          {delta.text}
+          {row.delta_other_formula ? "*" : ""}
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -329,7 +338,10 @@ export function StaffPage() {
         ) : null}
       </div>
       <div className="table-foot">
-        <span>{format(t.staff.footer, { n: rows.length })}</span>
+        <span>
+          {format(t.staff.footer, { n: rows.length })}
+          {rows.some((r) => r.delta_other_formula && r.delta !== null) ? ` · ${t.staff.otherFormulaNote}` : ""}
+        </span>
         {canSettings ? <Link to="/settings#score">{t.staff.howScored}</Link> : null}
       </div>
     </>

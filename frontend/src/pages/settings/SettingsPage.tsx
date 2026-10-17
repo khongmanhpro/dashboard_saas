@@ -192,6 +192,7 @@ function FormulaEditor({ formula, timeZone }: { formula: Formula; timeZone: stri
           <span>
             {format(t.settings.score.version, {
               v: formula.version,
+              method: t.settings.score.methods[formula.score_method],
               time: formatDateTime(formula.effective_from, timeZone),
             })}
           </span>

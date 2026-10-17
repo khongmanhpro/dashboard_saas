@@ -634,3 +634,10 @@
   font-size: 12px;
   color: var(--color-text-muted);
 }
+/* Tuần tính bằng phiên bản công thức khác (decisions.md mục L). */
+.trend__dot--other {
+  fill: var(--color-surface);
+  stroke: var(--color-text-muted);
+  stroke-width: 2;
+  stroke-dasharray: 2 2;
+}

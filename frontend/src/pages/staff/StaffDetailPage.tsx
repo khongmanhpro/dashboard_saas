@@ -209,7 +209,14 @@ function Trend({ data }: { data: StaffDetail }) {
                   cx={totals.length > 1 ? (i * 480) / (totals.length - 1) : 0}
                   cy={150 - v * 1.5}
                   r="3.5"
-                  className={data.trend[i]?.is_final === false ? "trend__dot trend__dot--live" : "trend__dot"}
+                  className={
+                    data.trend[i]?.other_formula
+                      ? "trend__dot trend__dot--other"
+                      : data.trend[i]?.is_final === false
+                        ? "trend__dot trend__dot--live"
+                        : "trend__dot"
+                  }
+                  data-testid={data.trend[i]?.other_formula ? "trend-other-formula" : undefined}
                 />
               ),
             )}
@@ -217,12 +224,22 @@ function Trend({ data }: { data: StaffDetail }) {
           <div className="trend__labels">
             {data.trend.map((p) => (
               <span key={p.first_day} title={p.is_final ? undefined : t.staffDetail.trendLive}>
+                {p.other_formula ? "◇ " : ""}
                 {shortDate(p.first_day)}
                 {p.is_final ? "" : "*"}
               </span>
             ))}
           </div>
           {data.trend.some((p) => !p.is_final) ? <p className="note">* {t.staffDetail.trendLive}</p> : null}
+          {data.trend
+            .filter((p) => p.other_formula)
+            .map((p) => p.formula_version)
+            .filter((v, i, all) => all.indexOf(v) === i)
+            .map((v) => (
+              <p key={v ?? "?"} className="note">
+                {format(t.staffDetail.trendOtherFormula, { v: v ?? "?", current: data.formula_version })}
+              </p>
+            ))}
         </>
       )}
     </section>
@@ -330,7 +347,9 @@ export function StaffDetailPage() {
             </b>
             <span className="muted">
               {delta !== null && delta !== 0
-                ? `${format(delta > 0 ? t.staffDetail.up : t.staffDetail.down, { n: formatScore(String(Math.abs(delta))) })} · `
+                ? `${format(delta > 0 ? t.staffDetail.up : t.staffDetail.down, { n: formatScore(String(Math.abs(delta))) })}${
+                    data.delta_other_formula ? ` (${t.staff.otherFormula})` : ""
+                  } · `
                 : ""}
               {data.rank !== null ? format(t.staffDetail.rankOf, { rank: data.rank, total: data.ranked_count }) : ""}
             </span>

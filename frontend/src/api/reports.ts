@@ -124,7 +124,7 @@ export interface PageReportRow {
   won_7d: number;
   revenue_7d: number;
   overdue_7d: number;
-  posts_week: number | null;
+  posts_7d: number | null;
   views_30d: number | null;
   views_daily: (number | null)[];
   status: PageStatus;

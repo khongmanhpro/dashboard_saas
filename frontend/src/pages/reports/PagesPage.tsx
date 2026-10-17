@@ -314,7 +314,7 @@ export function PagesPage() {
                 </td>
                 <td className="num">{formatNumber(row.won_7d)}</td>
                 <td>
-                  <PostsMeter posts={row.posts_week} target={data?.posts_target ?? 5} />
+                  <PostsMeter posts={row.posts_7d} target={data?.posts_target ?? 5} />
                 </td>
                 <td className="num">
                   <Spark row={row} />

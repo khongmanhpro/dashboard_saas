@@ -77,6 +77,8 @@ export interface LeaderboardRow {
   insufficient_data: boolean;
   total: Num | null;
   delta: Num | null;
+  /** Tuần trước tính bằng phiên bản công thức khác: ▲▼ chỉ để tham khảo. */
+  delta_other_formula: boolean;
   lead_count: number | null;
   won_count: number | null;
   median_response_seconds: number | null;
@@ -148,7 +150,16 @@ export interface StaffDetail {
   parts: ScorePart[];
   funnel: { key: "leads" | "replied" | "phone" | "called" | "won"; value: number; rate: Num | null; company_rate: Num | null }[];
   hours: { label: string; median_minutes: Num | null; count: number }[];
-  trend: { first_day: string; total: Num | null; tier: Tier | null; is_final: boolean }[];
+  trend: {
+    first_day: string;
+    total: Num | null;
+    tier: Tier | null;
+    is_final: boolean;
+    formula_version: number | null;
+    other_formula: boolean;
+  }[];
+  delta_other_formula: boolean;
+  formula_version: number;
   speed_full_minutes: number;
   speed_zero_minutes: number;
   posts_target: Num | null;
@@ -175,6 +186,7 @@ export interface Formula {
   min_leads: number;
   posts_per_week_target: number;
   thresholds: Thresholds;
+  score_method: "percentile" | "threshold";
   effective_from: string;
   created_by: string | null;
   page_care_available: boolean;
