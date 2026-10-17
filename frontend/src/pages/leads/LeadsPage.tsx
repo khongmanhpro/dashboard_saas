@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useOutletContext, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useOutletContext, useSearchParams } from "react-router-dom";
 
 import {
   LEAD_STATUSES,
@@ -200,10 +200,14 @@ function LeadTable({ filters, timeZone, now }: { filters: LeadFilters; timeZone:
   );
 }
 
-/** Đổi đường dẫn (ví dụ bấm số đỏ ở menu khi đang ở Khách hàng) thì đọc lại bộ lọc từ đường dẫn. */
+/**
+ * Mỗi lần điều hướng (ví dụ bấm số đỏ ở menu khi đang ở Khách hàng) đọc lại bộ lọc từ đường dẫn.
+ * Dùng `location.key` chứ không dùng chuỗi tham số: bộ lọc đổi bằng tay không ghi lên đường dẫn,
+ * nên bấm lại cùng đường dẫn vẫn phải đưa bộ lọc về như đường dẫn.
+ */
 export function LeadsPage() {
-  const [params] = useSearchParams();
-  return <LeadsView key={params.toString()} />;
+  const location = useLocation();
+  return <LeadsView key={location.key} />;
 }
 
 function LeadsView() {
