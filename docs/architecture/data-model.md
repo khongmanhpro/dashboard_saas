@@ -67,8 +67,8 @@ Mở đợt mới: khóa dòng `contacts` (`SELECT … FOR UPDATE`) rồi mới 
 
 | Bảng | Cột chính |
 |---|---|
-| `notifications` | member_id, lead_id, type, title, body, created_at, read_at, sent_via |
-| `push_subscriptions` | member_id, endpoint, p256dh, auth, created_at |
+| `notifications` | member_id, lead_id, type, dedupe_key (unique trong workspace: mỗi mốc nhắc một lần), title, body, created_at, read_at, sent_via |
+| `push_subscriptions` | member_id, endpoint (unique), p256dh, auth, user_agent, created_at, last_success_at, failure_count |
 
 ## Nhập Excel (Bước 6)
 

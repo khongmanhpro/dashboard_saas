@@ -84,3 +84,19 @@ Sếp duyệt ngày 17/10/2026, cùng lúc duyệt kế hoạch Bước 1. Nếu
 | Ngưỡng hạng | Theo #1–#3 (85/70/50, tối thiểu 10 khách), không theo số mẫu trong `Staff.dc.html`. | |
 | Lịch job | 01:00 giờ Việt Nam mỗi đêm: tính tuần hiện tại và các kỳ tham khảo (7 ngày, 30 ngày, tháng này). Đêm thứ Hai chốt tuần trước. Job xuyên workspace qua `app_active_workspace_ids()` (SECURITY DEFINER, chỉ trả danh sách id). | Worker không dùng tài khoản quản trị DB. |
 | Chưa làm | Ghi chú huấn luyện, mục tiêu tuần, đổi Trang phụ trách / nhập Excel / thêm nhân viên (Bước 6), các phần khác của Cài đặt. | |
+
+## G. Bước 5 (sếp duyệt 17/10/2026)
+
+| Chủ đề | Quyết định | Lý do |
+|---|---|---|
+| Ai dùng `/m` | Ai phụ trách Trang đều dùng được (cả Trưởng nhóm/Quản lý, #14). `/m` chỉ hiện khách của chính người đăng nhập. | |
+| Ba tab | Cần xử lý = chưa có kết quả, xếp: quá hạn 48 giờ → chưa trả lời → có SĐT chưa gọi → còn lại. Hẹn lại = theo giờ hẹn. Đã xong = Chốt/Hủy trong 7 ngày gần nhất. | |
+| Nút trên thẻ | Chốt / Hẹn / Hủy hiện với mọi khách; Gọi chỉ khi có SĐT. Gọi mở trình gọi (`tel:`) và tự đánh dấu "Đã gọi". Khách chưa được trả lời có nút "Trả lời trên Messenger". | |
+| Bảng chọn | Hẹn: "Chiều nay 15:00", "Tối nay 19:00" (chỉ khi còn kịp), "Mai 9:00", "Chọn giờ khác". Hủy: 5 lý do, "Khác" bắt buộc ghi chú. | |
+| Nhắc việc tự động | Job mỗi 5 phút, chỉ nhắc người phụ trách. Mỗi mốc nhắc một lần (`dedupe_key`): chờ 15 phút và 30 phút chưa trả lời (giờ làm việc); có SĐT 2 giờ chưa gọi; còn 4 giờ tới hạn 48 giờ và khi quá hạn; 15 phút trước giờ hẹn; quá giờ hẹn 24 giờ chưa cập nhật (#11). Ngoài giờ làm việc chỉ gửi nhắc giờ hẹn. | |
+| Nhắc thủ công | Trưởng nhóm (khách trong nhóm), Quản lý/Chủ sở hữu (mọi khách) bấm "Nhắc người phụ trách" trên Hồ sơ khách (`reminder.send`). | |
+| Web Push | VAPID (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`), thư viện `pywebpush`. Nội dung không có SĐT, không có nội dung tin nhắn. iPhone chỉ nhận khi đã thêm vào màn hình chính (iOS 16.4+). Endpoint trả 404/410 thì xóa đăng ký. | |
+| Gợi ý lên hạng | "Thêm X điểm để lên hạng Y" và "Bạn còn N khách có SĐT chưa gọi". Không hứa trước kết quả. | Điểm là xếp phần trăm. |
+| Biểu tượng | Chữ "P" trên màu chính, thay khi có tên và logo sản phẩm. | |
+| Bộ nhớ đệm | Service worker chỉ lưu khung giao diện, không lưu dữ liệu API. | SĐT khách không nằm lại trên điện thoại. |
+| Quyền mới | `notification.receive` cho cả 5 vai trò, phạm vi của mình. | Mọi route phải khai báo quyền. |
