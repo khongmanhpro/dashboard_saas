@@ -403,7 +403,7 @@ input {
     display: block;
     position: absolute;
     inset: 0;
-    background: rgba(16, 24, 40, 0.45);
+    background: var(--color-overlay);
   }
   .filter-sheet--open .filter-sheet__panel {
     display: flex;

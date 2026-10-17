@@ -30,6 +30,9 @@
   --color-sample-bg: #fef0e8;
   --color-sample-fg: #9a3b12;
 
+  /* Nền tối sau bảng chọn / hộp thoại */
+  --color-overlay: rgba(16, 24, 40, 0.45);
+
   --color-neutral-bg: #f2f4f7;
   --color-board-bg: #eef0f3;
   --color-contacted-bg: #eeecfb;

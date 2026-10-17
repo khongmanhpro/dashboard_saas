@@ -241,7 +241,7 @@
   position: absolute;
   inset: 0;
   border: 0;
-  background: rgba(16, 24, 40, 0.45);
+  background: var(--color-overlay);
 }
 .m-sheet__panel {
   position: relative;

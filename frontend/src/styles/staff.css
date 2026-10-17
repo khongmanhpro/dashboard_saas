@@ -530,7 +530,7 @@
   position: fixed;
   inset: 0;
   z-index: 30;
-  background: rgba(16, 24, 40, 0.45);
+  background: var(--color-overlay);
   display: flex;
   align-items: flex-start;
   justify-content: center;
