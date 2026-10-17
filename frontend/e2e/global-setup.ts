@@ -5,6 +5,12 @@ import { resolve } from "node:path";
 import type { E2EAccount, E2ERole } from "./accounts";
 
 const ROOT = resolve(import.meta.dirname, "..", "..");
+// Cùng DB / Redis với stack e2e trong docker-compose.yml (profile e2e) và Makefile: không đụng DB dev.
+const E2E_DB_ENV = [
+  "-e", "POSTGRES_DB=fanpage_e2e_test",
+  "-e", "POSTGRES_APP_USER=fanpage_app_e2e",
+  "-e", "REDIS_URL=redis://redis:6379/13",
+];
 const ROLES: Array<[E2ERole, string, string, boolean]> = [
   ["owner", "owner", "[Chủ sở hữu E2E]", false],
   ["manager", "manager", "[Quản lý E2E]", false],
@@ -49,7 +55,7 @@ export default function globalSetup(): void {
   };
   const output = execFileSync(
     "docker",
-    ["compose", "run", "--rm", "-T", "migrate", "python", "-m", "app.cli", "e2e-seed"],
+    ["compose", "run", "--rm", "-T", ...E2E_DB_ENV, "migrate", "python", "-m", "app.cli", "e2e-seed"],
     { cwd: ROOT, input: JSON.stringify(payload), stdio: ["pipe", "pipe", "inherit"], encoding: "utf8" },
   );
   const lastLine = output.trim().split("\n").at(-1) ?? "{}";

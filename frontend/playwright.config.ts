@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Chạy khi stack dev đang bật: `docker compose up -d` rồi `npm run e2e`.
+// Chạy bằng `make e2e`: bật stack e2e riêng (DB fanpage_e2e_test, frontend :5174) rồi chạy test.
 export default defineConfig({
   testDir: "./e2e",
   globalSetup: "./e2e/global-setup.ts",
@@ -9,7 +9,7 @@ export default defineConfig({
   retries: 0,
   reporter: [["list"]],
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:5173",
+    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:5174",
     locale: "vi-VN",
     trace: "retain-on-failure",
   },

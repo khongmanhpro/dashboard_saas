@@ -70,7 +70,8 @@ test("Chủ sở hữu thêm BM thứ hai, gán Trang mới, khách nhắn vào 
     ],
   });
   const signature = "sha256=" + createHmac("sha256", appSecret()).update(body).digest("hex");
-  const sent = await page.request.post("http://localhost:8000/webhooks/meta", {
+  // Backend của stack e2e riêng (docker-compose profile e2e), không phải backend dev.
+  const sent = await page.request.post(`${process.env.E2E_API_URL ?? "http://localhost:8001"}/webhooks/meta`, {
     data: body,
     headers: { "Content-Type": "application/json", "X-Hub-Signature-256": signature },
   });

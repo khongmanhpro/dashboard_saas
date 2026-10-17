@@ -3,9 +3,8 @@ COMPOSE := docker compose
 ADMIN := $(COMPOSE) run --rm -T migrate
 # Giả lập và e2e chạy trên DB / Redis riêng, không ghi vào DB dev (decisions.md mục L).
 SIMULATE := $(COMPOSE) run --rm -T -e POSTGRES_DB=fanpage_simulate_test -e POSTGRES_APP_USER=fanpage_app_sim -e REDIS_URL=redis://redis:6379/14 migrate
-E2E_ENV := -e POSTGRES_DB=fanpage_e2e_test -e POSTGRES_APP_USER=fanpage_app_e2e -e REDIS_URL=redis://redis:6379/13
 
-.PHONY: env vapid up down logs ps test test-frontend e2e lint migrate bootstrap seed simulate
+.PHONY: env vapid up down logs ps test test-frontend e2e e2e-down lint migrate bootstrap seed simulate
 
 env:            ## Tạo .env dev với bí mật ngẫu nhiên (không ghi đè)
 	python3 scripts/init_env.py
@@ -31,8 +30,12 @@ test:           ## Chạy test backend trong container
 test-frontend:  ## Test đơn vị giao diện (vitest) và kiểm tra kiểu
 	cd frontend && npm run typecheck && npm test
 
-e2e:            ## Playwright (cần stack đang chạy)
-	cd frontend && npm run e2e
+e2e:            ## Playwright trên stack e2e riêng (DB fanpage_e2e_test, :5174), không đụng DB dev
+	$(COMPOSE) --profile e2e up -d --build --wait backend-e2e worker-e2e frontend-e2e
+	cd frontend && E2E_BASE_URL=http://localhost:5174 npm run e2e
+
+e2e-down:       ## Dừng stack e2e
+	$(COMPOSE) --profile e2e stop backend-e2e worker-e2e frontend-e2e
 
 lint:
 	$(ADMIN) sh -c "ruff check app tests migrations && ruff format --check app tests migrations && mypy app"

@@ -115,7 +115,87 @@ services:
       retries: 60
     restart: unless-stopped
 
+  # ---------- Stack e2e riêng (decisions.md mục L): `make e2e`. Không chạy khi `docker compose up`.
+  # DB fanpage_e2e_test, Redis db 13, backend :8001, frontend :5174. Không đụng DB dev.
+  e2e-migrate:
+    profiles: ["e2e"]
+    build:
+      context: ./backend
+      target: dev
+    env_file: .env
+    environment: &e2e-env
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: fanpage_e2e_test
+      POSTGRES_APP_USER: fanpage_app_e2e
+      REDIS_URL: redis://redis:6379/13
+      APP_BASE_URL: http://localhost:5174
+    volumes:
+      - ./backend:/app
+    command: ["python", "-m", "app.mock.sandbox", "prepare"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: "no"
+
+  backend-e2e:
+    <<: *backend
+    profiles: ["e2e"]
+    environment:
+      <<: *e2e-env
+      POSTGRES_PASSWORD: ""
+    ports:
+      - "127.0.0.1:8001:8000"
+    depends_on:
+      e2e-migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=3).status == 200 else 1)"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  worker-e2e:
+    <<: *backend
+    profiles: ["e2e"]
+    command: ["arq", "app.workers.settings.WorkerSettings"]
+    environment:
+      <<: *e2e-env
+      POSTGRES_PASSWORD: ""
+    depends_on:
+      e2e-migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  frontend-e2e:
+    profiles: ["e2e"]
+    image: node:22-alpine
+    working_dir: /app
+    command: ["sh", "-c", "npm ci --no-audit --no-fund && npm run dev -- --host 0.0.0.0"]
+    environment:
+      BACKEND_URL: http://backend-e2e:8000
+    volumes:
+      - ./frontend:/app
+      - frontend_e2e_node_modules:/app/node_modules
+    ports:
+      - "127.0.0.1:5174:5173"
+    depends_on:
+      backend-e2e:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5173/"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+    restart: unless-stopped
+
 volumes:
   pgdata:
   redisdata:
   frontend_node_modules:
+  frontend_e2e_node_modules:
