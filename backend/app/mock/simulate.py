@@ -37,7 +37,15 @@ from app.core.queue import close_queue, get_queue
 from app.meta.signature import SIGNATURE_HEADER, sign
 from app.mock import payloads as p
 from app.mock.seed import DemoWorkspace, load_demo_workspace
-from app.models import Contact, Lead, LeadgenSubmission, Message, Page, WorkspaceMember
+from app.models import (
+    Campaign,
+    Contact,
+    Lead,
+    LeadgenSubmission,
+    Message,
+    Page,
+    WorkspaceMember,
+)
 from app.services.assignment import assign_page
 from app.services.phone import mask_phone
 
@@ -232,6 +240,11 @@ class Simulator:
             "source": lead.source.value,
             "phone": lead.phone,
             "fb_ad_id": lead.fb_ad_id,
+            "campaign": await db.scalar(
+                select(Campaign.name).where(Campaign.id == lead.campaign_id)
+            )
+            if lead.campaign_id
+            else None,
         }
 
     async def run_all(self, scenarios: list[dict[str, Any]]) -> list[Check]:
@@ -259,6 +272,8 @@ def _describe(values: dict[str, Any]) -> str:
             parts.append(f"{value} đợt")
         elif key == "messages":
             parts.append(f"{value} tin")
+        elif key == "campaign":
+            parts.append(f"chiến dịch {value or '—'}")
         else:
             parts.append(f"{value}")
     return ", ".join(parts)
