@@ -13,6 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import hash_password
 from app.models import (
     BusinessManager,
+    Lead,
+    LeadSource,
+    LeadStatus,
+    LostReason,
     MemberRole,
     Page,
     ScoreFormula,
@@ -160,3 +164,52 @@ async def create_page(
     db.add(page)
     await db.flush()
     return page
+
+
+async def create_lead(
+    db: AsyncSession,
+    page: Page,
+    owner: WorkspaceMember | None,
+    first_inbound_at: dt.datetime,
+    *,
+    response_seconds: int | None = 300,
+    phone: str | None = None,
+    status: LeadStatus | None = None,
+    won_value_vnd: int | None = None,
+    result_at: dt.datetime | None = None,
+    source: LeadSource = LeadSource.MESSAGE,
+) -> Lead:
+    """Đợt khách dựng thẳng (không qua webhook), dùng cho test điểm và báo cáo."""
+    replied = response_seconds is not None
+    if status is None:
+        status = (
+            LeadStatus.WON
+            if won_value_vnd
+            else (LeadStatus.CONTACTED if replied else LeadStatus.NEW)
+        )
+    lead = Lead(
+        workspace_id=page.workspace_id,
+        page_id=page.id,
+        owner_member_id=owner.id if owner else None,
+        source=source,
+        first_inbound_at=first_inbound_at,
+        first_reply_at=first_inbound_at + dt.timedelta(seconds=response_seconds)
+        if replied
+        else None,
+        response_business_seconds=response_seconds,
+        status=status,
+        won_value_vnd=won_value_vnd,
+        lost_reason=LostReason.PRICE if status == LeadStatus.LOST else None,
+        phone=phone,
+        result_at=result_at
+        if result_at
+        else (
+            first_inbound_at + dt.timedelta(hours=1)
+            if status in (LeadStatus.WON, LeadStatus.LOST)
+            else None
+        ),
+        result_due_at=first_inbound_at + dt.timedelta(hours=48),
+    )
+    db.add(lead)
+    await db.flush()
+    return lead

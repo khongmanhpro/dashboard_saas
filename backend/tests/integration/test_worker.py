@@ -31,3 +31,8 @@ def test_webhook_job_is_registered_with_retries() -> None:
     assert funcs["process_webhook"].max_tries == MAX_TRIES
     assert [retry_delay_seconds(n) for n in (1, 2, 3, 7, 20)] == [10, 20, 40, 600, 600]
     assert WorkerSettings.log_results is False
+
+
+def test_nightly_scores_runs_at_1am_vietnam_time() -> None:
+    job = next(j for j in WorkerSettings.cron_jobs if j.name == "cron:nightly_scores")
+    assert job.hour == 18 and job.minute == 0  # 18:00 UTC = 01:00 Asia/Ho_Chi_Minh

@@ -3,8 +3,9 @@
 - `heartbeat`: mỗi phút, để giám sát biết worker còn chạy.
 - `process_webhook`: xử lý webhook Meta (app.workers.webhook).
 - `purge_expired_data`: 02:30 giờ Việt Nam mỗi đêm, hạn lưu dữ liệu (app.workers.retention).
+- `nightly_scores`: 01:00 giờ Việt Nam mỗi đêm, tính điểm và chốt tuần (app.workers.scoring).
 
-Đồng bộ định kỳ và tính điểm ban đêm thêm ở các bước sau.
+Đồng bộ định kỳ thêm ở các bước sau.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from app.core.db import dispose_engines
 from app.core.logging import setup_logging
 from app.core.queue import redis_settings as queue_redis_settings
 from app.workers.retention import purge_expired_data
+from app.workers.scoring import nightly_scores
 from app.workers.webhook import MAX_TRIES, process_webhook
 
 HEARTBEAT_KEY = "worker:heartbeat"
@@ -28,6 +30,8 @@ HEARTBEAT_TTL_SECONDS = 300
 PURGE_HOUR_UTC = 19  # 02:30 Asia/Ho_Chi_Minh
 PURGE_MINUTE_UTC = 30
 PURGE_TIMEOUT_SECONDS = 30 * 60
+SCORES_HOUR_UTC = 18  # 01:00 Asia/Ho_Chi_Minh
+SCORES_TIMEOUT_SECONDS = 60 * 60
 
 log = logging.getLogger(__name__)
 
@@ -59,6 +63,14 @@ class WorkerSettings:
             minute=PURGE_MINUTE_UTC,
             second=0,
             timeout=PURGE_TIMEOUT_SECONDS,
+            run_at_startup=False,
+        ),
+        cron(
+            nightly_scores,
+            hour=SCORES_HOUR_UTC,
+            minute=0,
+            second=0,
+            timeout=SCORES_TIMEOUT_SECONDS,
             run_at_startup=False,
         ),
     ]
