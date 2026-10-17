@@ -1,6 +1,6 @@
 // Định dạng hiển thị cho màn hình khách: tiền VND, thời lượng, ngày giờ theo múi giờ workspace,
 // nhãn trên thẻ khách. Hàm thuần để test được.
-import type { LeadCard, LostReason, ResultBody } from "../api/leads";
+import type { LeadCard, LostReason, ReminderType, ResultBody } from "../api/leads";
 import { format, t } from "../i18n";
 
 /** 2450000 → "2.450.000 ₫" (số nguyên VND, không dùng số thực). */
@@ -102,6 +102,15 @@ export function sourceLabel(lead: Pick<LeadCard, "source" | "from_ad" | "status"
   }
   if (lead.source === "leadgen") return t.leads.sourceForm;
   return lead.from_ad ? t.leads.sourceAd : t.leads.sourceOrganic;
+}
+
+/** Nhắc việc đã gửi (backend gộp các nhắc cùng lúc vào `types`): "Quá hạn cập nhật kết quả · Có SĐT nhưng chưa gọi". */
+export function reminderText(data: Record<string, unknown> | null): string {
+  const raw = data?.types ?? (data?.type ? [data.type] : []);
+  const labels = (Array.isArray(raw) ? raw : [])
+    .filter((x): x is string => typeof x === "string")
+    .map((x) => (x in t.lead.reminderTypes ? t.lead.reminderTypes[x as ReminderType] : t.lead.reminderTypes.manual));
+  return format(t.lead.events.reminder_sent, { what: [...new Set(labels)].join(" · ") || t.lead.reminderTypes.manual });
 }
 
 export interface Timer {

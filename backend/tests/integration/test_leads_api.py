@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.meta.events import WebhookPayload
 from app.mock import payloads as p
-from app.models import Lead, LeadStatus
+from app.models import Lead, LeadEvent, LeadEventType, LeadStatus
 from app.workers.webhook import process_webhook
 from tests.integration import factories as f
 from tests.integration.leads_fixtures import NOW, Org, lead_id_of, send
@@ -99,6 +99,29 @@ async def test_summary_chips(as_role: Any) -> None:
     assert with_chip["by_status"] == {"new": 0, "contacted": 1, "callback": 0, "won": 0, "lost": 0}
     # Kỳ 7 ngày mặc định vẫn thấy cả hai (72 giờ trước).
     assert (await client.get("/api/leads/summary")).json()["total"] == 2
+
+
+async def test_reminders_sent_together_are_one_timeline_row(
+    as_role: Any, admin_db: AsyncSession
+) -> None:
+    """Mục M: nhắc việc gửi cùng lúc gộp một dòng; nhắc lần khác vẫn là dòng riêng."""
+    lead_id = await lead_id_of(admin_db, "p1-b")
+    ws = await admin_db.scalar(select(Lead.workspace_id).where(Lead.id == lead_id))
+    at = NOW - dt.timedelta(hours=1)
+    for when, kind in ((at, "overdue"), (at, "phone_not_called"), (at, "overdue"), (NOW, "wait_30")):
+        admin_db.add(
+            LeadEvent(
+                workspace_id=ws,
+                lead_id=lead_id,
+                type=LeadEventType.REMINDER_SENT,
+                occurred_at=when,
+                data={"type": kind},
+            )
+        )
+    await admin_db.commit()
+    detail = (await (await as_role("owner")).get(f"/api/leads/{lead_id}")).json()
+    rows = [i for i in detail["timeline"] if i["type"] == "reminder_sent"]
+    assert [r["data"]["types"] for r in rows] == [["overdue", "phone_not_called"], ["wait_30"]]
 
 
 async def test_chip_and_status_filters(as_role: Any) -> None:

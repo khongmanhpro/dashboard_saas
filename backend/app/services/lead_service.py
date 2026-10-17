@@ -497,6 +497,7 @@ async def _timeline(
             .outerjoin(WorkspaceMember, WorkspaceMember.id == LeadEvent.actor_member_id)
             .outerjoin(User, User.id == WorkspaceMember.user_id)
             .where(LeadEvent.lead_id == lead.id)
+            .order_by(LeadEvent.occurred_at, LeadEvent.id)
         )
     ).all()
     items: list[TimelineItem] = []
@@ -515,7 +516,27 @@ async def _timeline(
                 is_first_reply=m.mid == lead.first_reply_mid,
             )
         )
+    # Mục M: nhắc việc gửi cùng lúc, cùng người gửi gộp thành một dòng; `types` giữ thứ tự gửi.
+    reminder_types: dict[tuple[dt.datetime, str | None], list[str]] = {}
     for ev, actor in events:
+        if ev.type == LeadEventType.REMINDER_SENT:
+            key = (ev.occurred_at, actor)
+            types = reminder_types.get(key)
+            if types is None:
+                types = reminder_types[key] = []
+                items.append(
+                    TimelineItem(
+                        kind="event",
+                        at=ev.occurred_at,
+                        type=ev.type.value,
+                        actor=actor,
+                        data={"types": types},
+                    )
+                )
+            kind = (ev.data or {}).get("type")
+            if kind and kind not in types:
+                types.append(kind)
+            continue
         items.append(
             TimelineItem(
                 kind="event", at=ev.occurred_at, type=ev.type.value, actor=actor, data=ev.data

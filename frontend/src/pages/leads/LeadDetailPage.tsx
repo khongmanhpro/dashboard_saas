@@ -25,6 +25,7 @@ import {
   initials,
   isoToZonedLocal,
   parseVndInput,
+  reminderText,
   sourceLabel,
   validateResultForm,
   type ResultForm,
@@ -40,7 +41,7 @@ function statusLabel(value: unknown): string {
   return typeof value === "string" && value in t.leads.status ? t.leads.status[value as LeadStatus] : String(value);
 }
 
-interface Row {
+export interface Row {
   icon: string;
   iconTone: string;
   who: string;
@@ -49,7 +50,8 @@ interface Row {
   bubble?: "customer" | "page";
 }
 
-function describe(item: TimelineItem, lead: LeadDetail, timeZone: string): Row {
+/** Một dòng của dòng thời gian. Mã sự kiện lạ không bao giờ hiện thô (decisions.md mục M). */
+export function timelineRow(item: TimelineItem, lead: LeadDetail, timeZone: string): Row {
   if (item.kind === "message") {
     const text = item.text ?? (item.has_attachments ? t.lead.attachment : "");
     if (item.direction === "in") {
@@ -130,8 +132,18 @@ function describe(item: TimelineItem, lead: LeadDetail, timeZone: string): Row {
         tag: { text: t.lead.events.overdueTag, tone: "tag--bad" },
         body: t.lead.events.overdue,
       };
+    case "reminder_sent":
+      return {
+        icon: "⏰",
+        iconTone: "timeline__icon--system",
+        who,
+        tag: { text: t.lead.events.reminderTag, tone: "tag--warn" },
+        body: reminderText(data),
+      };
+    case "reassigned":
+      return { icon: "⇄", iconTone: "timeline__icon--system", who, body: t.lead.events.reassigned };
     default:
-      return { icon: "•", iconTone: "", who, body: item.type ?? "" };
+      return { icon: "•", iconTone: "", who, body: t.lead.events.unknown };
   }
 }
 
@@ -147,7 +159,7 @@ export function Timeline({ lead, timeZone }: { lead: LeadDetail; timeZone: strin
       ) : null}
       <ol className="timeline">
         {lead.timeline.map((item, i) => {
-          const row = describe(item, lead, timeZone);
+          const row = timelineRow(item, lead, timeZone);
           return (
             <li key={`${item.at}-${i}`}>
               <div className="timeline__rail">

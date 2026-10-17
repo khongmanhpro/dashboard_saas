@@ -56,6 +56,30 @@ export interface LeadSummary {
   by_status: Record<LeadStatus, number>;
 }
 
+/** Loại sự kiện của khách (LeadEventType ở backend) và loại nhắc việc (NotificationType). */
+export const LEAD_EVENT_TYPES = [
+  "created",
+  "replied",
+  "phone_detected",
+  "called",
+  "status_changed",
+  "overdue",
+  "reminder_sent",
+  "reassigned",
+  "merged",
+] as const;
+export const REMINDER_TYPES = [
+  "wait_15",
+  "wait_30",
+  "phone_not_called",
+  "due_soon",
+  "overdue",
+  "callback_soon",
+  "callback_missed",
+  "manual",
+] as const;
+export type ReminderType = (typeof REMINDER_TYPES)[number];
+
 export interface TimelineItem {
   kind: "message" | "event";
   at: string;
