@@ -10,8 +10,11 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // Demo qua Cloudflare quick tunnel (README mục "Demo từ máy dev qua Cloudflare"): link dạng *.trycloudflare.com.
+    allowedHosts: [".trycloudflare.com"],
     proxy: {
       "/api": { target: backend, changeOrigin: false },
+      "/webhooks": { target: backend, changeOrigin: false },
       "/healthz": { target: backend },
     },
   },
