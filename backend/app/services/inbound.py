@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import ColumnElement, or_, select, update
+from sqlalchemy import ColumnElement, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,6 +32,7 @@ from app.models import (
     LeadEventType,
     LeadgenFetchStatus,
     LeadgenSubmission,
+    LeadPhone,
     LeadSource,
     LeadStatus,
     Message,
@@ -43,7 +44,7 @@ from app.models import (
     WorkspaceSettings,
 )
 from app.services.assignment import owner_at
-from app.services.phone import normalize_vn_phone
+from app.services.phone import extract_vn_phones, normalize_vn_phone
 from app.services.response_time import business_seconds
 
 log = logging.getLogger(__name__)
@@ -285,6 +286,140 @@ async def refresh_response(db: AsyncSession, lead: Lead, rules: WorkspaceRules) 
         )
 
 
+# ---------------------------------------------------------------- SĐT và gộp khách form
+
+
+async def _lock_phone(db: AsyncSession, page: Page, phone: str) -> None:
+    """Khóa theo (Trang, SĐT) tới hết transaction: tin nhắn và form cùng số đến cùng lúc thì
+    xử lý lần lượt, không tạo ra hai đợt không gộp được."""
+    await db.execute(
+        select(func.pg_advisory_xact_lock(func.hashtextextended(f"phone:{page.id}:{phone}", 0)))
+    )
+
+
+async def _add_phone(
+    db: AsyncSession,
+    lead: Lead,
+    phone: str,
+    source: str,
+    at: dt.datetime,
+    message_id: int | None = None,
+) -> bool:
+    """Lưu SĐT cho đợt. False nếu đợt đã có số này."""
+    inserted = await db.scalar(
+        pg_insert(LeadPhone)
+        .values(
+            workspace_id=lead.workspace_id,
+            lead_id=lead.id,
+            phone=phone,
+            source=source,
+            message_id=message_id,
+            detected_at=at,
+        )
+        .on_conflict_do_nothing(index_elements=["lead_id", "phone"])
+        .returning(LeadPhone.id)
+    )
+    return inserted is not None
+
+
+def _form_name(submission: LeadgenSubmission) -> str | None:
+    name = submission.field_data.get("full_name")
+    return str(name)[:200] if name else None
+
+
+async def _absorb_submissions(
+    db: AsyncSession, target: Lead, submissions: list[LeadgenSubmission]
+) -> None:
+    """Gắn form vào đợt nhắn tin: tên hiển thị và quảng cáo nếu đợt còn thiếu."""
+    contact = await db.get(Contact, target.contact_id) if target.contact_id else None
+    for sub in submissions:
+        sub.lead_id = target.id
+        if contact is not None and contact.display_name is None:
+            contact.display_name = _form_name(sub)
+        if target.fb_ad_id is None and sub.fb_ad_id:
+            target.fb_ad_id = sub.fb_ad_id
+
+
+async def merge_form_leads(
+    db: AsyncSession, message_lead: Lead, phone: str, rules: WorkspaceRules
+) -> int:
+    """Gộp các đợt form cùng Trang, cùng SĐT, trong cùng đợt vào `message_lead` (quyết định #16).
+
+    Chỉ gộp đợt form chưa ai đụng vào (Mới, chưa gọi, chưa có kết quả).
+    """
+    last = message_lead.last_inbound_at or message_lead.first_inbound_at
+    candidates = list(
+        await db.scalars(
+            select(Lead)
+            .where(
+                Lead.page_id == message_lead.page_id,
+                Lead.source == LeadSource.LEADGEN,
+                Lead.merged_into_lead_id.is_(None),
+                Lead.phone == phone,
+                Lead.status == LeadStatus.NEW,
+                Lead.called_at.is_(None),
+                Lead.result_at.is_(None),
+                Lead.first_inbound_at >= message_lead.first_inbound_at - rules.session_gap,
+                Lead.first_inbound_at <= last + rules.session_gap,
+            )
+            .with_for_update()
+        )
+    )
+    for form_lead in candidates:
+        form_lead.merged_into_lead_id = message_lead.id
+        submissions = list(
+            await db.scalars(
+                select(LeadgenSubmission).where(LeadgenSubmission.lead_id == form_lead.id)
+            )
+        )
+        await _absorb_submissions(db, message_lead, submissions)
+        await _add_phone(db, message_lead, phone, "leadgen", form_lead.first_inbound_at)
+        now = dt.datetime.now(dt.UTC)
+        _add_event(db, message_lead, LeadEventType.MERGED, now, {"from_lead_id": str(form_lead.id)})
+        _add_event(db, form_lead, LeadEventType.MERGED, now, {"into_lead_id": str(message_lead.id)})
+    return len(candidates)
+
+
+async def _record_message_phones(
+    db: AsyncSession, page: Page, lead: Lead, message: Message, rules: WorkspaceRules
+) -> None:
+    for phone in extract_vn_phones(message.text):
+        await _lock_phone(db, page, phone)
+        if not await _add_phone(db, lead, phone, "message", message.sent_at, message.id):
+            continue
+        if lead.phone is None:
+            lead.phone = phone
+            lead.phone_source = "message"
+            lead.phone_captured_at = message.sent_at
+            # Không ghi SĐT vào lịch sử: hồ sơ khách đã có, lịch sử chỉ cần mốc thời gian.
+            _add_event(
+                db, lead, LeadEventType.PHONE_DETECTED, message.sent_at, {"source": "message"}
+            )
+        await merge_form_leads(db, lead, phone, rules)
+
+
+async def _message_lead_with_phone(
+    db: AsyncSession, page: Page, phone: str, at: dt.datetime, rules: WorkspaceRules
+) -> Lead | None:
+    """Đợt nhắn tin đang mở của khách có SĐT này, quanh thời điểm `at`."""
+    last = func.coalesce(Lead.last_inbound_at, Lead.first_inbound_at)
+    return await db.scalar(
+        select(Lead)
+        .join(LeadPhone, LeadPhone.lead_id == Lead.id)
+        .where(
+            Lead.page_id == page.id,
+            Lead.source == LeadSource.MESSAGE,
+            Lead.merged_into_lead_id.is_(None),
+            LeadPhone.phone == phone,
+            Lead.first_inbound_at <= at + rules.session_gap,
+            last >= at - rules.session_gap,
+        )
+        .order_by(Lead.first_inbound_at.desc())
+        .limit(1)
+        .with_for_update(of=Lead)
+    )
+
+
 # ---------------------------------------------------------------- từng loại sự kiện
 
 
@@ -310,24 +445,25 @@ async def handle_message(
         # Để sếp biết app_id nào là tin tự động mà điền META_AUTOMATED_APP_IDS.
         log.info("echo", extra={"ctx": {"app_id": ev.app_id or "none", "automated": automated}})
 
-    db.add(
-        Message(
-            workspace_id=page.workspace_id,
-            page_id=page.id,
-            contact_id=contact.id,
-            lead_id=lead.id if lead else None,
-            mid=ev.mid,
-            direction=MessageDirection.IN if ev.kind == "in" else MessageDirection.OUT,
-            is_echo=ev.kind == "echo",
-            app_id=ev.app_id,
-            is_automated=automated,
-            sent_at=ev.sent_at,
-            text=ev.text,
-            has_attachments=ev.has_attachments,
-            meta={"metadata": ev.metadata} if ev.metadata else None,
-        )
+    message = Message(
+        workspace_id=page.workspace_id,
+        page_id=page.id,
+        contact_id=contact.id,
+        lead_id=lead.id if lead else None,
+        mid=ev.mid,
+        direction=MessageDirection.IN if ev.kind == "in" else MessageDirection.OUT,
+        is_echo=ev.kind == "echo",
+        app_id=ev.app_id,
+        is_automated=automated,
+        sent_at=ev.sent_at,
+        text=ev.text,
+        has_attachments=ev.has_attachments,
+        meta={"metadata": ev.metadata} if ev.metadata else None,
     )
+    db.add(message)
     await db.flush()
+    if lead is not None and ev.kind == "in":
+        await _record_message_phones(db, page, lead, message, rules)
     if lead is not None:
         await refresh_response(db, lead, rules)
     return Outcome.PROCESSED
@@ -366,6 +502,31 @@ async def handle_leadgen(
     field_data = field_data or {}
     phone = normalize_vn_phone(field_data.get("phone_number", ""))
 
+    submission = LeadgenSubmission(
+        workspace_id=page.workspace_id,
+        leadgen_id=ev.leadgen_id,
+        page_id=page.id,
+        form_id=ev.form_id,
+        fb_ad_id=ev.fb_ad_id,
+        created_time=ev.created_time,
+        field_data=field_data,
+        fetch_status=fetch_status,
+    )
+    if phone:
+        await _lock_phone(db, page, phone)
+        target = await _message_lead_with_phone(db, page, phone, ev.created_time, rules)
+        if target is not None:
+            # Khách đã nhắn tin và để lại số này: gắn form vào đợt đó, không mở đợt mới.
+            db.add(submission)
+            await db.flush()
+            await _absorb_submissions(db, target, [submission])
+            await _add_phone(db, target, phone, "leadgen", ev.created_time)
+            _add_event(
+                db, target, LeadEventType.MERGED, ev.created_time, {"leadgen_id": ev.leadgen_id}
+            )
+            await db.flush()
+            return Outcome.PROCESSED
+
     owner = await owner_at(db, page.id, ev.created_time)
     lead = Lead(
         id=uuid7(),
@@ -385,19 +546,10 @@ async def handle_leadgen(
     )
     db.add(lead)
     await db.flush()
-    db.add(
-        LeadgenSubmission(
-            workspace_id=page.workspace_id,
-            leadgen_id=ev.leadgen_id,
-            page_id=page.id,
-            form_id=ev.form_id,
-            fb_ad_id=ev.fb_ad_id,
-            created_time=ev.created_time,
-            field_data=field_data,
-            fetch_status=fetch_status,
-            lead_id=lead.id,
-        )
-    )
+    submission.lead_id = lead.id
+    db.add(submission)
+    if phone:
+        await _add_phone(db, lead, phone, "leadgen", ev.created_time)
     _add_event(
         db,
         lead,

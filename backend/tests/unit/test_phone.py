@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.phone import mask_phone, normalize_vn_phone
+from app.services.phone import (
+    extract_vn_phones,
+    mask_phone,
+    mask_phones_in_text,
+    normalize_vn_phone,
+)
 
 
 @pytest.mark.parametrize(
@@ -42,3 +47,36 @@ def test_mask_matches_design(raw: str) -> None:
 def test_mask_unknown_format_keeps_only_last_three() -> None:
     assert mask_phone("12345678") == "•••••678"
     assert mask_phone("12") == "••"
+
+
+# ---------------------------------------------------------------- tìm SĐT trong tin nhắn
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("số mình 0912345678 nhé", ["0912345678"]),
+        ("0912 345 678", ["0912345678"]),
+        ("0912.345.678", ["0912345678"]),
+        ("0912-345-678", ["0912345678"]),
+        ("+84912345678", ["0912345678"]),
+        ("+84 912 345 678", ["0912345678"]),
+        ("84912345678", ["0912345678"]),
+        ("gọi 0382345678 hoặc 0582345678", ["0382345678", "0582345678"]),
+        ("0912345678 và lại 0912345678", ["0912345678"]),
+        ("đầu 02 không phải di động: 0212345678", []),
+        ("đầu 1 cũ: 01234567890", []),
+        ("thiếu số 091234567", []),
+        ("dính vào dãy dài 109123456789", []),
+        ("mã đơn 09123456789", []),
+        ("", []),
+        (None, []),
+    ],
+)
+def test_extract_vn_phones(text: str | None, expected: list[str]) -> None:
+    assert extract_vn_phones(text) == expected
+
+
+def test_mask_phones_in_text() -> None:
+    assert mask_phones_in_text("gọi 0912 345 218 chiều nay") == "gọi 09•• ••• 218 chiều nay"
+    assert mask_phones_in_text("không có số") == "không có số"
