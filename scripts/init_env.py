@@ -1,6 +1,7 @@
-"""Tạo file .env cho máy dev từ .env.example, điền bí mật ngẫu nhiên.
+"""Tạo file .env từ .env.example, điền bí mật ngẫu nhiên.
 
-    python3 scripts/init_env.py
+    python3 scripts/init_env.py                              # máy dev (MOCK_MODE=true)
+    python3 scripts/init_env.py --prod --domain app.vidu.vn  # production (decisions.md mục S)
 
 - Không ghi đè .env đã có.
 - Không in bí mật ra màn hình.
@@ -11,6 +12,7 @@ from __future__ import annotations
 
 import base64
 import os
+import re
 import secrets
 import sys
 from pathlib import Path
@@ -87,6 +89,34 @@ DEV_VALUES = {
 }
 
 
+# Mã do chủ sở hữu giữ: để trống, chủ sở hữu tự dán trên VPS (CLAUDE.md mục 5).
+OWNER_FILLED = [
+    "META_APP_ID",
+    "META_APP_SECRET",
+    "CLOUDFLARE_TUNNEL_TOKEN",
+    "BACKUP_AGE_RECIPIENT",
+    "R2_ACCOUNT_ID",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_BUCKET",
+    "BOOTSTRAP_WORKSPACE_NAME",
+    "BOOTSTRAP_OWNER_EMAIL",
+    "BOOTSTRAP_OWNER_PASSWORD",
+]
+_DOMAIN = re.compile(r"^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
+
+
+def prod_values(domain: str) -> dict[str, str]:
+    return DEV_VALUES | {
+        "APP_ENV": "production",
+        "APP_BASE_URL": f"https://{domain}",
+        "APP_DOMAIN": domain,
+        "MOCK_MODE": "false",
+        # Bí mật Meta thật do chủ sở hữu dán, không sinh giá trị giả như máy dev.
+        "META_APP_SECRET": "",
+    }
+
+
 def add_vapid() -> int:
     """Thêm khóa VAPID vào .env đã có (chỉ khi còn trống), không đụng giá trị khác."""
     if not TARGET.exists():
@@ -108,23 +138,36 @@ def add_vapid() -> int:
 def main() -> int:
     if "--add-vapid" in sys.argv:
         return add_vapid()
-    if TARGET.exists():
-        print(".env đã tồn tại, không ghi đè.", file=sys.stderr)
+    target = Path(os.environ.get("ENV_TARGET", TARGET))
+    values = DEV_VALUES
+    if "--prod" in sys.argv:
+        args = sys.argv[1:]
+        domain = args[args.index("--domain") + 1].strip().lower() if "--domain" in args[:-1] else ""
+        if not _DOMAIN.match(domain):
+            print("Cần tên miền hợp lệ: make env-prod DOMAIN=app.vidu.vn", file=sys.stderr)
+            return 2
+        values = prod_values(domain)
+    if target.exists():
+        print(f"{target.name} đã tồn tại, không ghi đè.", file=sys.stderr)
         return 1
     lines_out: list[str] = []
     for line in EXAMPLE.read_text(encoding="utf-8").splitlines():
         key, sep, rest = line.partition("=")
         key = key.strip()
-        if sep and not line.lstrip().startswith("#") and key in DEV_VALUES:
+        if sep and not line.lstrip().startswith("#") and key in values:
             comment = ""
             if "#" in rest:
                 comment = "  #" + rest.split("#", 1)[1]
-            lines_out.append(f"{key}={DEV_VALUES[key]}{comment}")
+            lines_out.append(f"{key}={values[key]}{comment}")
         else:
             lines_out.append(line)
-    TARGET.write_text("\n".join(lines_out) + "\n", encoding="utf-8")
-    TARGET.chmod(0o600)
-    print("Đã tạo .env (quyền 600). Bí mật được sinh ngẫu nhiên, không in ra đây.")
+    target.write_text("\n".join(lines_out) + "\n", encoding="utf-8")
+    target.chmod(0o600)
+    print(f"Đã tạo {target.name} (quyền 600). Bí mật được sinh ngẫu nhiên, không in ra đây.")
+    if values is not DEV_VALUES:
+        print("Chủ sở hữu tự điền các biến còn trống (xem docs/deploy.md):")
+        for key in OWNER_FILLED:
+            print(f"  - {key}")
     return 0
 
 
