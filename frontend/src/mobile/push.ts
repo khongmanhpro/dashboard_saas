@@ -22,9 +22,10 @@ export function base64UrlToBytes(value: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
+/** Đăng ký đẩy hiện có. Không chờ `serviceWorker.ready` (có thể treo khi chưa có service worker). */
 async function currentSubscription(): Promise<PushSubscription | null> {
-  const registration = await navigator.serviceWorker.ready;
-  return registration.pushManager.getSubscription();
+  const registration = await navigator.serviceWorker.getRegistration();
+  return registration ? registration.pushManager.getSubscription() : null;
 }
 
 export async function pushState(): Promise<PushState> {

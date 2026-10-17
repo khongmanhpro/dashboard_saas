@@ -67,6 +67,7 @@ test("Nhân viên chỉ thấy điểm của mình, người khác chỉ tên v�
   await page.goto("/staff");
   await page.getByRole("button", { name: "Tính lại ngay" }).click();
   await page.getByRole("button", { name: "Đăng xuất" }).click();
+  await expect(page).toHaveURL("/login");
 
   await login(page, "staff");
   await page.goto("/staff");

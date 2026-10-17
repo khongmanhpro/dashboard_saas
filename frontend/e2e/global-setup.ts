@@ -35,6 +35,9 @@ export default function globalSetup(): void {
       lead("flow", "e2e-staff@example.com", "100000000000901", "[Trang E2E 1]", run, "0900 000 911"),
       lead("viewer", "e2e-staff@example.com", "100000000000901", "[Trang E2E 1]", run, "0900 000 922"),
       lead("other", "e2e-team-lead@example.com", "100000000000902", "[Trang E2E 2]", run, "0900 000 933"),
+      // Khách cho ứng dụng điện thoại (Bước 5).
+      lead("mobile_call", "e2e-staff@example.com", "100000000000901", "[Trang E2E 1]", run, "0900 000 966"),
+      lead("mobile_later", "e2e-staff@example.com", "100000000000901", "[Trang E2E 1]", run, "0900 000 977"),
       // Đủ 10 khách trong tuần để nhân viên và trưởng nhóm có điểm (Bước 4).
       { ...lead("score_staff", "e2e-staff@example.com", "100000000000901", "[Trang E2E 1]", run, "0900 000 944"), count: 10, reply_seconds: 120 },
       { ...lead("score_lead", "e2e-team-lead@example.com", "100000000000902", "[Trang E2E 2]", run, "0900 000 955"), count: 10, reply_seconds: 3600 },

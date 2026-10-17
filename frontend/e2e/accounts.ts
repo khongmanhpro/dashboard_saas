@@ -15,7 +15,7 @@ export function account(role: E2ERole): E2EAccount {
 
 export interface E2ELeads {
   run: string;
-  ids: Record<"flow" | "viewer" | "other", string>;
+  ids: Record<"flow" | "viewer" | "other" | "mobile_call" | "mobile_later", string>;
 }
 
 /** Khách do global-setup tạo cho lần chạy này. */

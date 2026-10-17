@@ -47,8 +47,9 @@ export function useLogout() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      // Máy này không nhận nhắc việc của người vừa đăng xuất nữa.
-      await disablePush().catch(() => undefined);
+      // Máy này không nhận nhắc việc của người vừa đăng xuất nữa. Không để việc này chặn đăng xuất.
+      const timeout = new Promise<void>((resolve) => setTimeout(resolve, 2000));
+      await Promise.race([disablePush().catch(() => undefined), timeout]);
       await api<void>("/api/auth/logout", { method: "POST" });
     },
     onSettled: () => {

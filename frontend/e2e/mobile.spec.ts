@@ -1,19 +1,91 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-import { account } from "./accounts";
+import { account, e2eLeads, leadName, type E2ERole } from "./accounts";
 
-test("nhân viên mở /m trên điện thoại", async ({ page }) => {
-  const { email, password } = account("staff");
+async function login(page: Page, role: E2ERole) {
+  const { email, password } = account(role);
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Mật khẩu").fill(password);
   await page.getByRole("button", { name: "Đăng nhập" }).click();
-  await expect(page).toHaveURL("/staff");
+  await expect(page).not.toHaveURL("/login");
+}
 
+test("nhân viên mở /m trên điện thoại", async ({ page }) => {
+  await login(page, "staff");
   await page.goto("/m");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Khách của tôi");
+  await expect(page.getByRole("tablist", { name: "Danh sách khách" })).toBeVisible();
   await expect(page.locator(".badge-sample")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Điều hướng" })).toBeVisible();
   // Không bị tràn ngang trên màn hình hẹp.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test.describe("trên điện thoại", () => {
+  // Các test này đổi dữ liệu khách nên chỉ chạy một lần, ở khung điện thoại.
+  test.skip(({ isMobile }) => !isMobile, "chỉ chạy ở project mobile");
+
+  test("Gọi → Chốt: khách sang tab Đã xong", async ({ page }) => {
+    await login(page, "staff");
+    await page.goto("/m");
+    // Không mở trình gọi điện thật trong trình duyệt test; onClick của React vẫn chạy.
+    await page.evaluate(() =>
+      document.addEventListener(
+        "click",
+        (e) => {
+          if ((e.target as Element).closest('a[href^="tel:"]')) e.preventDefault();
+        },
+        true,
+      ),
+    );
+    const card = page.getByTestId("m-card").filter({ hasText: leadName("mobile_call") });
+    await expect(card).toBeVisible();
+    await expect(card.getByText("Có SĐT · chưa gọi")).toBeVisible();
+    await card.getByRole("link", { name: "Gọi" }).click();
+    await expect(card.getByRole("link", { name: "✓ Đã gọi" })).toBeVisible();
+
+    await card.getByRole("button", { name: "Chốt" }).click();
+    const sheet = page.getByRole("dialog", { name: "Chốt đơn" });
+    await sheet.getByLabel("Giá trị đơn").fill("2450000");
+    await sheet.getByRole("button", { name: "Lưu" }).click();
+    await expect(sheet).toHaveCount(0);
+    await expect(page.getByTestId("m-card").filter({ hasText: leadName("mobile_call") })).toHaveCount(0);
+
+    await page.getByRole("tab", { name: /Đã xong/ }).click();
+    const done = page.getByTestId("m-card").filter({ hasText: leadName("mobile_call") });
+    await expect(done.getByText("Đã chốt · 2.450.000 ₫")).toBeVisible();
+  });
+
+  test("Hẹn Mai 9:00: khách sang tab Hẹn lại", async ({ page }) => {
+    await login(page, "staff");
+    await page.goto("/m");
+    const card = page.getByTestId("m-card").filter({ hasText: leadName("mobile_later") });
+    await card.getByRole("button", { name: "Hẹn" }).click();
+    const sheet = page.getByRole("dialog", { name: "Hẹn gọi lại" });
+    await sheet.getByRole("button", { name: "Mai 9:00" }).click();
+    await sheet.getByRole("button", { name: "Lưu" }).click();
+    await page.getByRole("tab", { name: /Hẹn lại/ }).click();
+    await expect(page.getByTestId("m-card").filter({ hasText: leadName("mobile_later") }).getByText(/^hẹn /)).toBeVisible();
+  });
+
+  test("Chủ sở hữu bấm Nhắc trên máy tính, nhân viên thấy trong Nhắc việc", async ({ page, browser }) => {
+    const desktop = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const boss = await desktop.newPage();
+    await login(boss, "owner");
+    await boss.goto(`/leads/${e2eLeads().ids.viewer}`);
+    await boss.getByRole("button", { name: "Nhắc người phụ trách" }).click();
+    await expect(boss.getByRole("status").filter({ hasText: "Đã gửi nhắc việc" })).toBeVisible();
+    await desktop.close();
+
+    await login(page, "staff");
+    await page.goto("/m");
+    await expect(page.getByTestId("m-unread")).toBeVisible();
+    await page.getByRole("navigation", { name: "Điều hướng" }).getByRole("link", { name: /Nhắc việc/ }).click();
+    const notice = page.getByTestId("m-notice").filter({ hasText: leadName("viewer") }).first();
+    await expect(notice).toContainText("nhắc bạn xử lý");
+    await notice.click();
+    await expect(page).toHaveURL(`/m/leads/${e2eLeads().ids.viewer}`);
+    await expect(page.getByRole("heading", { level: 1, name: leadName("viewer") })).toBeVisible();
+  });
 });

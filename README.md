@@ -2,7 +2,7 @@
 
 Bối cảnh sản phẩm và quy tắc nghiệp vụ: [CLAUDE.md](CLAUDE.md). Các quyết định đã chốt: [docs/architecture/decisions.md](docs/architecture/decisions.md). Mô hình dữ liệu cho cả 7 bước: [docs/architecture/data-model.md](docs/architecture/data-model.md). Phân quyền: [docs/architecture/rbac.md](docs/architecture/rbac.md).
 
-**Trạng thái:** xong Bước 1 (khung dự án), Bước 2 (webhook Meta, thời gian trả lời), Bước 3 (Khách hàng) và Bước 4 (điểm và xếp hạng). Các màn hình khác đang là trang giữ chỗ.
+**Trạng thái:** xong Bước 1–5 (khung dự án, webhook Meta và thời gian trả lời, Khách hàng, điểm và xếp hạng, ứng dụng điện thoại). Các màn hình khác đang là trang giữ chỗ.
 
 ## Chạy trên máy dev
 
@@ -57,6 +57,22 @@ Test backend tự tạo lại DB `fanpage_test` mỗi lần chạy và từ ch�
 - Hàm tính điểm thuần nằm ở `app/services/scoring.py`. Job, nút "Tính lại ngay" và "xem thử" đều gọi `score_service.compute_period`, nên cho cùng một kết quả.
 - Màn hình `/staff` (bảng xếp hạng), `/staff/:id` (hồ sơ), `/settings#score` (công thức). Chỉ Chủ sở hữu sửa được công thức; lưu là thêm phiên bản mới và áp dụng ngay cho kỳ chưa chốt.
 - "Chăm Trang" chưa có số liệu tới Bước 7, nên trọng số của tiêu chí này được chia lại cho các tiêu chí khác (xem `docs/architecture/decisions.md`, mục F).
+
+## Ứng dụng điện thoại (Bước 5)
+
+- Đường dẫn `/m` (PWA): Khách của tôi (3 tab, nút Gọi / Chốt / Hẹn / Hủy), Điểm của tôi, Nhắc việc, Tài khoản. Chỉ hiện khách của chính người đăng nhập.
+- Job `send_reminders` chạy mỗi 5 phút, tạo nhắc việc theo các mốc trong `docs/architecture/decisions.md` (mục G) và gửi thông báo đẩy (Web Push).
+- Thông báo đẩy cần `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`. `make env` tự sinh khóa; với `.env` đã có thì chạy `make vapid`. Thiếu khóa thì nhắc việc vẫn hiện trong app, chỉ không có thông báo đẩy.
+- Service worker (`frontend/public/sw.js`) chỉ lưu khung giao diện, không lưu dữ liệu `/api`.
+- Biểu tượng tạm sinh bằng `python3 scripts/make_icons.py`; thay khi sản phẩm có logo.
+
+### Kiểm tra cài lên điện thoại thật
+
+Việc cài cần HTTPS, nên làm trên bản production (`APP_DOMAIN`), không làm được qua `localhost`.
+
+1. **Android (Chrome):** mở `https://<tên miền>/m` → đăng nhập → menu ⋮ → "Cài đặt ứng dụng" (hoặc "Thêm vào màn hình chính"). Mở app từ màn hình chính → Tài khoản → Bật thông báo.
+2. **iPhone (Safari, iOS 16.4 trở lên):** mở `https://<tên miền>/m` → nút Chia sẻ → "Thêm vào MH chính". **Mở app từ màn hình chính** rồi vào Tài khoản → Bật thông báo (Safari thường không bật được thông báo đẩy).
+3. Thử nhận thông báo: Quản lý mở một khách của nhân viên trên máy tính → "Nhắc người phụ trách". Điện thoại nhân viên phải hiện thông báo; bấm vào thì mở đúng khách.
 
 ## Lệnh quản trị
 
