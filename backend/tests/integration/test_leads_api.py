@@ -108,7 +108,8 @@ async def test_reminders_sent_together_are_one_timeline_row(
     lead_id = await lead_id_of(admin_db, "p1-b")
     ws = await admin_db.scalar(select(Lead.workspace_id).where(Lead.id == lead_id))
     at = NOW - dt.timedelta(hours=1)
-    for when, kind in ((at, "overdue"), (at, "phone_not_called"), (at, "overdue"), (NOW, "wait_30")):
+    sent = ((at, "overdue"), (at, "phone_not_called"), (at, "overdue"), (NOW, "wait_30"))
+    for when, kind in sent:
         admin_db.add(
             LeadEvent(
                 workspace_id=ws,
