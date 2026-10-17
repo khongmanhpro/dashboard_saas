@@ -2,7 +2,7 @@
 
 Bối cảnh sản phẩm và quy tắc nghiệp vụ: [CLAUDE.md](CLAUDE.md). Các quyết định đã chốt: [docs/architecture/decisions.md](docs/architecture/decisions.md). Mô hình dữ liệu cho cả 7 bước: [docs/architecture/data-model.md](docs/architecture/data-model.md). Phân quyền: [docs/architecture/rbac.md](docs/architecture/rbac.md).
 
-**Trạng thái:** xong Bước 1 (khung dự án). Chưa có webhook và các màn hình nghiệp vụ.
+**Trạng thái:** xong Bước 1 (khung dự án) và Bước 2 (webhook Meta, thời gian trả lời). Chưa có các màn hình nghiệp vụ.
 
 ## Chạy trên máy dev
 
@@ -11,8 +11,11 @@ Cần Docker Desktop, Python 3 (chỉ để chạy script tạo `.env`) và Node
 ```bash
 make env     # tạo .env với bí mật ngẫu nhiên (không ghi đè nếu đã có)
 make up      # db, redis, migrate, backend, worker, frontend
-make seed    # dữ liệu demo: 5 vai trò, mật khẩu ghi vào backend/.dev-credentials
+make seed    # dữ liệu demo: 5 vai trò, 4 Trang demo, mật khẩu ghi vào backend/.dev-credentials
+make simulate  # giả lập webhook cho 4 Trang demo, in số phút trả lời so với mong đợi
 ```
+
+`make simulate` đọc kịch bản trong `backend/tests/fixtures/meta/simulate_scenarios.json`, ký payload bằng `META_APP_SECRET`, gửi vào `/webhooks/meta` và chờ worker xử lý. Chỉ chạy khi `MOCK_MODE=true`. File `.env` tạo trước Bước 2 cần thêm `META_APP_SECRET` (chuỗi ngẫu nhiên cho máy dev) rồi `make up` lại.
 
 Mở http://localhost:5173 và đăng nhập bằng một tài khoản trong `backend/.dev-credentials`. File này nằm trong `.gitignore` và có quyền 600.
 
@@ -33,6 +36,13 @@ cd frontend && npx playwright install chromium && npm run e2e   # cần stack đ
 ```
 
 Test backend tự tạo lại DB `fanpage_test` mỗi lần chạy và từ chối xóa bất kỳ DB nào không có đuôi `_test`.
+
+## Webhook Meta
+
+- `GET /webhooks/meta`: Meta xác minh bằng `META_WEBHOOK_VERIFY_TOKEN`.
+- `POST /webhooks/meta`: kiểm tra `X-Hub-Signature-256` bằng `META_APP_SECRET` (sai thì 403), đẩy vào hàng đợi arq, trả 200. Worker (`app/workers/webhook.py`) xử lý, chặn lặp theo `mid` / `leadgen_id`, lỗi thì thử lại có backoff.
+- Worker dùng tài khoản DB ứng dụng. Để biết Trang thuộc workspace nào, nó gọi hàm `app_route_page(fb_page_id)`, hàm này chỉ trả về `workspace_id`.
+- Thời gian trả lời chỉ tính trong giờ làm việc của workspace (`app/services/response_time.py`). Echo có `app_id` nằm trong `META_AUTOMATED_APP_IDS` là tin tự động, không tính. Worker log mỗi echo kèm `app_id` để điền danh sách này khi ứng dụng đã Live.
 
 ## Lệnh quản trị
 
