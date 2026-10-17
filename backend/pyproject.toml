@@ -64,6 +64,6 @@ plugins = ["pydantic.mypy"]
 exclude = ["migrations/"]
 
 [[tool.mypy.overrides]]
-# pywebpush không có type hints; chỉ dùng hàm webpush và WebPushException.
-module = ["pywebpush", "pywebpush.*"]
+# pywebpush và openpyxl không có type hints.
+module = ["pywebpush", "pywebpush.*", "openpyxl", "openpyxl.*"]
 ignore_missing_imports = true
