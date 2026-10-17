@@ -2,7 +2,7 @@
 
 Bối cảnh sản phẩm và quy tắc nghiệp vụ: [CLAUDE.md](CLAUDE.md). Các quyết định đã chốt: [docs/architecture/decisions.md](docs/architecture/decisions.md). Mô hình dữ liệu cho cả 7 bước: [docs/architecture/data-model.md](docs/architecture/data-model.md). Phân quyền: [docs/architecture/rbac.md](docs/architecture/rbac.md).
 
-**Trạng thái:** xong Bước 1 (khung dự án), Bước 2 (webhook Meta, thời gian trả lời) và Bước 3 (Khách hàng). Các màn hình khác đang là trang giữ chỗ.
+**Trạng thái:** xong Bước 1 (khung dự án), Bước 2 (webhook Meta, thời gian trả lời), Bước 3 (Khách hàng) và Bước 4 (điểm và xếp hạng). Các màn hình khác đang là trang giữ chỗ.
 
 ## Chạy trên máy dev
 
@@ -50,6 +50,13 @@ Test backend tự tạo lại DB `fanpage_test` mỗi lần chạy và từ ch�
 - API `GET /api/leads`, `/api/leads/summary`, `/api/leads/filter-options`, `/api/leads/{id}`; ghi qua `POST /api/leads/{id}/called` và `PUT /api/leads/{id}/result`. Phạm vi theo vai trò áp trong câu truy vấn (`app/services/lead_service.py`).
 - SĐT được nhận tự động trong tin của khách, kể cả khi viết có dấu cách hoặc dấu chấm. Người không có quyền xem SĐT chỉ thấy số đã che, kể cả trong nội dung tin nhắn. Khách gửi form được gộp với khách nhắn tin nếu cùng Trang, cùng SĐT, trong cùng đợt.
 - Quy tắc cập nhật kết quả: xem `docs/architecture/decisions.md`, mục E.
+
+## Điểm và xếp hạng (Bước 4)
+
+- Job `nightly_scores` chạy lúc 01:00 giờ Việt Nam: tính tuần hiện tại (T2–CN), 7 ngày, 30 ngày, tháng này; đêm thứ Hai chốt tuần trước (`is_final`, không bao giờ tính lại).
+- Hàm tính điểm thuần nằm ở `app/services/scoring.py`. Job, nút "Tính lại ngay" và "xem thử" đều gọi `score_service.compute_period`, nên cho cùng một kết quả.
+- Màn hình `/staff` (bảng xếp hạng), `/staff/:id` (hồ sơ), `/settings#score` (công thức). Chỉ Chủ sở hữu sửa được công thức; lưu là thêm phiên bản mới và áp dụng ngay cho kỳ chưa chốt.
+- "Chăm Trang" chưa có số liệu tới Bước 7, nên trọng số của tiêu chí này được chia lại cho các tiêu chí khác (xem `docs/architecture/decisions.md`, mục F).
 
 ## Lệnh quản trị
 

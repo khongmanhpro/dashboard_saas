@@ -41,6 +41,9 @@ function FormulaEditor({ formula, timeZone }: { formula: Formula; timeZone: stri
   const editable = formula.can_edit;
   const debounced = useDebounced(weights, 300);
   const preview = usePreview(debounced, editable && weightsTotal(debounced) === 100);
+  // Số xem thử chỉ đúng khi đã tính xong cho đúng bộ trọng số đang hiện.
+  const previewStale =
+    total !== 100 || !sameWeights(debounced, weights) || preview.isFetching || preview.isPlaceholderData;
   const p = { a: formula.tier_a, b: formula.tier_b, c: formula.tier_c, a1: formula.tier_a - 1, b1: formula.tier_b - 1 };
   const error = save.error ?? recompute.error;
 
@@ -94,7 +97,7 @@ function FormulaEditor({ formula, timeZone }: { formula: Formula; timeZone: stri
             </div>
           ))}
         </div>
-        <aside className="preview">
+        <aside className={previewStale ? "preview preview--stale" : "preview"} aria-busy={previewStale}>
           {editable ? (
             <>
               <b>{t.settings.score.previewTitle}</b>
@@ -166,7 +169,7 @@ export function SettingsPage() {
         </nav>
       </div>
       {formula.data ? (
-        <FormulaEditor key={formula.data.version} formula={formula.data} timeZone={me.workspace.timezone} />
+        <FormulaEditor formula={formula.data} timeZone={me.workspace.timezone} />
       ) : (
         <div className="muted">{t.app.loading}</div>
       )}

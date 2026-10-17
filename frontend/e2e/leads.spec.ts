@@ -71,8 +71,13 @@ test("dạng bảng và ô lọc nhanh", async ({ page }) => {
   await page.goto("/leads");
   await page.getByRole("button", { name: "Dạng bảng" }).click();
   await page.getByLabel("Tìm khách").fill(e2eLeads().run);
-  await expect(page.getByTestId("lead-row")).toHaveCount(3);
+  const rows = page.getByTestId("lead-row");
+  for (const key of ["flow", "viewer", "other"] as const) {
+    await expect(rows.filter({ hasText: leadName(key) })).toBeVisible();
+  }
   await page.getByRole("button", { name: /Có SĐT chưa gọi/ }).click();
-  await expect(page.getByTestId("lead-row").filter({ hasText: leadName("viewer") })).toBeVisible();
+  await expect(rows.filter({ hasText: leadName("viewer") })).toBeVisible();
+  // Khách đã Chốt và đã gọi ở test đầu thì không còn trong ô lọc này.
+  await expect(rows.filter({ hasText: leadName("flow") })).toHaveCount(0);
   await page.getByRole("button", { name: "Theo cột" }).click();
 });

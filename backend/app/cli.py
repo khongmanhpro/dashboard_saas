@@ -104,6 +104,24 @@ async def bootstrap_owner() -> str:
     return "Tài khoản đã tồn tại, giữ nguyên mật khẩu hiện tại."
 
 
+def _e2e_event(fb_page_id: str, psid: str, kind: str, mid: str, at: Any, text: str) -> Any:
+    from app.meta.events import MessageEvent
+
+    return MessageEvent(
+        kind=kind,
+        fb_page_id=fb_page_id,
+        psid=psid,
+        mid=mid,
+        sent_at=at,
+        text=text,
+        has_attachments=False,
+        app_id=None,
+        metadata=None,
+        referral=None,
+        raw={},
+    )
+
+
 async def _seed_e2e_leads(
     db: AsyncSession,
     ws: Workspace,
@@ -113,7 +131,6 @@ async def _seed_e2e_leads(
     """Mỗi lần chạy tạo khách mới (PSID mới) trên Trang E2E, đi qua đúng service của worker."""
     import datetime as dt
 
-    from app.meta.events import MessageEvent
     from app.models import BusinessManager, Contact, Lead, Page
     from app.services import inbound
     from app.services.assignment import assign_page, owner_at
@@ -147,29 +164,38 @@ async def _seed_e2e_leads(
         member = members[spec["owner"]]
         if await owner_at(db, page.id, now - dt.timedelta(minutes=10)) != member.id:
             await assign_page(db, page, member, now - dt.timedelta(minutes=30), reason="[E2E]")
-        psid = spec["psid"]
-        event = MessageEvent(
-            kind="in",
-            fb_page_id=page.fb_page_id,
-            psid=psid,
-            mid=f"m_{psid}",
-            sent_at=now - dt.timedelta(minutes=10),
-            text=spec["text"],
-            has_attachments=False,
-            app_id=None,
-            metadata=None,
-            referral=None,
-            raw={},
-        )
-        await inbound.handle_message(db, page, rules, event)
-        contact = await db.scalar(
-            select(Contact).where(Contact.page_id == page.id, Contact.psid == psid)
-        )
-        if contact is None:
-            raise CliError("không tạo được khách e2e")
-        contact.display_name = spec["name"]
-        lead_id = await db.scalar(select(Lead.id).where(Lead.contact_id == contact.id))
-        lead_ids[spec["key"]] = str(lead_id)
+        # `count` > 1: tạo nhiều khách (để người phụ trách đủ số khách tối thiểu được tính điểm).
+        count = int(spec.get("count", 1))
+        reply_seconds = spec.get("reply_seconds")
+        for i in range(count):
+            psid = spec["psid"] if count == 1 else f"{spec['psid']}-{i}"
+            sent_at = now - dt.timedelta(minutes=10) + dt.timedelta(seconds=i)
+
+            await inbound.handle_message(
+                db,
+                page,
+                rules,
+                _e2e_event(page.fb_page_id, psid, "in", f"m_{psid}", sent_at, spec["text"]),
+            )
+            if reply_seconds is not None:
+                reply_at = sent_at + dt.timedelta(seconds=int(reply_seconds))
+                await inbound.handle_message(
+                    db,
+                    page,
+                    rules,
+                    _e2e_event(
+                        page.fb_page_id, psid, "echo", f"m_{psid}_r", reply_at, "[Trả lời E2E]"
+                    ),
+                )
+            contact = await db.scalar(
+                select(Contact).where(Contact.page_id == page.id, Contact.psid == psid)
+            )
+            if contact is None:
+                raise CliError("không tạo được khách e2e")
+            contact.display_name = spec["name"] if count == 1 else f"{spec['name']} {i}"
+            lead_id = await db.scalar(select(Lead.id).where(Lead.contact_id == contact.id))
+            if i == 0:
+                lead_ids[spec["key"]] = str(lead_id)
     return lead_ids
 
 
