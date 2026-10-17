@@ -2,7 +2,7 @@
 
 Bối cảnh sản phẩm và quy tắc nghiệp vụ: [CLAUDE.md](CLAUDE.md). Các quyết định đã chốt: [docs/architecture/decisions.md](docs/architecture/decisions.md). Mô hình dữ liệu cho cả 7 bước: [docs/architecture/data-model.md](docs/architecture/data-model.md). Phân quyền: [docs/architecture/rbac.md](docs/architecture/rbac.md).
 
-**Trạng thái:** xong Bước 1 (khung dự án) và Bước 2 (webhook Meta, thời gian trả lời). Chưa có các màn hình nghiệp vụ.
+**Trạng thái:** xong Bước 1 (khung dự án), Bước 2 (webhook Meta, thời gian trả lời) và Bước 3 (Khách hàng). Các màn hình khác đang là trang giữ chỗ.
 
 ## Chạy trên máy dev
 
@@ -43,6 +43,13 @@ Test backend tự tạo lại DB `fanpage_test` mỗi lần chạy và từ ch�
 - `POST /webhooks/meta`: kiểm tra `X-Hub-Signature-256` bằng `META_APP_SECRET` (sai thì 403), đẩy vào hàng đợi arq, trả 200. Worker (`app/workers/webhook.py`) xử lý, chặn lặp theo `mid` / `leadgen_id`, lỗi thì thử lại có backoff.
 - Worker dùng tài khoản DB ứng dụng. Để biết Trang thuộc workspace nào, nó gọi hàm `app_route_page(fb_page_id)`, hàm này chỉ trả về `workspace_id`.
 - Thời gian trả lời chỉ tính trong giờ làm việc của workspace (`app/services/response_time.py`). Echo có `app_id` nằm trong `META_AUTOMATED_APP_IDS` là tin tự động, không tính. Worker log mỗi echo kèm `app_id` để điền danh sách này khi ứng dụng đã Live.
+
+## Khách hàng (Bước 3)
+
+- Màn hình `/leads` (dạng cột, dạng bảng, ô lọc nhanh, bộ lọc) và `/leads/:id` (diễn biến, cập nhật kết quả).
+- API `GET /api/leads`, `/api/leads/summary`, `/api/leads/filter-options`, `/api/leads/{id}`; ghi qua `POST /api/leads/{id}/called` và `PUT /api/leads/{id}/result`. Phạm vi theo vai trò áp trong câu truy vấn (`app/services/lead_service.py`).
+- SĐT được nhận tự động trong tin của khách, kể cả khi viết có dấu cách hoặc dấu chấm. Người không có quyền xem SĐT chỉ thấy số đã che, kể cả trong nội dung tin nhắn. Khách gửi form được gộp với khách nhắn tin nếu cùng Trang, cùng SĐT, trong cùng đợt.
+- Quy tắc cập nhật kết quả: xem `docs/architecture/decisions.md`, mục E.
 
 ## Lệnh quản trị
 
