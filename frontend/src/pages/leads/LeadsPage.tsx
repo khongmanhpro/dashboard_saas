@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useOutletContext } from "react-router-dom";
+import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 
 import {
   LEAD_STATUSES,
@@ -30,6 +30,29 @@ const CHIPS: { key: Chip | undefined; tone: string }[] = [
   { key: "phone_not_called", tone: "chip--warn" },
   { key: "new_today", tone: "chip--info" },
 ];
+
+const PERIODS: Period[] = ["today", "7d", "30d", "all"];
+const CHIP_KEYS: Chip[] = ["unreplied", "overdue", "phone_not_called", "new_today"];
+const SOURCES: SourceFilter[] = ["ad", "organic", "form"];
+
+/** Bộ lọc mở sẵn từ đường dẫn, ví dụ Tổng quan bấm vào phễu: /leads?chip=unreplied&period=30d. */
+export function filtersFromUrl(params: URLSearchParams): {
+  period?: Period;
+  chip?: Chip;
+  pageId: string;
+  ownerId: string;
+  source: SourceFilter | "";
+} {
+  const pick = <T extends string>(value: string | null, allowed: T[]): T | undefined =>
+    allowed.find((x) => x === value);
+  return {
+    period: pick(params.get("period"), PERIODS),
+    chip: pick(params.get("chip"), CHIP_KEYS),
+    pageId: params.get("page_id") ?? "",
+    ownerId: params.get("owner_id") ?? "",
+    source: pick(params.get("source"), SOURCES) ?? "",
+  };
+}
 
 function readView(): View {
   try {
@@ -178,11 +201,13 @@ export function LeadsPage() {
   const me = useOutletContext<Me>();
   const timeZone = me.workspace.timezone;
   const [view, setView] = useState<View>(readView);
-  const [chip, setChip] = useState<Chip | undefined>();
-  const [period, setPeriod] = useState<Period>("7d");
-  const [pageId, setPageId] = useState("");
-  const [ownerId, setOwnerId] = useState("");
-  const [source, setSource] = useState<SourceFilter | "">("");
+  const [params] = useSearchParams();
+  const [initial] = useState(() => filtersFromUrl(params));
+  const [chip, setChip] = useState<Chip | undefined>(initial.chip);
+  const [period, setPeriod] = useState<Period>(initial.period ?? "7d");
+  const [pageId, setPageId] = useState(initial.pageId);
+  const [ownerId, setOwnerId] = useState(initial.ownerId);
+  const [source, setSource] = useState<SourceFilter | "">(initial.source);
   const [search, setSearch] = useState("");
   const q = useDebounced(search.trim(), 300);
   const options = useFilterOptions();

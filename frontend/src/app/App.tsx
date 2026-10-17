@@ -9,6 +9,11 @@ import { MobileShell } from "../mobile/MobileShell";
 import { ChangePasswordPage } from "../pages/ChangePasswordPage";
 import { LoginPage } from "../pages/LoginPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
+import { AdsPage } from "../pages/reports/AdsPage";
+import { MobileNav } from "../pages/reports/common";
+import { OverviewPage } from "../pages/reports/OverviewPage";
+import { PageDetailPage } from "../pages/reports/PageDetailPage";
+import { PagesPage } from "../pages/reports/PagesPage";
 import { BmPage } from "../pages/bm/BmPage";
 import { LeadDetailPage } from "../pages/leads/LeadDetailPage";
 import { LeadsPage } from "../pages/leads/LeadsPage";
@@ -20,6 +25,9 @@ import { canSee, homePath, NAV, type NavItem } from "./nav";
 
 /** Màn hình đã làm xong theo từng mục menu. Mục chưa làm hiện PlaceholderPage. */
 const SCREENS: Partial<Record<NavItem["key"], () => JSX.Element>> = {
+  overview: OverviewPage,
+  pages: PagesPage,
+  ads: AdsPage,
   leads: LeadsPage,
   staff: StaffPage,
   settings: SettingsPage,
@@ -28,6 +36,7 @@ const SCREENS: Partial<Record<NavItem["key"], () => JSX.Element>> = {
 
 const LEADS_ITEM = NAV.find((i) => i.key === "leads") as NavItem;
 const STAFF_ITEM = NAV.find((i) => i.key === "staff") as NavItem;
+const PAGES_ITEM = NAV.find((i) => i.key === "pages") as NavItem;
 
 /** Chặn màn hình khi vai trò không có quyền. Backend vẫn kiểm tra lại mọi API. */
 function Screen({ item, children }: { item: NavItem; children: ReactNode }) {
@@ -49,6 +58,7 @@ function DesktopLayout() {
           <main className="main">
             <Outlet context={me} />
           </main>
+          <MobileNav me={me} />
         </div>
       )}
     </RequireAuth>
@@ -88,6 +98,14 @@ export function App() {
               element={
                 <Screen item={LEADS_ITEM}>
                   <LeadDetailPage />
+                </Screen>
+              }
+            />
+            <Route
+              path="/pages/:id"
+              element={
+                <Screen item={PAGES_ITEM}>
+                  <PageDetailPage />
                 </Screen>
               }
             />

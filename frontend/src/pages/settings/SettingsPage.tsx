@@ -18,6 +18,7 @@ import { errorMessage, format, t } from "../../i18n";
 import { formatDateTime } from "../../leads/format";
 import { formatScore, saveLabel, sameWeights, stepWeight, weightsTotal } from "../../staff/format";
 import { TierBadge } from "../staff/StaffPage";
+import { AlertsSection } from "./AlertsSection";
 
 const MAX_BAR = 60;
 
@@ -160,12 +161,15 @@ function FormulaEditor({ formula, timeZone }: { formula: Formula; timeZone: stri
 export function SettingsPage() {
   const me = useOutletContext<Me>();
   const formula = useFormula();
+  const canAlerts = "settings.manage" in me.permissions;
   return (
     <>
       <div className="page-top">
         <PageHeader title={t.settings.title} />
         <nav className="anchors">
           <a href="#score">{t.settings.anchors.score}</a>
+          {canAlerts ? <a href="#alerts">{t.settings.anchors.alerts}</a> : null}
+          {canAlerts ? <a href="#fx">{t.settings.anchors.fx}</a> : null}
         </nav>
       </div>
       {formula.data ? (
@@ -173,6 +177,7 @@ export function SettingsPage() {
       ) : (
         <div className="muted">{t.app.loading}</div>
       )}
+      {canAlerts ? <AlertsSection timeZone={me.workspace.timezone} /> : null}
       <p className="note">{t.settings.laterNote}</p>
     </>
   );

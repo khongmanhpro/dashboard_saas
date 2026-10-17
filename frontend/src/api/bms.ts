@@ -77,8 +77,9 @@ export function useBms() {
   return useQuery({ queryKey: [...BM_KEY, "list"], queryFn: () => api<BmOverview>("/api/bms") });
 }
 
-export function usePages() {
+export function usePages(enabled = true) {
   return useQuery({
+    enabled,
     queryKey: [...BM_KEY, "pages"],
     queryFn: () => api<{ pages: PageRow[]; candidates: NamedRef[]; one_page_per_member: boolean }>("/api/pages"),
   });
