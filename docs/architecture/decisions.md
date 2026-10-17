@@ -143,3 +143,18 @@ Sếp duyệt ngày 17/10/2026, cùng lúc duyệt kế hoạch Bước 1. Nếu
 | Gửi cảnh báo | Mỗi quy tắc × đối tượng × ngày gửi một lần, ghi `alert_deliveries`. Không có SĐT, không có nội dung tin nhắn. Mã bot không vào log, lỗi HTTP không kèm URL. MOCK_MODE không gửi thật, ghi `status = mock`. | |
 | Thương hiệu | Tên sản phẩm **GoCyberTech**, logo gốc `docs/brand/gocybertech-logo.png`. Giao diện dùng phần biểu tượng và tên hai màu; không dùng câu "Autonomous IT & Cybersecurity" (không khớp sản phẩm). Màu giao diện giữ theo thiết kế. | Sếp gửi logo 17/10/2026. |
 | Dữ liệu mẫu | Fixture QC (2 tài khoản, 1 dùng USD), bài đăng, insights cho 4 Trang demo. Seed tạo khoảng 30 ngày khách mẫu rồi chạy đồng bộ một lần. `make simulate` thêm tình huống khách từ QC gắn đúng chiến dịch. | |
+
+## J. Một nguồn tính số liệu (sếp duyệt 17/10/2026)
+
+Sau khi phát hiện số liệu lệch nhau giữa Tổng quan, Nhân viên, Fanpage. Định nghĩa chi tiết: `docs/metrics.md`.
+
+| Chủ đề | Quyết định | Lý do |
+|---|---|---|
+| Nguồn tính | Mọi màn (Tổng quan, Fanpage, Nhân viên, Hồ sơ nhân viên, cảnh báo) lấy số khách từ `app/services/metrics.py`: một tập khách của kỳ, cùng một cách đếm, chỉ khác cách nhóm (theo Trang / theo người / tổng). | Ba cách đếm cũ (kỳ theo ngày, 168 giờ trôi, ảnh chụp điểm) cho ra 81 / 90 / 71. |
+| Kỳ | Ngày trọn theo giờ workspace (Asia/Ho_Chi_Minh). "7 ngày" = hôm nay và 6 ngày trước, giống kỳ điểm 7 ngày. Bỏ cách đếm 168 giờ trôi ở Fanpage. Khối nào khác kỳ của màn hình thì ghi rõ kỳ ngay trên khối. | |
+| Phễu | Lồng nhau: Khách mới ⊇ Đã trả lời ⊇ Có SĐT (trong số đã trả lời) ⊇ Đã gọi; chỗ rơi là hiệu đúng. Kết quả tách riêng: Chốt + Hủy + Hẹn lại + Đang chờ = Khách mới. Ô "Có số điện thoại %" và tiêu chí điểm vẫn đếm mọi khách có SĐT. | Khách có thể chốt ngay qua tin nhắn mà không bấm "Đã gọi". |
+| Khách chưa có người phụ trách | Vẫn theo quy tắc cũ (không tính cho ai). /staff có dòng riêng "Chưa có người phụ trách" (không xếp hạng) để tổng các dòng = Tổng quan; Tổng quan có thẻ "khách chưa tính cho ai". Chủ sở hữu / Quản lý phụ trách Trang vẫn hiện ở /staff, có nhãn vai trò. | |
+| Điểm | Kỳ chưa chốt (tuần này, 7 ngày, 30 ngày, tháng này) tính trực tiếp mỗi lần xem bằng đúng hàm của job, nên số khách và điểm luôn khớp. Job đêm vẫn chạy để chốt tuần và lưu lịch sử; tuần đã chốt đọc từ bảng lưu. | Ảnh chụp lúc 01:00 lệch với số đếm trực tiếp trong ngày. |
+| Quá hạn 48 giờ | Thẻ cảnh báo Tổng quan: mọi thời điểm, ghi rõ "tất cả thời gian". Cột ở /staff, /pages, ô chỉ số: khách trong kỳ, ghi "trong kỳ". | |
+| Thời gian trả lời | Mọi nơi dùng trung vị theo cách lấy mẫu của điểm tốc độ (khách chưa trả lời đã chờ ≥ 120 phút trong giờ làm việc tính là 120 phút). | |
+| Hiển thị điểm | "Điểm đến từ đâu" ghi cách quy đổi từng tiêu chí (xếp hạng trong workspace, ngưỡng tốc độ, mục tiêu bài). Tiêu đề khối theo số người thật. Biểu đồ điểm theo tuần có trục giá trị và ngày đầu tuần. | |
