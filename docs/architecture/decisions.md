@@ -56,3 +56,16 @@ Sếp duyệt ngày 17/10/2026, cùng lúc duyệt kế hoạch Bước 1. Nếu
 | Echo tự động | `app_id` nằm trong `META_AUTOMATED_APP_IDS` (mặc định rỗng) thì không tính. Echo khác, kể cả từ Business Suite, là người trả lời. Worker log số echo theo `app_id` để điền danh sách khi ứng dụng Live. | Meta không đánh dấu rõ tin tự động. |
 | Hạn lưu dữ liệu | Job arq `purge_expired_data` chạy 02:30 giờ Việt Nam mỗi đêm, gọi `app_purge_expired_data(30, 180)` (SECURITY DEFINER, migration 0003): xóa `webhook_events` cũ hơn 30 ngày, đặt `messages.text = NULL` cho tin cũ hơn 180 ngày. Hàm từ chối ngưỡng nhỏ hơn 30 / 180, trả về số dòng; log chỉ ghi số đếm. | Worker không được dùng tài khoản quản trị DB, mà job chạy xuyên mọi workspace. |
 | Để sau | Nhận SĐT trong tin nhắn và gộp khách leadgen với khách nhắn tin: Bước 3. Khách chưa được trả lời tính điểm thế nào: Bước 4. | |
+
+## E. Bước 3 (sếp duyệt 17/10/2026)
+
+| Chủ đề | Quyết định | Lý do |
+|---|---|---|
+| Tên khách | `contacts.display_name`: lấy từ form leadgen nếu có; chưa có thì hiện "Khách ···1234" (4 số cuối PSID). Tên thật qua Graph API khi có mã của Trang (Bước 6). | Webhook chỉ gửi PSID. |
+| Nhận SĐT | Bỏ dấu cách, dấu chấm, dấu gạch giữa các chữ số rồi mới áp regex ở CLAUDE.md. Chỉ quét tin của khách. Số đầu tiên thành `leads.phone`; mọi số lưu ở `lead_phones`. | Khách hay gõ `0912 345 678`. |
+| Gộp khách form với khách nhắn tin (#16) | Cùng Trang, cùng SĐT, trong cùng đợt. Giữ đợt nhắn tin, đợt form ghi `merged_into_lead_id` và ẩn khỏi danh sách. **Chỉ gộp khi đợt form vẫn Mới và chưa gọi**; đã có người cập nhật thì giữ cả hai. | Không làm mất kết quả nhân viên đã nhập. |
+| Sản phẩm / dịch vụ khi chốt | Chưa làm (chưa có danh mục). Có ô ghi chú. | |
+| Quá hạn 48 giờ | Tính lúc đọc: chưa có `result_at` và đã qua `result_due_at`. Không có job ghi sự kiện; nhắc việc làm ở Bước 5. | |
+| Cập nhật kết quả | Chỉ chọn Hẹn lại / Chốt / Hủy, không quay về Mới / Đã liên hệ. Hẹn lại: giờ hẹn ở tương lai. Chốt: giá trị > 0. Hủy: có lý do, lý do "Khác" bắt buộc ghi chú. `result_at` là lần có kết quả **đầu tiên**, sửa sau không đổi. Nhân viên tự sửa trong 7 ngày kể từ `result_at`, sau đó chỉ Quản lý/Chủ sở hữu. Mọi lần sửa ghi `audit_logs` (không ghi SĐT). | Điểm "đúng hạn" (Bước 4) dựa vào lần cập nhật đầu. |
+| Che SĐT | Backend che cả `leads.phone` lẫn số trong nội dung tin nhắn với người không có quyền xem SĐT của khách đó. | |
+| Mở Business Suite | Nút dẫn tới hộp thư của Trang trong Business Suite. Đường dẫn tới đúng hội thoại kiểm tra lại khi ứng dụng Live. | Chưa xác minh được định dạng. |
