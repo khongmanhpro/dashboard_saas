@@ -15,7 +15,7 @@ from collections import defaultdict
 from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rbac import Perm, Scope
@@ -51,19 +51,20 @@ from app.schemas.staff import (
     ScorePart,
     StaffDetail,
     TrendPoint,
+    UnassignedRow,
     Weights,
 )
-from app.services import audit, inbound
+from app.services import audit, inbound, metrics
 from app.services.errors import ServiceError
 from app.services.lead_service import member_ids_for
-from app.services.periods import Period, period_for
+from app.services.periods import period_for
 from app.services.score_service import (
     compute_period,
     current_formula,
-    lead_facts,
+    live_period,
     recompute_workspace,
 )
-from app.services.scoring import CRITERIA, FormulaParams, speed_samples
+from app.services.scoring import CRITERIA, FormulaParams, MemberScore
 
 if TYPE_CHECKING:
     from app.api.deps import AuthContext
@@ -216,13 +217,6 @@ async def recompute_now(
 # ---------------------------------------------------------------- phạm vi và dữ liệu chung
 
 
-async def _latest_start(db: AsyncSession, period_type: PeriodType) -> dt.date | None:
-    result: dt.date | None = await db.scalar(
-        select(func.max(ScoreSnapshot.period_start)).where(ScoreSnapshot.period_type == period_type)
-    )
-    return result
-
-
 async def _members_info(
     db: AsyncSession, workspace_id: uuid.UUID
 ) -> dict[uuid.UUID, dict[str, Any]]:
@@ -257,39 +251,6 @@ async def _current_pages(db: AsyncSession) -> dict[uuid.UUID, list[AssignedPage]
     return pages
 
 
-async def _overdue_counts(
-    db: AsyncSession, start: dt.datetime, end: dt.datetime, now: dt.datetime
-) -> dict[uuid.UUID, int]:
-    rows = await db.execute(
-        select(Lead.owner_member_id, func.count())
-        .where(
-            Lead.owner_member_id.is_not(None),
-            Lead.merged_into_lead_id.is_(None),
-            Lead.first_inbound_at >= start,
-            Lead.first_inbound_at < end,
-            Lead.result_at.is_(None),
-            Lead.result_due_at < now,
-        )
-        .group_by(Lead.owner_member_id)
-    )
-    return {owner: int(n) for owner, n in rows.all() if owner is not None}
-
-
-def _period_info(period_type: PeriodType, rows: list[ScoreSnapshot]) -> PeriodInfo:
-    if not rows:
-        return PeriodInfo(
-            type=period_type, first_day=None, last_day=None, computed_at=None, is_final=False
-        )
-    first = rows[0]
-    return PeriodInfo(
-        type=period_type,
-        first_day=first.period_start,
-        last_day=first.period_end,
-        computed_at=max(r.computed_at for r in rows),
-        is_final=all(r.is_final for r in rows),
-    )
-
-
 async def _previous_week_totals(
     db: AsyncSession, first_day: dt.date
 ) -> dict[uuid.UUID, Decimal | None]:
@@ -305,34 +266,46 @@ async def _previous_week_totals(
 # ---------------------------------------------------------------- bảng xếp hạng
 
 
+def _row_metrics(summary: metrics.Summary) -> dict[str, Any]:
+    return {
+        "lead_count": summary.leads,
+        "won_count": summary.won,
+        "median_response_seconds": summary.median_response_seconds,
+        "phone_rate": summary.phone_rate,
+        "close_rate": summary.close_rate,
+        "revenue_vnd": summary.revenue_vnd,
+        "overdue_count": summary.overdue,
+    }
+
+
 async def leaderboard(
     db: AsyncSession, ctx: AuthContext, period_type: PeriodType, *, now: dt.datetime | None = None
 ) -> Leaderboard:
+    """Kỳ chưa chốt: tính trực tiếp bằng đúng hàm của job (decisions.md mục J)."""
     now = now or dt.datetime.now(dt.UTC)
     scope = ctx.scope(Perm.LEADERBOARD_VIEW)
     formula = await current_formula(db, ctx.workspace_id)
-    start_day = await _latest_start(db, period_type)
-    snapshots: list[ScoreSnapshot] = []
-    if start_day is not None:
-        snapshots = list(
-            await db.scalars(
-                select(ScoreSnapshot).where(
-                    ScoreSnapshot.period_type == period_type,
-                    ScoreSnapshot.period_start == start_day,
-                )
-            )
-        )
-    info = _period_info(period_type, snapshots)
+    rules = await inbound.load_rules(db, ctx.workspace_id)
+    live = await live_period(
+        db,
+        ctx.workspace_id,
+        period_for(period_type, now, rules.tz),
+        now,
+        FormulaParams.from_model(formula),
+    )
+    info = PeriodInfo(
+        type=period_type,
+        first_day=live.period.first_day,
+        last_day=live.period.last_day,
+        computed_at=now,
+        is_final=False,
+    )
     members = await _members_info(db, ctx.workspace_id)
     pages = await _current_pages(db)
     deltas: dict[uuid.UUID, Decimal | None] = {}
-    if period_type == PeriodType.WEEK and info.first_day:
-        deltas = await _previous_week_totals(db, info.first_day)
-    overdue: dict[uuid.UUID, int] = {}
-    if info.first_day and info.last_day:
-        rules = await inbound.load_rules(db, ctx.workspace_id)
-        start, end = Period(period_type, info.first_day, info.last_day).utc_range(rules.tz)
-        overdue = await _overdue_counts(db, start, end, now)
+    if period_type == PeriodType.WEEK:
+        deltas = await _previous_week_totals(db, live.period.first_day)
+    by_owner = metrics.group(live.facts, lambda f: f.owner_id)
 
     visible = await member_ids_for(db, ctx, scope)
     full_view = scope in (Scope.ALL, Scope.TEAM)
@@ -340,58 +313,67 @@ async def leaderboard(
     staff_sees_top = bool(settings and settings.staff_can_see_leaderboard)
 
     rows: list[LeaderboardRow] = []
-    for snap in snapshots:
-        mid = snap.member_id
-        is_self = mid == ctx.member_id
+    for score in live.scores:
+        mid = score.metrics.member_id
         in_scope = visible is None or mid in visible
         top_only = (
             not in_scope
             and scope == Scope.OWN
             and staff_sees_top
-            and snap.rank is not None
-            and snap.rank <= TOP_FOR_STAFF
+            and score.rank is not None
+            and score.rank <= TOP_FOR_STAFF
         )
         if not in_scope and not top_only:
             continue
         info_m = members.get(mid, {})
-        show = in_scope
+        summary = metrics.summarize(by_owner.get(mid, []), now, live.params)
+        shown = _row_metrics(summary) if in_scope else dict.fromkeys(_row_metrics(summary))
         delta = None
-        if show and snap.total is not None and deltas.get(mid) is not None:
-            delta = snap.total - deltas[mid]  # type: ignore[operator]
+        if in_scope and score.total is not None and deltas.get(mid) is not None:
+            delta = score.total - deltas[mid]  # type: ignore[operator]
         rows.append(
             LeaderboardRow(
                 member=NamedRef(id=mid, name=info_m.get("name", "")),
+                role=info_m.get("role"),
                 team=NamedRef(id=info_m["team_id"], name=info_m["team_name"])
                 if info_m.get("team_id")
                 else None,
                 pages=[p.name for p in pages.get(mid, [])],
-                is_self=is_self,
-                rank=snap.rank,
-                tier=snap.tier,
-                insufficient_data=snap.insufficient_data,
-                total=snap.total if show else None,
+                is_self=mid == ctx.member_id,
+                rank=score.rank,
+                tier=score.tier,
+                insufficient_data=score.insufficient_data,
+                total=score.total if in_scope else None,
                 delta=delta,
-                lead_count=snap.lead_count if show else None,
-                median_response_seconds=snap.median_response_seconds if show else None,
-                phone_rate=snap.phone_rate if show else None,
-                close_rate=snap.close_rate if show else None,
-                revenue_vnd=snap.revenue_vnd if show else None,
-                overdue_count=overdue.get(mid, 0) if show else None,
+                **shown,
             )
         )
     rows.sort(key=lambda r: (r.rank is None, r.rank or 0, r.member.name))
 
-    tiers = kpis = insufficient = None
+    tiers = kpis = insufficient = unassigned = None
     teams: list[NamedRef] = []
     if full_view:
-        in_view = [s for s in snapshots if visible is None or s.member_id in visible]
+        in_view = [s for s in live.scores if visible is None or s.metrics.member_id in visible]
         tiers = {t: sum(1 for s in in_view if s.tier == t) for t in Tier}
         insufficient = sum(1 for s in in_view if s.insufficient_data)
-        kpis = await _kpis(db, ctx, info, in_view, overdue, now)
+        # Toàn workspace thì gồm cả khách chưa có người phụ trách: ô chỉ số = Tổng quan.
+        total = metrics.summarize(metrics.in_scope(live.facts, visible), now, live.params)
+        kpis = Kpis(
+            lead_count=total.leads,
+            won_count=total.won,
+            median_response_seconds=total.median_response_seconds,
+            phone_rate=total.phone_rate,
+            close_rate=total.close_rate,
+            revenue_vnd=total.revenue_vnd,
+            overdue_count=total.overdue,
+        )
+        orphans = by_owner.get(None, [])
+        if visible is None and orphans:
+            unassigned = UnassignedRow(**_row_metrics(metrics.summarize(orphans, now, live.params)))
         team_ids = {
-            members[s.member_id]["team_id"]
+            members[s.metrics.member_id]["team_id"]
             for s in in_view
-            if members.get(s.member_id, {}).get("team_id")
+            if members.get(s.metrics.member_id, {}).get("team_id")
         }
         teams = sorted(
             (
@@ -411,83 +393,72 @@ async def leaderboard(
         kpis=kpis,
         teams=teams,
         rows=rows,
+        unassigned=unassigned,
         full_view=full_view,
-    )
-
-
-async def _kpis(
-    db: AsyncSession,
-    ctx: AuthContext,
-    info: PeriodInfo,
-    snapshots: list[ScoreSnapshot],
-    overdue: dict[uuid.UUID, int],
-    now: dt.datetime,
-) -> Kpis:
-    member_ids = {s.member_id for s in snapshots}
-    lead_count = sum(s.lead_count for s in snapshots)
-    won = sum(s.won_count for s in snapshots)
-    phones = sum(s.phone_count for s in snapshots)
-    median: int | None = None
-    if info.first_day and info.last_day and member_ids:
-        # Cùng cách lấy mẫu với điểm tốc độ, để thẻ chỉ số khớp với từng hàng.
-        rules = await inbound.load_rules(db, ctx.workspace_id)
-        params = FormulaParams.from_model(await current_formula(db, ctx.workspace_id))
-        start, end = Period(info.type, info.first_day, info.last_day).utc_range(rules.tz)
-        facts = await lead_facts(db, rules, start, end, min(now, end))
-        samples = speed_samples((x for x in facts if x.owner_id in member_ids), params)
-        median = int(statistics.median(samples)) if samples else None
-    return Kpis(
-        lead_count=lead_count,
-        median_response_seconds=median,
-        phone_rate=_rate(phones, lead_count),
-        close_rate=_rate(won, lead_count),
-        revenue_vnd=sum(s.revenue_vnd for s in snapshots),
-        overdue_count=sum(overdue.get(m, 0) for m in member_ids),
     )
 
 
 # ---------------------------------------------------------------- hồ sơ nhân viên
 
+# Tiêu chí xếp phần trăm → trường số liệu thô dùng để xếp.
+_PERCENTILE_FIELD = {
+    "close_rate": "close_rate",
+    "revenue": "revenue_vnd",
+    "phone_rate": "phone_rate",
+    "on_time": "on_time_rate",
+}
 
-def _parts(snap: ScoreSnapshot | None, formula: ScoreFormula) -> list[ScorePart]:
+
+def _parts(
+    score: MemberScore | None,
+    scores: list[MemberScore],
+    formula: ScoreFormula,
+) -> list[ScorePart]:
     weights = {c: int(getattr(formula, f"w_{c}")) for c in CRITERIA}
-    scores: dict[str, Decimal | None] = {
-        c: getattr(snap, f"s_{c}") if snap else None for c in CRITERIA
-    }
-    used = sum(w for c, w in weights.items() if scores[c] is not None and w > 0)
+    components: dict[str, Decimal | None] = (
+        dict(score.components) if score else dict.fromkeys(CRITERIA)
+    )
+    used = sum(w for c, w in weights.items() if components.get(c) is not None and w > 0)
+    m = score.metrics if score else None
     raw: dict[str, dict[str, int | Decimal | None]] = {
-        "close_rate": {
-            "rate": snap.close_rate if snap else None,
-            "won": snap.won_count if snap else None,
-        },
-        "response_speed": {"median_seconds": snap.median_response_seconds if snap else None},
-        "revenue": {"revenue_vnd": snap.revenue_vnd if snap else None},
-        "phone_rate": {
-            "rate": snap.phone_rate if snap else None,
-            "phones": snap.phone_count if snap else None,
-        },
+        "close_rate": {"rate": m.close_rate if m else None, "won": m.won_count if m else None},
+        "response_speed": {"median_seconds": m.median_response_seconds if m else None},
+        "revenue": {"revenue_vnd": m.revenue_vnd if m else None},
+        "phone_rate": {"rate": m.phone_rate if m else None, "phones": m.phone_count if m else None},
         "page_care": {
-            "posts": snap.posts_count if snap else None,
+            "posts": m.posts_count if m else None,
             "target": formula.posts_per_week_target,
         },
-        "on_time": {"rate": snap.on_time_rate if snap else None},
+        "on_time": {"rate": m.on_time_rate if m else None},
     }
+    ranked = [s for s in scores if not s.insufficient_data]
     parts = []
     for c in CRITERIA:
-        score = scores[c]
-        effective = None
-        points = None
-        if score is not None and used and weights[c] > 0:
+        component = components.get(c)
+        effective = points = None
+        if component is not None and used and weights[c] > 0:
             effective = (Decimal(weights[c]) * 100 / Decimal(used)).quantize(Decimal("0.01"))
-            points = (score * Decimal(weights[c]) / Decimal(used)).quantize(Decimal("0.01"))
+            points = (component * Decimal(weights[c]) / Decimal(used)).quantize(Decimal("0.01"))
+        method = {"response_speed": "linear", "page_care": "target"}.get(c, "percentile")
+        position = peers = None
+        if method == "percentile" and m is not None and component is not None:
+            field = _PERCENTILE_FIELD[c]
+            values = [getattr(s.metrics, field) for s in ranked]
+            values = [v for v in values if v is not None]
+            mine = getattr(m, field)
+            peers = len(values)
+            position = 1 + sum(1 for v in values if v > mine)
         parts.append(
             ScorePart(
                 key=c,
                 weight=weights[c],
                 effective_weight=effective,
-                score=score,
+                score=component,
                 points=points,
                 raw=raw[c],
+                method=method,
+                position=position,
+                peers=peers,
             )
         )
     return parts
@@ -518,126 +489,132 @@ async def staff_detail(
             .where(Team.id == me["team_id"])
         )
     rules = await inbound.load_rules(db, ctx.workspace_id)
-    start_day = await _latest_start(db, period_type)
-    snap = None
-    ranked_count = 0
-    if start_day is not None:
-        snap = await db.scalar(
-            select(ScoreSnapshot).where(
-                ScoreSnapshot.period_type == period_type,
-                ScoreSnapshot.period_start == start_day,
-                ScoreSnapshot.member_id == member_id,
-            )
-        )
-        ranked_count = int(
-            await db.scalar(
-                select(func.count()).where(
-                    ScoreSnapshot.period_type == period_type,
-                    ScoreSnapshot.period_start == start_day,
-                    ScoreSnapshot.rank.is_not(None),
-                )
-            )
-            or 0
-        )
-    formula = (
-        await db.get(ScoreFormula, snap.formula_id)
-        if snap
-        else await current_formula(db, ctx.workspace_id)
-    )
-    assert formula is not None  # noqa: S101 — khóa ngoại bảo đảm
-    period = (
-        Period(period_type, snap.period_start, snap.period_end)
-        if snap
-        else period_for(period_type, now, rules.tz)
-    )
-    start, end = period.utc_range(rules.tz)
+    formula = await current_formula(db, ctx.workspace_id)
+    params = FormulaParams.from_model(formula)
+    period = period_for(period_type, now, rules.tz)
+    live = await live_period(db, ctx.workspace_id, period, now, params)
+    score = next((s for s in live.scores if s.metrics.member_id == member_id), None)
+    ranked_count = sum(1 for s in live.scores if s.rank is not None)
 
     delta = None
-    if snap and snap.total is not None and period_type == PeriodType.WEEK:
+    if score and score.total is not None and period_type == PeriodType.WEEK:
         prev = await db.scalar(
             select(ScoreSnapshot.total).where(
                 ScoreSnapshot.period_type == PeriodType.WEEK,
                 ScoreSnapshot.member_id == member_id,
-                ScoreSnapshot.period_start == snap.period_start - dt.timedelta(days=7),
+                ScoreSnapshot.period_start == period.first_day - dt.timedelta(days=7),
             )
         )
-        delta = snap.total - prev if prev is not None else None
+        delta = score.total - prev if prev is not None else None
 
-    funnel = await _funnel(db, member_id, start, end)
+    mine = [f for f in live.facts if f.owner_id == member_id]
+    funnel = _funnel(
+        metrics.summarize(mine, now, params), metrics.summarize(live.facts, now, params)
+    )
+    start, end = period.utc_range(rules.tz)
     hours = await _hours(db, member_id, start, end, rules.tz)
-    trend_rows = (
-        await db.scalars(
-            select(ScoreSnapshot)
-            .where(
-                ScoreSnapshot.period_type == PeriodType.WEEK, ScoreSnapshot.member_id == member_id
-            )
-            .order_by(ScoreSnapshot.period_start.desc())
-            .limit(TREND_WEEKS)
-        )
-    ).all()
+    trend = await _trend(db, ctx, member_id, now, rules.tz, params, period_type, score)
     recent = await _recent_leads(db, member_id, now)
     pages = (await _current_pages(db)).get(member_id, [])
     settings = await db.get(WorkspaceSettings, ctx.workspace_id)
+    elapsed = Decimal(max((live.until - live.start).total_seconds(), 0)) / 86400
+    target = (Decimal(params.posts_per_week_target) * max(elapsed, Decimal(1)) / 7).quantize(
+        Decimal("0.1")
+    )
     return StaffDetail(
         member=NamedRef(id=member_id, name=me["name"]),
         role=me["role"],
         team=NamedRef(id=me["team_id"], name=me["team_name"]) if me["team_id"] else None,
         team_lead=team_lead,
         pages=pages,
-        period=_period_info(period_type, [snap] if snap else []),
-        total=snap.total if snap else None,
-        tier=snap.tier if snap else None,
-        rank=snap.rank if snap else None,
+        period=PeriodInfo(
+            type=period_type,
+            first_day=period.first_day,
+            last_day=period.last_day,
+            computed_at=now,
+            is_final=False,
+        ),
+        total=score.total if score else None,
+        tier=score.tier if score else None,
+        rank=score.rank if score else None,
         ranked_count=ranked_count,
         delta=delta,
-        insufficient_data=snap.insufficient_data if snap else True,
+        insufficient_data=score.insufficient_data if score else True,
         min_leads=formula.min_leads,
-        lead_count=snap.lead_count if snap else funnel[0].value,
-        parts=_parts(snap, formula),
+        lead_count=len(mine),
+        parts=_parts(score, live.scores, formula),
         funnel=funnel,
         hours=hours,
-        trend=[
-            TrendPoint(first_day=r.period_start, total=r.total, tier=r.tier)
-            for r in reversed(trend_rows)
-        ],
+        trend=trend,
         recent=recent,
         slow_reply_minutes=settings.slow_reply_minutes if settings else 30,
+        speed_full_minutes=params.speed_full_minutes,
+        speed_zero_minutes=params.speed_zero_minutes,
+        posts_target=target,
     )
 
 
-def _funnel_counts(leads: list[Lead]) -> dict[str, int]:
-    return {
-        "leads": len(leads),
-        "replied": sum(1 for x in leads if x.first_reply_at is not None),
-        "phone": sum(1 for x in leads if x.phone is not None),
-        "called": sum(1 for x in leads if x.called_at is not None),
-        "won": sum(1 for x in leads if x.status.value == "won"),
-    }
-
-
-async def _funnel(
-    db: AsyncSession, member_id: uuid.UUID, start: dt.datetime, end: dt.datetime
-) -> list[FunnelStep]:
-    base = select(Lead).where(
-        Lead.owner_member_id.is_not(None),
-        Lead.merged_into_lead_id.is_(None),
-        Lead.first_inbound_at >= start,
-        Lead.first_inbound_at < end,
+async def _trend(
+    db: AsyncSession,
+    ctx: AuthContext,
+    member_id: uuid.UUID,
+    now: dt.datetime,
+    tz: Any,
+    params: FormulaParams,
+    period_type: PeriodType,
+    score: MemberScore | None,
+) -> list[TrendPoint]:
+    """Các tuần đã chốt (bảng lưu) cộng tuần này (tính trực tiếp)."""
+    week = period_for(PeriodType.WEEK, now, tz)
+    rows = (
+        await db.scalars(
+            select(ScoreSnapshot)
+            .where(
+                ScoreSnapshot.period_type == PeriodType.WEEK,
+                ScoreSnapshot.member_id == member_id,
+                ScoreSnapshot.period_start < week.first_day,
+            )
+            .order_by(ScoreSnapshot.period_start.desc())
+            .limit(TREND_WEEKS - 1)
+        )
+    ).all()
+    points = [
+        TrendPoint(first_day=r.period_start, total=r.total, tier=r.tier, is_final=r.is_final)
+        for r in reversed(rows)
+    ]
+    if period_type != PeriodType.WEEK:
+        live = await live_period(db, ctx.workspace_id, week, now, params)
+        score = next((s for s in live.scores if s.metrics.member_id == member_id), None)
+    points.append(
+        TrendPoint(
+            first_day=week.first_day,
+            total=score.total if score else None,
+            tier=score.tier if score else None,
+            is_final=False,
+        )
     )
-    all_leads = list(await db.scalars(base))
-    mine = _funnel_counts([x for x in all_leads if x.owner_member_id == member_id])
-    company = _funnel_counts(all_leads)
+    return points
 
-    def denominator(key: str, counts: dict[str, int]) -> int:
-        # "Đã gọi" tính trên số khách có SĐT (theo thiết kế), còn lại trên số khách nhận.
-        return counts["phone"] if key == "called" else counts["leads"]
 
+def _funnel(mine: metrics.Summary, company: metrics.Summary) -> list[FunnelStep]:
+    """Phễu lồng nhau (docs/metrics.md). Chốt tính trên khách mới vì có thể chốt mà không gọi."""
+
+    def steps(s: metrics.Summary) -> dict[str, tuple[int, int]]:
+        return {
+            "leads": (s.leads, 0),
+            "replied": (s.replied, s.leads),
+            "phone": (s.phone, s.replied),
+            "called": (s.called, s.phone),
+            "won": (s.won, s.leads),
+        }
+
+    a, b = steps(mine), steps(company)
     return [
         FunnelStep(
             key=key,
-            value=mine[key],
-            rate=None if key == "leads" else _rate(mine[key], denominator(key, mine)),
-            company_rate=None if key == "leads" else _rate(company[key], denominator(key, company)),
+            value=a[key][0],
+            rate=None if key == "leads" else metrics.rate(*a[key]),
+            company_rate=None if key == "leads" else metrics.rate(*b[key]),
         )
         for key in ("leads", "replied", "phone", "called", "won")
     ]

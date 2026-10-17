@@ -77,6 +77,8 @@ class PeriodInfo(BaseModel):
 
 class LeaderboardRow(BaseModel):
     member: NamedRef
+    # Vai trò, để gắn nhãn khi Chủ sở hữu / Quản lý / Trưởng nhóm phụ trách Trang (quyết định #14).
+    role: MemberRole | None
     team: NamedRef | None
     pages: list[str]
     is_self: bool
@@ -87,6 +89,7 @@ class LeaderboardRow(BaseModel):
     total: Decimal | None
     delta: Decimal | None
     lead_count: int | None
+    won_count: int | None
     median_response_seconds: int | None
     phone_rate: Decimal | None
     close_rate: Decimal | None
@@ -94,8 +97,21 @@ class LeaderboardRow(BaseModel):
     overdue_count: int | None
 
 
+class UnassignedRow(BaseModel):
+    """Khách vào Trang lúc chưa có người phụ trách: không xếp hạng, không tính điểm (mục J)."""
+
+    lead_count: int
+    won_count: int
+    median_response_seconds: int | None
+    phone_rate: Decimal | None
+    close_rate: Decimal | None
+    revenue_vnd: int
+    overdue_count: int
+
+
 class Kpis(BaseModel):
     lead_count: int
+    won_count: int
     median_response_seconds: int | None
     phone_rate: Decimal | None
     close_rate: Decimal | None
@@ -111,6 +127,7 @@ class Leaderboard(BaseModel):
     kpis: Kpis | None
     teams: list[NamedRef]
     rows: list[LeaderboardRow]
+    unassigned: UnassignedRow | None
     full_view: bool
 
 
@@ -121,6 +138,11 @@ class ScorePart(BaseModel):
     score: Decimal | None
     points: Decimal | None
     raw: dict[str, int | Decimal | None]
+    # Cách quy đổi về 0–100: percentile (xếp trong workspace), linear (ngưỡng tốc độ), target (mục
+    # tiêu bài). Với percentile: đứng thứ `position` trong `peers` người có số liệu.
+    method: str
+    position: int | None
+    peers: int | None
 
 
 class FunnelStep(BaseModel):
@@ -140,6 +162,7 @@ class TrendPoint(BaseModel):
     first_day: dt.date
     total: Decimal | None
     tier: Tier | None
+    is_final: bool
 
 
 class RecentLead(BaseModel):
@@ -179,3 +202,6 @@ class StaffDetail(BaseModel):
     trend: list[TrendPoint]
     recent: list[RecentLead]
     slow_reply_minutes: int
+    speed_full_minutes: int
+    speed_zero_minutes: int
+    posts_target: Decimal | None  # mục tiêu bài của kỳ (đã quy theo số ngày đã qua)

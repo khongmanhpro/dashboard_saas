@@ -9,6 +9,7 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 from collections import defaultdict
+from dataclasses import dataclass
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -16,8 +17,6 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
-    Lead,
-    LeadSource,
     Page,
     PageAssignment,
     PagePost,
@@ -25,7 +24,7 @@ from app.models import (
     ScoreFormula,
     ScoreSnapshot,
 )
-from app.services import inbound
+from app.services import inbound, metrics
 from app.services.errors import ServiceError
 from app.services.periods import Period, period_for, previous_week
 from app.services.scoring import (
@@ -56,34 +55,9 @@ async def lead_facts(
     end: dt.datetime,
     now: dt.datetime,
 ) -> list[LeadFacts]:
-    leads = await db.scalars(
-        select(Lead).where(
-            Lead.owner_member_id.is_not(None),
-            Lead.merged_into_lead_id.is_(None),
-            Lead.first_inbound_at >= start,
-            Lead.first_inbound_at < end,
-        )
-    )
-    facts = []
-    for lead in leads:
-        assert lead.owner_member_id is not None  # noqa: S101 — đã lọc ở trên
-        waiting = None
-        if lead.source == LeadSource.MESSAGE and lead.first_reply_at is None:
-            waiting = rules.business_seconds(lead.first_inbound_at, now)
-        facts.append(
-            LeadFacts(
-                owner_id=lead.owner_member_id,
-                source=lead.source,
-                status=lead.status,
-                response_seconds=lead.response_business_seconds,
-                waiting_seconds=waiting,
-                has_phone=lead.phone is not None,
-                won_value_vnd=lead.won_value_vnd,
-                result_at=lead.result_at,
-                result_due_at=lead.result_due_at,
-            )
-        )
-    return facts
+    """Khách có người phụ trách của kỳ (cùng tập với `metrics.load_facts`)."""
+    facts = await metrics.load_facts(db, rules, start, end, now)
+    return [f for f in facts if f.owner_id is not None]
 
 
 async def _assigned_members(
@@ -128,6 +102,57 @@ async def posts_by_member(
     return {member_id: int(count) for member_id, count in rows.all()}
 
 
+@dataclass
+class LivePeriod:
+    """Điểm và tập khách của một kỳ, tính từ cùng một lần nạp dữ liệu (decisions.md mục J)."""
+
+    period: Period
+    params: FormulaParams
+    scores: list[MemberScore]
+    facts: list[LeadFacts]  # gồm cả khách chưa có người phụ trách
+    start: dt.datetime
+    until: dt.datetime
+
+
+async def live_period(
+    db: AsyncSession,
+    workspace_id: uuid.UUID,
+    period: Period,
+    now: dt.datetime,
+    params: FormulaParams | None = None,
+) -> LivePeriod:
+    rules = await inbound.load_rules(db, workspace_id)
+    if params is None:
+        params = FormulaParams.from_model(await current_formula(db, workspace_id))
+    start, end = period.utc_range(rules.tz)
+    until = min(now, end)
+    facts = await metrics.load_facts(db, rules, start, end, until)
+    scores = await _scores(db, params, facts, start, until)
+    return LivePeriod(period, params, scores, facts, start, until)
+
+
+async def _scores(
+    db: AsyncSession,
+    params: FormulaParams,
+    facts: list[LeadFacts],
+    start: dt.datetime,
+    until: dt.datetime,
+) -> list[MemberScore]:
+    by_owner: dict[uuid.UUID, list[LeadFacts]] = defaultdict(list)
+    for fact in facts:
+        if fact.owner_id is not None:
+            by_owner[fact.owner_id].append(fact)
+    members = set(by_owner) | await _assigned_members(db, start, until)
+    posts = await posts_by_member(db, start, until)
+    metric_rows = []
+    for m in members:
+        metric = member_metrics(m, by_owner.get(m, []), until, params)
+        metric.posts_count = posts.get(m)
+        metric_rows.append(metric)
+    elapsed = Decimal(max((until - start).total_seconds(), 0)) / 86400
+    return compute_scores(metric_rows, params, max(elapsed, Decimal(1)))
+
+
 async def compute_period(
     db: AsyncSession,
     workspace_id: uuid.UUID,
@@ -138,20 +163,9 @@ async def compute_period(
 ) -> list[MemberScore]:
     rules = await inbound.load_rules(db, workspace_id)
     start, end = period.utc_range(tz or rules.tz)
-    facts = await lead_facts(db, rules, start, end, min(now, end))
-    by_owner: dict[uuid.UUID, list[LeadFacts]] = defaultdict(list)
-    for fact in facts:
-        by_owner[fact.owner_id].append(fact)
-    members = set(by_owner) | await _assigned_members(db, start, end)
     until = min(now, end)
-    posts = await posts_by_member(db, start, until)
-    metrics = []
-    for m in members:
-        metric = member_metrics(m, by_owner.get(m, []), until, params)
-        metric.posts_count = posts.get(m)
-        metrics.append(metric)
-    elapsed = Decimal(max((until - start).total_seconds(), 0)) / 86400
-    return compute_scores(metrics, params, max(elapsed, Decimal(1)))
+    facts = await metrics.load_facts(db, rules, start, end, until)
+    return await _scores(db, params, facts, start, until)
 
 
 async def save_period(

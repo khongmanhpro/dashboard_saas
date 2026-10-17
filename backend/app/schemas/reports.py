@@ -32,6 +32,7 @@ class Metric(BaseModel):
 
 
 class OverviewAlerts(BaseModel):
+    # Quá hạn 48 giờ: mọi thời điểm, không giới hạn kỳ (decisions.md mục J).
     overdue: int
     overdue_pages: int
     overdue_oldest_hours: int | None
@@ -42,6 +43,8 @@ class OverviewAlerts(BaseModel):
     bm_disconnected_name: str | None
     bm_disconnected_pages: int
     expensive_campaigns: int | None
+    # Khách của kỳ vào Trang lúc chưa có người phụ trách. None khi không xem toàn workspace.
+    unassigned_leads: int | None
 
 
 class OverviewKpis(BaseModel):
@@ -51,19 +54,23 @@ class OverviewKpis(BaseModel):
     close_rate: Metric
     revenue_vnd: Metric
     cost_per_won_vnd: Metric | None
+    overdue_in_range: int  # khách của kỳ đã quá hạn 48 giờ (thẻ cảnh báo đếm mọi thời điểm)
 
 
 class Funnel(BaseModel):
+    """Phễu lồng nhau, kết quả tách riêng (docs/metrics.md)."""
+
     new: int
     replied: int
+    unreplied: int
     phone: int
+    no_phone: int
     called: int
+    not_called: int
     won: int
     lost: int
     callback: int
-    unreplied: int
-    replied_no_phone: int
-    phone_not_called: int
+    pending: int
 
 
 class DailyPoint(BaseModel):
@@ -93,13 +100,20 @@ class BoardRow(BaseModel):
 
 
 class Boards(BaseModel):
+    """Điểm tính trực tiếp cho kỳ `first_day`–`last_day` (có thể khác kỳ màn hình: "Hôm nay"
+    dùng điểm 7 ngày)."""
+
     period: PeriodType
+    first_day: dt.date
+    last_day: dt.date
+    same_as_range: bool
     top: list[BoardRow]
     bottom: list[BoardRow]
 
 
 class OverviewOut(BaseModel):
     range: RangeOut
+    # Số người có khách hoặc phụ trách Trang trong kỳ (cùng danh sách với /staff).
     members: int
     pages: int
     bms: int
@@ -122,6 +136,8 @@ PageSort = Literal["leads", "score", "posts", "name"]
 
 
 class PageReportRow(BaseModel):
+    """Số khách, chốt, trả lời, điểm: cùng kỳ 7 ngày (hôm nay và 6 ngày trước)."""
+
     id: uuid.UUID
     name: str
     fb_page_id: str
@@ -132,6 +148,8 @@ class PageReportRow(BaseModel):
     leads_7d: int
     median_response_seconds: int | None
     won_7d: int
+    revenue_7d: int
+    overdue_7d: int
     posts_week: int | None
     views_30d: int | None
     views_daily: list[int | None]
@@ -156,6 +174,7 @@ class PageReportList(BaseModel):
     teams: list[NamedRef]
     posts_target: int
     can_assign: bool
+    range: RangeOut
     is_mock: bool
 
 

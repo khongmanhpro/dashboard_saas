@@ -13,7 +13,7 @@ from decimal import Decimal
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthContext
@@ -24,15 +24,12 @@ from app.models import (
     Campaign,
     ConnectionStatus,
     Lead,
-    LeadSource,
     LeadStatus,
-    MemberStatus,
     Page,
     PageAssignment,
     PageInsightDaily,
     PagePost,
     PeriodType,
-    ScoreSnapshot,
     Team,
     User,
     Workspace,
@@ -62,14 +59,15 @@ from app.schemas.reports import (
     PostRow,
     RangeOut,
 )
-from app.services import ads_service
-from app.services.ads_service import cohort, money_ratio, owner_condition, ratio
+from app.services import ads_service, inbound, metrics, score_service
+from app.services.ads_service import money_ratio, owner_condition, ratio
 from app.services.alert_rules import effective_rules
 from app.services.errors import ServiceError
 from app.services.lead_service import member_ids_for
 from app.services.member_service import visible_team_ids
-from app.services.periods import period_for
+from app.services.periods import Period, period_for
 from app.services.report_range import DateRange, RangeKey, resolve_range
+from app.services.scoring import LeadFacts, MemberScore
 
 LOW_POSTS_THRESHOLD = 3  # "Ít đăng bài": dưới 3 bài tuần này
 DECLINE_RATIO = Decimal("0.7")  # "Giảm tương tác": lượt xem 7 ngày giảm ≥ 30%
@@ -120,47 +118,17 @@ def _local_date(column: Any, tz: ZoneInfo) -> Any:
 # ---------------------------------------------------------------- Tổng quan
 
 
-async def _cohort_stats(
-    db: AsyncSession, r: DateRange, owner_ids: set[uuid.UUID] | None
-) -> dict[str, Any]:
-    won = Lead.status == LeadStatus.WON
-    replied = or_(Lead.first_reply_at.is_not(None), Lead.status != LeadStatus.NEW)
-    final = Lead.status.in_((LeadStatus.WON, LeadStatus.LOST))
-    row = (
-        await db.execute(
-            select(
-                func.count().label("new"),
-                func.count().filter(replied).label("replied"),
-                func.count(Lead.phone).label("phone"),
-                func.count(Lead.called_at).label("called"),
-                func.count().filter(won).label("won"),
-                func.count().filter(Lead.status == LeadStatus.LOST).label("lost"),
-                func.count().filter(Lead.status == LeadStatus.CALLBACK).label("callback"),
-                func.count()
-                .filter(
-                    Lead.source == LeadSource.MESSAGE,
-                    Lead.first_reply_at.is_(None),
-                    Lead.status == LeadStatus.NEW,
-                )
-                .label("unreplied"),
-                func.count().filter(replied, Lead.phone.is_(None)).label("replied_no_phone"),
-                func.count()
-                .filter(Lead.phone.is_not(None), Lead.called_at.is_(None), ~final)
-                .label("phone_not_called"),
-                func.coalesce(func.sum(Lead.won_value_vnd).filter(won), 0).label("revenue"),
-                func.percentile_cont(0.5)
-                .within_group(Lead.response_business_seconds)
-                .label("median"),
-                func.count().filter(won, Lead.campaign_id.is_not(None)).label("won_from_ads"),
-            ).where(*cohort(r, owner_ids))
-        )
-    ).one()
-    return dict(row._mapping)
-
-
 async def _ad_spend(db: AsyncSession, r: DateRange) -> int | None:
     stats = await ads_service.level_stats(db, "campaign", r)
     return ads_service.total(stats).spend_vnd if stats else 0
+
+
+def _score_period(r: DateRange) -> Period:
+    """Kỳ điểm của khối dẫn đầu: trùng kỳ màn hình, riêng "Hôm nay" dùng 7 ngày (ghi rõ)."""
+    if r.key == "today":
+        return Period(PeriodType.ROLLING_7, r.first_day - dt.timedelta(days=6), r.last_day)
+    kind = {"30d": PeriodType.ROLLING_30, "90d": PeriodType.ROLLING_30, "month": PeriodType.MONTH}
+    return Period(kind.get(r.key, PeriodType.ROLLING_7), r.first_day, r.last_day)
 
 
 async def _alerts(
@@ -169,7 +137,10 @@ async def _alerts(
     owner_ids: set[uuid.UUID] | None,
     now: dt.datetime,
     settings: WorkspaceSettings,
+    week7: score_service.LivePeriod,
+    unassigned_leads: int | None,
 ) -> OverviewAlerts:
+    # Quá hạn 48 giờ ở thẻ cảnh báo: mọi thời điểm (decisions.md mục J).
     overdue = (
         await db.execute(
             select(
@@ -185,19 +156,14 @@ async def _alerts(
         )
     ).one()
     slow_limit = settings.slow_reply_minutes * 60
-    latest = await db.scalar(
-        select(func.max(ScoreSnapshot.period_start)).where(
-            ScoreSnapshot.period_type == PeriodType.ROLLING_7
-        )
-    )
-    slow_query = select(func.count()).where(
-        ScoreSnapshot.period_type == PeriodType.ROLLING_7,
-        ScoreSnapshot.period_start == latest,
-        ScoreSnapshot.median_response_seconds > slow_limit,
-    )
-    if owner_ids is not None:
-        slow_query = slow_query.where(ScoreSnapshot.member_id.in_(owner_ids))
-    slow = int(await db.scalar(slow_query) or 0) if latest else 0
+    by_owner = metrics.group(metrics.in_scope(week7.facts, owner_ids), lambda f: f.owner_id)
+    slow = 0
+    for owner, items in by_owner.items():
+        if owner is None:
+            continue
+        median = metrics.summarize(items, now, week7.params).median_response_seconds
+        if median is not None and median > slow_limit:
+            slow += 1
 
     unassigned = bm_down = None
     bm_name = None
@@ -255,39 +221,22 @@ async def _alerts(
         bm_disconnected_name=bm_name,
         bm_disconnected_pages=bm_pages,
         expensive_campaigns=expensive,
+        unassigned_leads=unassigned_leads,
     )
 
 
-async def _daily(
-    db: AsyncSession, r: DateRange, owner_ids: set[uuid.UUID] | None
-) -> list[DailyPoint]:
-    new_day = _local_date(Lead.first_inbound_at, r.tz)
-    new_by_day: dict[dt.date, int] = {
-        day: int(n)
-        for day, n in (
-            await db.execute(
-                select(new_day, func.count()).where(*cohort(r, owner_ids)).group_by(new_day)
-            )
-        ).all()
-    }
-    won_day = _local_date(Lead.result_at, r.tz)
-    won_by_day: dict[dt.date, int] = {
-        day: int(n)
-        for day, n in (
-            await db.execute(
-                select(won_day, func.count())
-                .where(
-                    Lead.status == LeadStatus.WON,
-                    Lead.result_at >= r.start,
-                    Lead.result_at < r.end,
-                    Lead.merged_into_lead_id.is_(None),
-                    owner_condition(owner_ids),
-                )
-                .group_by(won_day)
-            )
-        ).all()
-    }
-    return [DailyPoint(day=d, new=new_by_day.get(d, 0), won=won_by_day.get(d, 0)) for d in r.days]
+def _daily(r: DateRange, facts: list[LeadFacts]) -> list[DailyPoint]:
+    """Theo ngày khách nhắn tin đầu tiên: tổng các cột = Khách mới / Chốt của kỳ."""
+    new: dict[dt.date, int] = defaultdict(int)
+    won: dict[dt.date, int] = defaultdict(int)
+    for f in facts:
+        if f.first_inbound_at is None:
+            continue
+        day = f.first_inbound_at.astimezone(r.tz).date()
+        new[day] += 1
+        if f.status == LeadStatus.WON:
+            won[day] += 1
+    return [DailyPoint(day=d, new=new[d], won=won[d]) for d in r.days]
 
 
 _NOTE_RAW = {
@@ -300,27 +249,21 @@ _NOTE_RAW = {
 }
 
 
-async def _boards(db: AsyncSession, r: DateRange, owner_ids: set[uuid.UUID] | None) -> Boards:
-    period = PeriodType.ROLLING_7 if r.key in ("today", "7d") else PeriodType.ROLLING_30
-    latest = await db.scalar(
-        select(func.max(ScoreSnapshot.period_start)).where(ScoreSnapshot.period_type == period)
+async def _boards(
+    db: AsyncSession,
+    live: score_service.LivePeriod,
+    owner_ids: set[uuid.UUID] | None,
+    same_as_range: bool,
+) -> Boards:
+    names = await _member_names(db)
+    ranked = sorted(
+        (
+            s
+            for s in live.scores
+            if s.total is not None and (owner_ids is None or s.metrics.member_id in owner_ids)
+        ),
+        key=lambda s: (-(s.total or 0), names.get(s.metrics.member_id, "")),
     )
-    if latest is None:
-        return Boards(period=period, top=[], bottom=[])
-    query = (
-        select(ScoreSnapshot, User.full_name)
-        .join(WorkspaceMember, WorkspaceMember.id == ScoreSnapshot.member_id)
-        .join(User, User.id == WorkspaceMember.user_id)
-        .where(
-            ScoreSnapshot.period_type == period,
-            ScoreSnapshot.period_start == latest,
-            ScoreSnapshot.total.is_not(None),
-        )
-        .order_by(ScoreSnapshot.total.desc(), User.full_name)
-    )
-    if owner_ids is not None:
-        query = query.where(ScoreSnapshot.member_id.in_(owner_ids))
-    ranked = (await db.execute(query)).all()
     pages = dict(
         (
             await db.execute(
@@ -332,30 +275,43 @@ async def _boards(db: AsyncSession, r: DateRange, owner_ids: set[uuid.UUID] | No
         ).all()
     )
 
-    def row(snap: ScoreSnapshot, name: str, best: bool) -> BoardRow:
-        parts = {
-            c: getattr(snap, f"s_{c}") for c in _NOTE_RAW if getattr(snap, f"s_{c}") is not None
-        }
+    def row(score: MemberScore, best: bool) -> BoardRow:
+        parts = {c: v for c, v in score.components.items() if v is not None}
         key = (max if best else min)(parts, key=lambda c: parts[c]) if parts else None
-        raw = getattr(snap, _NOTE_RAW[key]) if key else None
+        raw = getattr(score.metrics, _NOTE_RAW[key]) if key else None
+        mid = score.metrics.member_id
         return BoardRow(
-            member=NamedRef(id=snap.member_id, name=name),
-            rank=snap.rank,
-            total=snap.total,
-            tier=snap.tier,
-            page=pages.get(snap.member_id),
+            member=NamedRef(id=mid, name=names.get(mid, "")),
+            rank=score.rank,
+            total=score.total,
+            tier=score.tier,
+            page=pages.get(mid),
             note_key=key,
             note_value=Decimal(raw) if raw is not None else None,
         )
 
     # Ít người có điểm thì chia đôi, để "cần hỗ trợ" không trống khi ai cũng lọt top 5.
     top_size = min(BOARD_SIZE, (len(ranked) + 1) // 2)
-    top = [row(s, n, True) for s, n in ranked[:top_size]]
+    top = [row(s, True) for s in ranked[:top_size]]
     top_ids = {b.member.id for b in top}
-    bottom = [row(s, n, False) for s, n in reversed(ranked) if s.member_id not in top_ids][
+    bottom = [row(s, False) for s in reversed(ranked) if s.metrics.member_id not in top_ids][
         :BOARD_SIZE
     ]
-    return Boards(period=period, top=top, bottom=bottom)
+    return Boards(
+        period=live.period.type,
+        first_day=live.period.first_day,
+        last_day=live.period.last_day,
+        same_as_range=same_as_range,
+        top=top,
+        bottom=bottom,
+    )
+
+
+async def _member_names(db: AsyncSession) -> dict[uuid.UUID, str]:
+    rows = await db.execute(
+        select(WorkspaceMember.id, User.full_name).join(User, User.id == WorkspaceMember.user_id)
+    )
+    return {mid: name for mid, name in rows.all()}
 
 
 async def _campaigns(
@@ -378,6 +334,11 @@ async def _campaigns(
     ]
 
 
+def _people(live: score_service.LivePeriod, owner_ids: set[uuid.UUID] | None) -> int:
+    """Số người trong danh sách /staff của kỳ (có khách hoặc phụ trách Trang)."""
+    return sum(1 for s in live.scores if owner_ids is None or s.metrics.member_id in owner_ids)
+
+
 async def overview(
     db: AsyncSession,
     ctx: AuthContext,
@@ -397,57 +358,77 @@ async def overview(
     if settings is None:
         raise ServiceError("workspace_not_found", 404)
 
-    cur = await _cohort_stats(db, r, owner_ids)
-    old = await _cohort_stats(db, prev, owner_ids)
+    # Một lần nạp cho kỳ màn hình (số khách + người) và cho kỳ điểm của khối dẫn đầu.
+    range_live = await score_service.live_period(
+        db, ctx.workspace_id, Period(PeriodType.ROLLING_7, r.first_day, r.last_day), now
+    )
+    score_period = _score_period(r)
+    same = score_period.first_day == r.first_day and score_period.last_day == r.last_day
+    board_live = (
+        range_live
+        if same
+        else await score_service.live_period(db, ctx.workspace_id, score_period, now)
+    )
+    week7 = (
+        board_live
+        if board_live.period.last_day - board_live.period.first_day == dt.timedelta(days=6)
+        else await score_service.live_period(
+            db, ctx.workspace_id, _score_period(resolve_range("today", tz, now)), now
+        )
+    )
+    params = range_live.params
+    facts = metrics.in_scope(range_live.facts, owner_ids)
+    cur = metrics.summarize(facts, now, params)
+    rules = await inbound.load_rules(db, ctx.workspace_id)
+    old = metrics.summarize(
+        metrics.in_scope(
+            await metrics.load_facts(db, rules, prev.start, prev.end, prev.end), owner_ids
+        ),
+        prev.end,
+        params,
+    )
     can_cost = ctx.can(Perm.ADS_COST_VIEW)
     cost = None
     if can_cost:
         cost = _metric(
-            money_ratio(await _ad_spend(db, r), cur["won_from_ads"]),
-            money_ratio(await _ad_spend(db, prev), old["won_from_ads"]),
+            money_ratio(await _ad_spend(db, r), cur.won_from_ads),
+            money_ratio(await _ad_spend(db, prev), old.won_from_ads),
         )
-
-    def median(stats: dict[str, Any]) -> int | None:
-        return int(stats["median"]) if stats["median"] is not None else None
-
-    member_query = select(func.count()).where(WorkspaceMember.status == MemberStatus.ACTIVE)
-    if owner_ids is not None:
-        member_query = member_query.where(WorkspaceMember.id.in_(owner_ids))
+    unassigned_leads = sum(1 for f in facts if f.owner_id is None) if owner_ids is None else None
     return OverviewOut(
         range=RangeOut(key=r.key, first_day=r.first_day, last_day=r.last_day),
-        members=int(await db.scalar(member_query) or 0),
+        members=_people(range_live, owner_ids),
         pages=int(await db.scalar(select(func.count()).where(Page.is_tracked.is_(True))) or 0),
         bms=int(await db.scalar(select(func.count()).select_from(BusinessManager)) or 0),
-        alerts=await _alerts(db, ctx, owner_ids, now, settings),
+        alerts=await _alerts(db, ctx, owner_ids, now, settings, week7, unassigned_leads),
         kpis=OverviewKpis(
-            new_leads=_metric(cur["new"], old["new"]),
-            median_response_seconds=_metric(median(cur), median(old)),
-            phone_rate=_metric(ratio(cur["phone"], cur["new"]), ratio(old["phone"], old["new"])),
-            close_rate=_metric(ratio(cur["won"], cur["new"]), ratio(old["won"], old["new"])),
-            revenue_vnd=_metric(cur["revenue"], old["revenue"]),
+            new_leads=_metric(cur.leads, old.leads),
+            median_response_seconds=_metric(
+                cur.median_response_seconds, old.median_response_seconds
+            ),
+            phone_rate=_metric(cur.phone_rate, old.phone_rate),
+            close_rate=_metric(cur.close_rate, old.close_rate),
+            revenue_vnd=_metric(cur.revenue_vnd, old.revenue_vnd),
             cost_per_won_vnd=cost,
+            overdue_in_range=cur.overdue,
         ),
         funnel=Funnel(
-            **{
-                k: int(cur[k])
-                for k in (
-                    "new",
-                    "replied",
-                    "phone",
-                    "called",
-                    "won",
-                    "lost",
-                    "callback",
-                    "unreplied",
-                    "replied_no_phone",
-                    "phone_not_called",
-                )
-            }
+            new=cur.leads,
+            replied=cur.replied,
+            unreplied=cur.unreplied,
+            phone=cur.phone,
+            no_phone=cur.no_phone,
+            called=cur.called,
+            not_called=cur.not_called,
+            won=cur.won,
+            lost=cur.lost,
+            callback=cur.callback,
+            pending=cur.pending,
         ),
-        daily=await _daily(db, r, owner_ids),
+        daily=_daily(r, facts),
         campaigns=await _campaigns(db, r, owner_ids) if can_cost else None,
         missing_fx=await ads_service.missing_fx_currencies(db, r) if can_cost else [],
-        boards=await _boards(db, r, owner_ids),
+        boards=await _boards(db, board_live, owner_ids, same),
         teams=await _teams(db, ctx),
         is_mock=get_settings().mock_mode,
     )
@@ -483,10 +464,24 @@ def _page_status(
 
 
 async def _page_rows(
-    db: AsyncSession, ctx: AuthContext, now: dt.datetime, tz: ZoneInfo
-) -> list[tuple[PageReportRow, uuid.UUID | None, uuid.UUID]]:
-    """Mọi Trang đang theo dõi trong phạm vi, kèm (nhóm của người phụ trách, BM)."""
-    owner_ids = await member_ids_for(db, ctx, ctx.scope(Perm.REPORT_VIEW))
+    db: AsyncSession,
+    ctx: AuthContext,
+    now: dt.datetime,
+    tz: ZoneInfo,
+    team_id: uuid.UUID | None = None,
+) -> tuple[list[tuple[PageReportRow, uuid.UUID]], DateRange]:
+    """Trang trong phạm vi, kèm BM. Số khách, chốt, trả lời, điểm cùng kỳ 7 ngày (mục J).
+
+    Lọc theo người phụ trách của khách: Trang hiện nếu có khách trong phạm vi hoặc đang do người
+    trong phạm vi phụ trách. Toàn workspace thì hiện mọi Trang đang theo dõi.
+    """
+    owner_ids = await _scope_ids(db, ctx, team_id)
+    r = resolve_range("7d", tz, now)
+    live = await score_service.live_period(
+        db, ctx.workspace_id, Period(PeriodType.ROLLING_7, r.first_day, r.last_day), now
+    )
+    by_page = metrics.group(metrics.in_scope(live.facts, owner_ids), lambda f: f.page_id)
+    scores = {s.metrics.member_id: s for s in live.scores}
     today = now.astimezone(tz).date()
     pages = (
         await db.execute(
@@ -496,15 +491,10 @@ async def _page_rows(
         )
     ).all()
     owners = {
-        page_id: (member_id, name, team_id)
-        for page_id, member_id, name, team_id in (
+        page_id: (member_id, name)
+        for page_id, member_id, name in (
             await db.execute(
-                select(
-                    PageAssignment.page_id,
-                    PageAssignment.member_id,
-                    User.full_name,
-                    WorkspaceMember.team_id,
-                )
+                select(PageAssignment.page_id, PageAssignment.member_id, User.full_name)
                 .join(WorkspaceMember, WorkspaceMember.id == PageAssignment.member_id)
                 .join(User, User.id == WorkspaceMember.user_id)
                 .where(PageAssignment.valid_to.is_(None))
@@ -512,31 +502,6 @@ async def _page_rows(
         ).all()
     }
     week = period_for(PeriodType.WEEK, now, tz)
-    scores = {
-        s.member_id: s
-        for s in await db.scalars(
-            select(ScoreSnapshot).where(
-                ScoreSnapshot.period_type == PeriodType.WEEK,
-                ScoreSnapshot.period_start == week.first_day,
-            )
-        )
-    }
-    since_7d = now - dt.timedelta(days=7)
-    lead_stats = {
-        page_id: (int(n), median, int(won))
-        for page_id, n, median, won in (
-            await db.execute(
-                select(
-                    Lead.page_id,
-                    func.count(),
-                    func.percentile_cont(0.5).within_group(Lead.response_business_seconds),
-                    func.count().filter(Lead.status == LeadStatus.WON),
-                )
-                .where(Lead.first_inbound_at >= since_7d, Lead.merged_into_lead_id.is_(None))
-                .group_by(Lead.page_id)
-            )
-        ).all()
-    }
     week_start, _ = week.utc_range(tz)
     posts = dict(
         (
@@ -548,15 +513,17 @@ async def _page_rows(
         ).all()
     )
     first = today - dt.timedelta(days=29)
-    views = await _views_by_page(db, today - dt.timedelta(days=29), today)
+    views = await _views_by_page(db, first, today)
 
     out = []
     for page, bm_name, bm_status in pages:
         owner = owners.get(page.id)
-        if owner_ids is not None and (owner is None or owner[0] not in owner_ids):
+        items = by_page.get(page.id, [])
+        owned_in_scope = owner is not None and (owner_ids is None or owner[0] in owner_ids)
+        if owner_ids is not None and not items and not owned_in_scope:
             continue
-        snap = scores.get(owner[0]) if owner else None
-        leads, median, won = lead_stats.get(page.id, (0, None, 0))
+        summary = metrics.summarize(items, now, live.params)
+        score = scores.get(owner[0]) if owner else None
         daily = views.get(page.id, {})
         days = [first + dt.timedelta(days=i) for i in range(30)]
         has_views = any(daily.get(d) is not None for d in days)
@@ -566,18 +533,20 @@ async def _page_rows(
             fb_page_id=page.fb_page_id,
             bm_name=bm_name,
             owner=NamedRef(id=owner[0], name=owner[1]) if owner else None,
-            owner_total=snap.total if snap else None,
-            owner_tier=snap.tier if snap else None,
-            leads_7d=leads,
-            median_response_seconds=int(median) if median is not None else None,
-            won_7d=won,
+            owner_total=score.total if score else None,
+            owner_tier=score.tier if score else None,
+            leads_7d=summary.leads,
+            median_response_seconds=summary.median_response_seconds,
+            won_7d=summary.won,
+            revenue_7d=summary.revenue_vnd,
+            overdue_7d=summary.overdue,
             posts_week=int(posts.get(page.id, 0)) if page.content_synced_at else None,
             views_30d=sum(daily.get(d) or 0 for d in days) if has_views else None,
             views_daily=[daily.get(d) for d in days],
             status=_page_status(page, bm_status, daily, today),
         )
-        out.append((row, owner[2] if owner else None, page.business_manager_id))
-    return out
+        out.append((row, page.business_manager_id))
+    return out, r
 
 
 def _in_tab(row: PageReportRow, tab: PageTab) -> bool:
@@ -617,15 +586,12 @@ async def pages_report(
 ) -> PageReportList:
     now = now or dt.datetime.now(dt.UTC)
     tz = await workspace_tz(db, ctx.workspace_id)
-    all_rows = await _page_rows(db, ctx, now, tz)
-    if team_id is not None:
-        await _scope_ids(db, ctx, team_id)  # kiểm tra quyền xem nhóm
+    all_rows, r = await _page_rows(db, ctx, now, tz, team_id)
     needle = (q or "").strip().lower()
     filtered = [
         row
-        for row, row_team, row_bm in all_rows
+        for row, row_bm in all_rows
         if (bm_id is None or row_bm == bm_id)
-        and (team_id is None or row_team == team_id)
         and (
             not needle
             or needle in row.name.lower()
@@ -665,14 +631,15 @@ async def pages_report(
         teams=await _teams(db, ctx),
         posts_target=settings.posts_per_week_target if settings else 5,
         can_assign=ctx.can(Perm.PAGE_ASSIGN),
+        range=RangeOut(key=r.key, first_day=r.first_day, last_day=r.last_day),
         is_mock=get_settings().mock_mode,
     )
 
 
 async def all_page_rows(db: AsyncSession, ctx: AuthContext) -> list[PageReportRow]:
     now = dt.datetime.now(dt.UTC)
-    rows = await _page_rows(db, ctx, now, await workspace_tz(db, ctx.workspace_id))
-    return sorted((r for r, _, _ in rows), key=_sort_key("leads"))
+    rows, _ = await _page_rows(db, ctx, now, await workspace_tz(db, ctx.workspace_id))
+    return sorted((r for r, _ in rows), key=_sort_key("leads"))
 
 
 # ---------------------------------------------------------------- Chi tiết Trang

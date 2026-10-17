@@ -71,9 +71,12 @@ class FormulaParams:
 
 @dataclass(frozen=True)
 class LeadFacts:
-    """Những gì của một khách cần cho việc tính điểm."""
+    """Dữ kiện của một khách, dùng chung cho điểm và mọi chỉ số (app/services/metrics.py).
 
-    owner_id: uuid.UUID
+    `owner_id` None: khách vào Trang lúc chưa có người phụ trách (không tính điểm cho ai).
+    """
+
+    owner_id: uuid.UUID | None
     source: LeadSource
     status: LeadStatus
     response_seconds: int | None
@@ -83,6 +86,11 @@ class LeadFacts:
     won_value_vnd: int | None
     result_at: dt.datetime | None
     result_due_at: dt.datetime
+    page_id: uuid.UUID | None = None
+    first_inbound_at: dt.datetime | None = None
+    replied: bool = False  # docs/metrics.md: trả lời, hoặc đã gọi, hoặc trạng thái khác "Mới"
+    called: bool = False
+    campaign_id: uuid.UUID | None = None
 
 
 @dataclass
