@@ -74,6 +74,16 @@ async def test_e2e_seed_refuses_production(monkeypatch: pytest.MonkeyPatch) -> N
         await cli.e2e_seed({"workspace": "x", "accounts": []})
 
 
+async def test_e2e_seed_refuses_dev_database(
+    monkeypatch: pytest.MonkeyPatch, admin_db: AsyncSession
+) -> None:
+    """Mục L: chạy nhầm `migrate python -m app.cli e2e-seed` (DB dev) bị chặn, không tạo gì."""
+    monkeypatch.setattr(get_settings(), "postgres_db", "fanpage")
+    with pytest.raises(cli.CliError, match="DB test"):
+        await cli.e2e_seed({"workspace": "E2E", "accounts": []})
+    assert await admin_db.scalar(select(func.count()).select_from(User)) == 0
+
+
 async def test_e2e_seed_creates_and_resets_accounts(admin_db: AsyncSession) -> None:
     payload = {
         "workspace": "E2E",

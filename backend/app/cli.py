@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.db import admin_sessionmaker, dispose_engines
 from app.core.security import PasswordPolicyError, hash_password, validate_password
+from app.mock.sandbox import is_test_database
 from app.models import MemberRole, MemberStatus, User, Workspace, WorkspaceMember
 from app.services.auth_service import normalize_email
 from app.services.workspace_service import create_workspace, slugify
@@ -237,6 +238,9 @@ async def e2e_seed(payload: dict[str, Any]) -> str:
     """
     if get_settings().app_env not in ("development", "test"):
         raise CliError("e2e-seed chỉ chạy ở môi trường development/test")
+    if not is_test_database(get_settings().postgres_db):
+        # Mục L: dữ liệu e2e chỉ nằm trong DB test riêng, không bao giờ vào DB dev.
+        raise CliError("e2e-seed chỉ chạy trên DB test (tên kết thúc _test), không ghi vào DB dev")
     async with admin_sessionmaker()() as db:
         ws = await get_or_create_workspace(db, payload["workspace"], slugify(payload["workspace"]))
         members: dict[str, WorkspaceMember] = {}
