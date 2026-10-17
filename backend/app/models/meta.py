@@ -4,19 +4,24 @@ from __future__ import annotations
 
 import datetime as dt
 import uuid
+from typing import Any
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
+    ForeignKey,
     ForeignKeyConstraint,
+    Identity,
     Index,
     LargeBinary,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, created_at_col, str_enum, updated_at_col, uuid_pk, workspace_fk
@@ -99,8 +104,70 @@ class Page(Base):
         str_enum(ConnectionStatus, "page_access_status"),
         server_default=ConnectionStatus.ACTIVE.value,
     )
+    # Vì sao không theo dõi: other_workspace (#22), removed_from_bm, bm_disconnected.
+    untracked_reason: Mapped[str | None] = mapped_column(String(32))
     created_at: Mapped[dt.datetime] = created_at_col()
     updated_at: Mapped[dt.datetime] = updated_at_col()
+
+
+class AdAccount(Base):
+    """Tài khoản quảng cáo đọc được qua BM (chi tiêu đồng bộ ở Bước 7)."""
+
+    __tablename__ = "ad_accounts"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id"),
+        UniqueConstraint("workspace_id", "fb_ad_account_id"),
+        ForeignKeyConstraint(
+            ["workspace_id", "business_manager_id"],
+            ["business_managers.workspace_id", "business_managers.id"],
+            ondelete="CASCADE",
+            name="fk_ad_accounts_business_manager",
+        ),
+        Index("ix_ad_accounts_business_manager_id", "business_manager_id"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = workspace_fk()
+    business_manager_id: Mapped[uuid.UUID]
+    fb_ad_account_id: Mapped[str] = mapped_column(String(40))
+    name: Mapped[str] = mapped_column(String(200))
+    currency: Mapped[str | None] = mapped_column(String(3))
+    timezone_name: Mapped[str | None] = mapped_column(String(64))
+    account_status: Mapped[int | None] = mapped_column(SmallInteger)
+    access_status: Mapped[ConnectionStatus] = mapped_column(
+        str_enum(ConnectionStatus, "ad_access_status"),
+        server_default=ConnectionStatus.ACTIVE.value,
+    )
+    created_at: Mapped[dt.datetime] = created_at_col()
+    updated_at: Mapped[dt.datetime] = updated_at_col()
+
+
+class SyncRun(Base):
+    """Một lần kiểm tra hoặc đồng bộ với Meta. `usage`: header giới hạn gọi API, không có mã."""
+
+    __tablename__ = "sync_runs"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["workspace_id", "business_manager_id"],
+            ["business_managers.workspace_id", "business_managers.id"],
+            ondelete="CASCADE",
+            name="fk_sync_runs_business_manager",
+        ),
+        Index("ix_sync_runs_bm_started", "business_manager_id", "started_at"),
+        Index("ix_sync_runs_workspace_id", "workspace_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="RESTRICT")
+    )
+    business_manager_id: Mapped[uuid.UUID]
+    kind: Mapped[str] = mapped_column(String(32))
+    started_at: Mapped[dt.datetime]
+    finished_at: Mapped[dt.datetime | None]
+    status: Mapped[str] = mapped_column(String(16))  # running | ok | warning | failed
+    error: Mapped[str | None] = mapped_column(String(500))
+    usage: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
 class PageAssignment(Base):
