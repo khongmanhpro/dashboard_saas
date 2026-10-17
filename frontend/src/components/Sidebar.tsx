@@ -5,6 +5,7 @@ import type { Me } from "../api/types";
 import { visibleNav, type NavItem } from "../app/nav";
 import { useLogout } from "../auth/useAuth";
 import { t } from "../i18n";
+import { Brand } from "./Brand";
 import { Icon } from "./Icon";
 
 /** Số khách quá 48 giờ chưa có kết quả, trong phạm vi người đang xem (theo thiết kế). */
@@ -46,12 +47,7 @@ export function Sidebar({ me }: { me: Me }) {
 
   return (
     <nav className="sidebar" aria-label={t.nav.mainLabel}>
-      <div className="brand">
-        <div className="brand__logo" aria-hidden="true">
-          {t.app.logoLetter}
-        </div>
-        <div className="brand__name">{t.app.name}</div>
-      </div>
+      <Brand />
       {(["main", "admin"] as const).map((group) => {
         const groupItems = items.filter((i) => i.group === group);
         if (groupItems.length === 0) return null;

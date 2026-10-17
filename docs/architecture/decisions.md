@@ -97,7 +97,7 @@ Sếp duyệt ngày 17/10/2026, cùng lúc duyệt kế hoạch Bước 1. Nếu
 | Nhắc thủ công | Trưởng nhóm (khách trong nhóm), Quản lý/Chủ sở hữu (mọi khách) bấm "Nhắc người phụ trách" trên Hồ sơ khách (`reminder.send`). | |
 | Web Push | VAPID (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`), thư viện `pywebpush`. Nội dung không có SĐT, không có nội dung tin nhắn. iPhone chỉ nhận khi đã thêm vào màn hình chính (iOS 16.4+). Endpoint trả 404/410 thì xóa đăng ký. | |
 | Gợi ý lên hạng | "Thêm X điểm để lên hạng Y" và "Bạn còn N khách có SĐT chưa gọi". Không hứa trước kết quả. | Điểm là xếp phần trăm. |
-| Biểu tượng | Chữ "P" trên màu chính, thay khi có tên và logo sản phẩm. | |
+| Biểu tượng | Chữ "P" trên màu chính, thay khi có tên và logo sản phẩm. Đã thay bằng logo GoCyberTech (17/10/2026, xem mục I). | |
 | Bộ nhớ đệm | Service worker chỉ lưu khung giao diện, không lưu dữ liệu API. | SĐT khách không nằm lại trên điện thoại. |
 | Quyền mới | `notification.receive` cho cả 5 vai trò, phạm vi của mình. | Mọi route phải khai báo quyền. |
 
@@ -141,4 +141,5 @@ Sếp duyệt ngày 17/10/2026, cùng lúc duyệt kế hoạch Bước 1. Nếu
 | Telegram | Một bot cho cả hệ thống (`TELEGRAM_BOT_TOKEN` trong `.env`). Mỗi workspace một chat ID do Chủ sở hữu nhập, có nút "Gửi thử". Chưa tạo `member_telegram`. Email báo cáo tuần để sau (chưa có SMTP). | |
 | Loại cảnh báo | BM mất kết nối / thiếu quyền; chiến dịch chi phí/kết quả > 25.000 ₫ khi đã chi ≥ 300.000 ₫ trong ngày; chi phí/khách chốt 7 ngày > ngưỡng; tần suất 7 ngày > 3,5; tóm tắt 08:00 mỗi sáng về hôm qua. Bật/tắt và sửa ngưỡng được. | |
 | Gửi cảnh báo | Mỗi quy tắc × đối tượng × ngày gửi một lần, ghi `alert_deliveries`. Không có SĐT, không có nội dung tin nhắn. Mã bot không vào log, lỗi HTTP không kèm URL. MOCK_MODE không gửi thật, ghi `status = mock`. | |
+| Thương hiệu | Tên sản phẩm **GoCyberTech**, logo gốc `docs/brand/gocybertech-logo.png`. Giao diện dùng phần biểu tượng và tên hai màu; không dùng câu "Autonomous IT & Cybersecurity" (không khớp sản phẩm). Màu giao diện giữ theo thiết kế. | Sếp gửi logo 17/10/2026. |
 | Dữ liệu mẫu | Fixture QC (2 tài khoản, 1 dùng USD), bài đăng, insights cho 4 Trang demo. Seed tạo khoảng 30 ngày khách mẫu rồi chạy đồng bộ một lần. `make simulate` thêm tình huống khách từ QC gắn đúng chiến dịch. | |

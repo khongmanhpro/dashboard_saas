@@ -4,6 +4,7 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { homePath } from "../app/nav";
 import { useLogin, useMe } from "../auth/useAuth";
+import { Brand } from "../components/Brand";
 import { errorMessage, t } from "../i18n";
 
 export function LoginPage() {
@@ -34,12 +35,7 @@ export function LoginPage() {
   return (
     <main className="auth-page">
       <div className="card auth-card">
-        <div className="brand">
-          <div className="brand__logo" aria-hidden="true">
-            {t.app.logoLetter}
-          </div>
-          <div className="brand__name">{t.app.name}</div>
-        </div>
+        <Brand />
         <h1>{t.login.title}</h1>
         <form className="auth-form" onSubmit={onSubmit} noValidate>
           <div className="field">

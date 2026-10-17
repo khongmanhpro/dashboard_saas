@@ -59,20 +59,21 @@ input {
   padding: 0 6px;
 }
 .brand__logo {
-  width: 32px;
+  width: auto;
   height: 32px;
-  border-radius: var(--radius-control);
-  background: var(--color-primary);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 15px;
+  flex: none;
 }
 .brand__name {
   font-weight: 700;
-  font-size: 16px;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+/* Hai màu theo logo GoCyberTech. */
+.brand__name-main {
+  color: var(--color-brand-ink);
+}
+.brand__name-accent {
+  color: var(--color-brand-accent);
 }
 
 .nav-group {

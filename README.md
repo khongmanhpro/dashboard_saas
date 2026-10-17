@@ -64,7 +64,7 @@ Test backend tự tạo lại DB `fanpage_test` mỗi lần chạy và từ ch�
 - Job `send_reminders` chạy mỗi 5 phút, tạo nhắc việc theo các mốc trong `docs/architecture/decisions.md` (mục G) và gửi thông báo đẩy (Web Push).
 - Thông báo đẩy cần `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`. `make env` tự sinh khóa; với `.env` đã có thì chạy `make vapid`. Thiếu khóa thì nhắc việc vẫn hiện trong app, chỉ không có thông báo đẩy.
 - Service worker (`frontend/public/sw.js`) chỉ lưu khung giao diện, không lưu dữ liệu `/api`.
-- Biểu tượng tạm sinh bằng `python3 scripts/make_icons.py`; thay khi sản phẩm có logo.
+- Logo GoCyberTech gốc ở `docs/brand/gocybertech-logo.png`. Biểu tượng menu, favicon, biểu tượng app sinh bằng `python3 scripts/make_brand_assets.py` (cần Pillow).
 
 ### Kiểm tra cài lên điện thoại thật
 

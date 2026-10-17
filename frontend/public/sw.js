@@ -2,8 +2,8 @@
 // - Chỉ lưu khung giao diện (HTML, JS/CSS đã băm tên, biểu tượng). KHÔNG lưu dữ liệu /api:
 //   SĐT và tin nhắn của khách không nằm lại trên điện thoại (quyết định Bước 5).
 // - Nhận thông báo đẩy và mở đúng khách khi bấm vào.
-const CACHE = "shell-v1";
-const PRECACHE = ["/offline.html", "/icons/icon-192.png", "/manifest.webmanifest"];
+const CACHE = "shell-v2"; // v2: biểu tượng GoCyberTech
+const PRECACHE = ["/offline.html", "/icons/icon-192.png", "/brand/logo-mark.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)));
@@ -39,7 +39,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.pathname.startsWith("/assets/") || url.pathname.startsWith("/icons/")) {
+  if (url.pathname.startsWith("/assets/") || url.pathname.startsWith("/icons/") || url.pathname.startsWith("/brand/")) {
     event.respondWith(
       caches.match(request).then(
         (cached) =>
@@ -63,7 +63,7 @@ self.addEventListener("push", (event) => {
   } catch {
     data = {};
   }
-  const title = data.title || "[Tên sản phẩm]";
+  const title = data.title || "GoCyberTech";
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || "",

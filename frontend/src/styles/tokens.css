@@ -6,6 +6,9 @@
   --color-primary-hover: #174c8e;
   --color-primary-soft: #eaf2fc;
   --color-accent: #eb6834;
+  /* Màu chữ thương hiệu GoCyberTech (docs/brand/gocybertech-logo.png). */
+  --color-brand-ink: #0b1a3a;
+  --color-brand-accent: #1f7bf2;
 
   --color-bg: #f5f6f8;
   --color-surface: #ffffff;

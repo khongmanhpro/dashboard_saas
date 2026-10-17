@@ -22,7 +22,7 @@ Hướng phát triển là SaaS bán cho doanh nghiệp khác. Code ngay từ đ
 - **Kế hoạch chi tiết:** https://claude.ai/code/artifact/c52948d5-1eea-4b47-ac1e-ba33ec2736e5
 - **Thiết kế 14 màn hình:** https://claude.ai/artifact/HkydySZzeGQLY75jak87Xx
 
-Cả hai đều riêng tư, chủ tài khoản phải bấm Share thì mới mở được. Giao diện code phải bám theo thiết kế: font Be Vietnam Pro, màu chính `#1F63B8`, nhấn `#EB6834`, nền `#F5F6F8`, viền `#E4E7EC`. Màu hạng: A `#1C5CAB`, B `#2A78D6`, C `#86B6EF`, D `#CDE2FB`.
+Cả hai đều riêng tư, chủ tài khoản phải bấm Share thì mới mở được. Tên sản phẩm: **GoCyberTech** (logo ở `docs/brand/`). Giao diện code phải bám theo thiết kế: font Be Vietnam Pro, màu chính `#1F63B8`, nhấn `#EB6834`, nền `#F5F6F8`, viền `#E4E7EC`. Màu hạng: A `#1C5CAB`, B `#2A78D6`, C `#86B6EF`, D `#CDE2FB`.
 
 ## 3. Quy tắc nghiệp vụ (bắt buộc)
 

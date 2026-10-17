@@ -3,8 +3,9 @@
 
 export const vi = {
   app: {
-    name: "[Tên sản phẩm]",
-    logoLetter: "P",
+    name: "GoCyberTech",
+    nameMain: "GoCyber",
+    nameAccent: "Tech",
     sampleData: "Dữ liệu mẫu",
     later: "Sau",
     loading: "Đang tải…",
