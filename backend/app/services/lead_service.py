@@ -23,6 +23,7 @@ from app.models import (
     Contact,
     Lead,
     LeadEvent,
+    LeadEventType,
     LeadgenSubmission,
     LeadPhone,
     LeadSource,
@@ -43,8 +44,10 @@ from app.schemas.leads import (
     LeadPermissions,
     LeadSummary,
     NamedRef,
+    ResultUpdate,
     TimelineItem,
 )
+from app.services import audit
 from app.services.errors import ServiceError
 from app.services.member_service import visible_team_ids
 from app.services.phone import mask_phone, mask_phones_in_text
@@ -535,3 +538,140 @@ async def get_lead(
         timeline_truncated=truncated,
         permissions=permissions_for(ctx, lead, now),
     )
+
+
+# ---------------------------------------------------------------- API ghi
+
+
+async def _lock_for_update(
+    db: AsyncSession, ctx: AuthContext, lead_id: uuid.UUID, now: dt.datetime
+) -> tuple[Lead, LeadPermissions]:
+    access = await lead_access(db, ctx)
+    await _visible_lead_row(db, access, lead_id)
+    lead = await db.get(Lead, lead_id, with_for_update=True, populate_existing=True)
+    if lead is None:
+        raise ServiceError("lead_not_found", 404)
+    perms = permissions_for(ctx, lead, now)
+    if not perms.can_update:
+        raise ServiceError("forbidden", 403, permission=Perm.LEAD_UPDATE.value)
+    return lead, perms
+
+
+def _result_snapshot(lead: Lead) -> dict[str, Any]:
+    """Trạng thái kết quả cho audit/lịch sử. Không có SĐT."""
+    return {
+        "status": lead.status.value,
+        "callback_at": lead.callback_at.isoformat() if lead.callback_at else None,
+        "won_value_vnd": lead.won_value_vnd,
+        "lost_reason": lead.lost_reason.value if lead.lost_reason else None,
+        "lost_note": lead.lost_note,
+        "called_at": lead.called_at.isoformat() if lead.called_at else None,
+    }
+
+
+async def set_called(
+    db: AsyncSession,
+    ctx: AuthContext,
+    lead_id: uuid.UUID,
+    called: bool,
+    *,
+    now: dt.datetime | None = None,
+) -> LeadDetail:
+    """Nhân viên tự đánh dấu đã gọi cho khách (bật/tắt)."""
+    now = now or dt.datetime.now(dt.UTC)
+    lead, _ = await _lock_for_update(db, ctx, lead_id, now)
+    if called != (lead.called_at is not None):
+        before = _result_snapshot(lead)
+        lead.called_at = now if called else None
+        db.add(
+            LeadEvent(
+                workspace_id=lead.workspace_id,
+                lead_id=lead.id,
+                type=LeadEventType.CALLED,
+                actor_member_id=ctx.member_id,
+                occurred_at=now,
+                data={"called": called},
+            )
+        )
+        await audit.record(
+            db,
+            workspace_id=ctx.workspace_id,
+            actor_member_id=ctx.member_id,
+            action="lead.called",
+            entity_type="lead",
+            entity_id=lead.id,
+            before=before,
+            after=_result_snapshot(lead),
+            ip=ctx.ip,
+        )
+        await db.commit()
+    return await get_lead(db, ctx, lead_id, now=now)
+
+
+async def set_result(
+    db: AsyncSession,
+    ctx: AuthContext,
+    lead_id: uuid.UUID,
+    body: ResultUpdate,
+    *,
+    now: dt.datetime | None = None,
+) -> LeadDetail:
+    """Lưu Hẹn lại / Chốt / Hủy. `result_at` chỉ ghi ở lần có kết quả đầu tiên."""
+    now = now or dt.datetime.now(dt.UTC)
+    lead, perms = await _lock_for_update(db, ctx, lead_id, now)
+    if not perms.can_edit_result:
+        raise ServiceError(
+            "result_edit_window_closed",
+            403,
+            edit_until=perms.edit_until.isoformat() if perms.edit_until else None,
+        )
+    if (
+        body.status == LeadStatus.CALLBACK
+        and body.callback_at is not None
+        and body.callback_at <= now
+    ):
+        raise ServiceError("callback_must_be_future", 422)
+
+    before = _result_snapshot(lead)
+    previous = lead.status
+    note = body.note.strip() if body.note and body.note.strip() else None
+    lead.status = body.status
+    lead.status_changed_at = now
+    lead.callback_at = body.callback_at if body.status == LeadStatus.CALLBACK else None
+    lead.won_value_vnd = body.won_value_vnd if body.status == LeadStatus.WON else None
+    lead.lost_reason = body.lost_reason if body.status == LeadStatus.LOST else None
+    lead.lost_note = note if body.status == LeadStatus.LOST else None
+    first_result = lead.result_at is None
+    if first_result:
+        lead.result_at = now
+    after = _result_snapshot(lead)
+
+    data: dict[str, Any] = {"from": previous.value, "to": body.status.value}
+    for key in ("callback_at", "won_value_vnd", "lost_reason"):
+        if after[key] is not None:
+            data[key] = after[key]
+    if note:
+        data["note"] = note
+    db.add(
+        LeadEvent(
+            workspace_id=lead.workspace_id,
+            lead_id=lead.id,
+            type=LeadEventType.STATUS_CHANGED,
+            actor_member_id=ctx.member_id,
+            occurred_at=now,
+            data=data,
+        )
+    )
+    await audit.record(
+        db,
+        workspace_id=ctx.workspace_id,
+        actor_member_id=ctx.member_id,
+        action="lead.result_set" if first_result else "lead.result_edited",
+        entity_type="lead",
+        entity_id=lead.id,
+        before=before,
+        after=after,
+        ip=ctx.ip,
+    )
+    await db.commit()
+    return await get_lead(db, ctx, lead_id, now=now)

@@ -10,13 +10,22 @@ from fastapi import APIRouter, Depends, Query
 from app.api.deps import AuthContext, DbSession, require
 from app.core.rbac import Perm
 from app.models import LeadStatus
-from app.schemas.leads import FilterOptions, LeadDetail, LeadPage, LeadSummary
+from app.schemas.leads import (
+    CalledUpdate,
+    FilterOptions,
+    LeadDetail,
+    LeadPage,
+    LeadSummary,
+    ResultUpdate,
+)
 from app.services import lead_service
 from app.services.lead_service import Chip, LeadFilters, Period, SourceFilter
 
 router = APIRouter(prefix="/api/leads", tags=["leads"])
 
 CanViewLeads = Annotated[AuthContext, Depends(require(Perm.LEAD_VIEW))]
+# Người cập nhật: nhân viên/trưởng nhóm chỉ khách của mình, quản lý/chủ sở hữu mọi khách.
+CanUpdateLeads = Annotated[AuthContext, Depends(require(Perm.LEAD_UPDATE))]
 
 
 def _filters(
@@ -66,3 +75,17 @@ async def lead_filter_options(ctx: CanViewLeads, db: DbSession) -> FilterOptions
 @router.get("/{lead_id}", response_model=LeadDetail)
 async def get_lead(lead_id: uuid.UUID, ctx: CanViewLeads, db: DbSession) -> LeadDetail:
     return await lead_service.get_lead(db, ctx, lead_id)
+
+
+@router.post("/{lead_id}/called", response_model=LeadDetail)
+async def set_called(
+    lead_id: uuid.UUID, body: CalledUpdate, ctx: CanUpdateLeads, db: DbSession
+) -> LeadDetail:
+    return await lead_service.set_called(db, ctx, lead_id, body.called)
+
+
+@router.put("/{lead_id}/result", response_model=LeadDetail)
+async def set_result(
+    lead_id: uuid.UUID, body: ResultUpdate, ctx: CanUpdateLeads, db: DbSession
+) -> LeadDetail:
+    return await lead_service.set_result(db, ctx, lead_id, body)

@@ -20,6 +20,9 @@ from app.core.db import admin_sessionmaker, dispose_engines, get_admin_engine
 from app.core.redis import close_redis, get_redis
 from app.models import Base
 
+# Fixture dữ liệu khách dùng chung cho nhiều file test (org, as_role).
+from tests.integration.leads_fixtures import as_role, org  # noqa: F401
+
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 
 
