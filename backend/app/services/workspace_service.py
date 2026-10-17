@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import re
 import unicodedata
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.models import Workspace, WorkspaceSettings
+from app.models import ScoreFormula, Workspace, WorkspaceSettings
 
 
 def slugify(text: str) -> str:
@@ -34,6 +35,16 @@ async def create_workspace(db: AsyncSession, name: str, slug: str | None = None)
             lead_session_gap_days=s.lead_session_gap_days,
             posts_per_week_target=s.posts_per_week_target,
             min_leads_for_ranking=s.min_leads_for_ranking,
+        )
+    )
+    # Công thức điểm mặc định (CLAUDE.md mục 3), phiên bản 1.
+    db.add(
+        ScoreFormula(
+            workspace_id=ws.id,
+            version=1,
+            min_leads=s.min_leads_for_ranking,
+            posts_per_week_target=s.posts_per_week_target,
+            effective_from=dt.datetime.now(dt.UTC),
         )
     )
     await db.flush()

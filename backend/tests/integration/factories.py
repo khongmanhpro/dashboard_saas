@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import itertools
 import secrets
 from dataclasses import dataclass
@@ -14,6 +15,7 @@ from app.models import (
     BusinessManager,
     MemberRole,
     Page,
+    ScoreFormula,
     Team,
     User,
     Workspace,
@@ -30,6 +32,11 @@ async def create_workspace(db: AsyncSession, name: str | None = None) -> Workspa
     db.add(ws)
     await db.flush()
     db.add(WorkspaceSettings(workspace_id=ws.id))
+    db.add(
+        ScoreFormula(
+            workspace_id=ws.id, version=1, effective_from=dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
+        )
+    )
     await db.flush()
     return ws
 

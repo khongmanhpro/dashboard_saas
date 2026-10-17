@@ -177,3 +177,38 @@ async def test_tracked_fb_page_id_is_unique_across_workspaces(admin_db: AsyncSes
     page.is_tracked = True
     with pytest.raises(IntegrityError, match="uq_pages_tracked_fb_page_id"):
         await admin_db.commit()
+
+
+async def test_active_workspace_ids_function(admin_db: AsyncSession, app_db: AsyncSession) -> None:
+    active = await f.create_workspace(admin_db)
+    suspended = await f.create_workspace(admin_db)
+    suspended.status = WorkspaceStatus.SUSPENDED
+    await admin_db.commit()
+    ids = (await app_db.scalars(text("SELECT app_active_workspace_ids()"))).all()
+    assert active.id in ids
+    assert suspended.id not in ids
+    row = (
+        await admin_db.execute(
+            text(
+                "SELECT p.prosecdef, has_function_privilege('public', 'app_active_workspace_ids()',"
+                " 'EXECUTE') FROM pg_proc p WHERE p.proname = 'app_active_workspace_ids'"
+            )
+        )
+    ).one()
+    assert row == (True, False)
+
+
+async def test_score_formula_rules(admin_db: AsyncSession) -> None:
+    from app.models import ScoreFormula
+
+    ws = await f.create_workspace(admin_db)
+    await admin_db.commit()
+    admin_db.add(ScoreFormula(workspace_id=ws.id, version=2, w_close_rate=35, effective_from=T0))
+    with pytest.raises(IntegrityError, match="weights_sum_100"):
+        await admin_db.commit()
+    await admin_db.rollback()
+    privileges = await admin_db.scalar(
+        text("SELECT has_table_privilege(:r, 'score_formulas', 'UPDATE')"),
+        {"r": get_settings().postgres_app_user},
+    )
+    assert privileges is False

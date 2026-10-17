@@ -76,3 +76,17 @@ class LeadEventType(enum.StrEnum):
 class LeadgenFetchStatus(enum.StrEnum):
     FETCHED = "fetched"
     PENDING = "pending"  # Chưa lấy được chi tiết form (cần mã của Trang)
+
+
+class PeriodType(enum.StrEnum):
+    WEEK = "week"  # Kỳ chính thức: T2–CN theo múi giờ workspace (quyết định #18)
+    ROLLING_7 = "rolling_7"
+    ROLLING_30 = "rolling_30"
+    MONTH = "month"
+
+
+class Tier(enum.StrEnum):
+    A = "A"
+    B = "B"
+    C = "C"
+    D = "D"
