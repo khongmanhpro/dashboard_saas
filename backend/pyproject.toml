@@ -16,6 +16,7 @@ dependencies = [
     "cryptography>=43",
     "redis>=5.2",
     "arq>=0.26",
+    "pywebpush>=2.0",
 ]
 
 [dependency-groups]
@@ -59,3 +60,8 @@ python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
 exclude = ["migrations/"]
+
+[[tool.mypy.overrides]]
+# pywebpush không có type hints; chỉ dùng hàm webpush và WebPushException.
+module = ["pywebpush", "pywebpush.*"]
+ignore_missing_imports = true

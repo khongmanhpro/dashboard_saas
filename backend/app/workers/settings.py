@@ -4,6 +4,7 @@
 - `process_webhook`: xử lý webhook Meta (app.workers.webhook).
 - `purge_expired_data`: 02:30 giờ Việt Nam mỗi đêm, hạn lưu dữ liệu (app.workers.retention).
 - `nightly_scores`: 01:00 giờ Việt Nam mỗi đêm, tính điểm và chốt tuần (app.workers.scoring).
+- `send_reminders`: mỗi 5 phút, nhắc việc và thông báo đẩy (app.workers.reminders).
 
 Đồng bộ định kỳ thêm ở các bước sau.
 """
@@ -20,6 +21,7 @@ from app.core.config import get_settings
 from app.core.db import dispose_engines
 from app.core.logging import setup_logging
 from app.core.queue import redis_settings as queue_redis_settings
+from app.workers.reminders import send_reminders
 from app.workers.retention import purge_expired_data
 from app.workers.scoring import nightly_scores
 from app.workers.webhook import MAX_TRIES, process_webhook
@@ -63,6 +65,13 @@ class WorkerSettings:
             minute=PURGE_MINUTE_UTC,
             second=0,
             timeout=PURGE_TIMEOUT_SECONDS,
+            run_at_startup=False,
+        ),
+        cron(
+            send_reminders,
+            minute=set(range(0, 60, 5)),
+            second=30,
+            timeout=4 * 60,
             run_at_startup=False,
         ),
         cron(

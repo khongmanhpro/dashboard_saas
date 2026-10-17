@@ -2,10 +2,13 @@ COMPOSE := docker compose
 # Container quản trị (có mật khẩu quản trị DB): test, CLI, migration.
 ADMIN := $(COMPOSE) run --rm -T migrate
 
-.PHONY: env up down logs ps test test-frontend e2e lint migrate bootstrap seed simulate
+.PHONY: env vapid up down logs ps test test-frontend e2e lint migrate bootstrap seed simulate
 
 env:            ## Tạo .env dev với bí mật ngẫu nhiên (không ghi đè)
 	python3 scripts/init_env.py
+
+vapid:          ## Thêm khóa VAPID (thông báo đẩy) vào .env đã có, không đổi giá trị khác
+	python3 scripts/init_env.py --add-vapid
 
 up:             ## Chạy toàn bộ dịch vụ dev
 	$(COMPOSE) up -d --build

@@ -36,3 +36,8 @@ def test_webhook_job_is_registered_with_retries() -> None:
 def test_nightly_scores_runs_at_1am_vietnam_time() -> None:
     job = next(j for j in WorkerSettings.cron_jobs if j.name == "cron:nightly_scores")
     assert job.hour == 18 and job.minute == 0  # 18:00 UTC = 01:00 Asia/Ho_Chi_Minh
+
+
+def test_reminders_run_every_five_minutes() -> None:
+    job = next(j for j in WorkerSettings.cron_jobs if j.name == "cron:send_reminders")
+    assert job.minute == set(range(0, 60, 5))

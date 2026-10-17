@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     # Một hoặc nhiều khóa Fernet, cách nhau dấu phẩy. Khóa đầu dùng để mã hóa.
     token_encryption_key: SecretStr
 
+    # --- Thông báo đẩy (Web Push, Bước 5). Trống thì chỉ có nhắc việc trong app. ---
+    vapid_public_key: str = ""
+    vapid_private_key: SecretStr = SecretStr("")
+
     # --- Quy tắc đo lường mặc định cho workspace mới ---
     work_hours_start: dt.time = dt.time(8, 0)
     work_hours_end: dt.time = dt.time(22, 0)
