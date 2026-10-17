@@ -70,6 +70,7 @@ class LeadEventType(enum.StrEnum):
     OVERDUE = "overdue"
     REMINDER_SENT = "reminder_sent"
     REASSIGNED = "reassigned"
+    MERGED = "merged"  # Gộp đợt form vào đợt nhắn tin cùng SĐT
 
 
 class LeadgenFetchStatus(enum.StrEnum):

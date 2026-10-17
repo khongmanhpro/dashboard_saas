@@ -57,6 +57,8 @@ class Contact(Base):
     workspace_id: Mapped[uuid.UUID] = workspace_fk()
     page_id: Mapped[uuid.UUID]
     psid: Mapped[str] = mapped_column(String(64))
+    # Tên hiển thị: từ form leadgen, sau này từ Graph API. NULL thì giao diện hiện "Khách ···1234".
+    display_name: Mapped[str | None] = mapped_column(String(200))
     first_seen_at: Mapped[dt.datetime]
     last_inbound_at: Mapped[dt.datetime | None]
     created_at: Mapped[dt.datetime] = created_at_col()
@@ -105,8 +107,16 @@ class Lead(Base):
             ondelete="RESTRICT",
             name="fk_leads_owner",
         ),
+        ForeignKeyConstraint(
+            ["workspace_id", "merged_into_lead_id"],
+            ["leads.workspace_id", "leads.id"],
+            ondelete="SET NULL (merged_into_lead_id)",
+            name="fk_leads_merged_into",
+        ),
         Index("ix_leads_workspace_owner", "workspace_id", "owner_member_id"),
         Index("ix_leads_page_first_inbound", "page_id", "first_inbound_at"),
+        Index("ix_leads_workspace_first_inbound", "workspace_id", "first_inbound_at"),
+        Index("ix_leads_workspace_phone", "workspace_id", "phone"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
@@ -140,8 +150,38 @@ class Lead(Base):
     result_due_at: Mapped[dt.datetime]
     result_at: Mapped[dt.datetime | None]
     last_inbound_at: Mapped[dt.datetime | None]
+    # Đợt từ form đã gộp vào đợt nhắn tin cùng SĐT (quyết định #16): ẩn khỏi danh sách và điểm.
+    merged_into_lead_id: Mapped[uuid.UUID | None]
     created_at: Mapped[dt.datetime] = created_at_col()
     updated_at: Mapped[dt.datetime] = updated_at_col()
+
+
+class LeadPhone(Base):
+    """Mọi SĐT nhận được của một đợt khách. `leads.phone` là số đầu tiên."""
+
+    __tablename__ = "lead_phones"
+    __table_args__ = (
+        UniqueConstraint("lead_id", "phone"),
+        ForeignKeyConstraint(
+            ["workspace_id", "lead_id"],
+            ["leads.workspace_id", "leads.id"],
+            ondelete="CASCADE",
+            name="fk_lead_phones_lead",
+        ),
+        Index("ix_lead_phones_workspace_phone", "workspace_id", "phone"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="RESTRICT")
+    )
+    lead_id: Mapped[uuid.UUID]
+    phone: Mapped[str] = mapped_column(String(15))
+    source: Mapped[str] = mapped_column(String(16))  # message | leadgen
+    message_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("messages.id", ondelete="SET NULL")
+    )
+    detected_at: Mapped[dt.datetime]
 
 
 class Message(Base):

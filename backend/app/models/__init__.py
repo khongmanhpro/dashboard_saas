@@ -16,7 +16,7 @@ from app.models.enums import (
     WorkspaceStatus,
 )
 from app.models.inbound import LeadgenSubmission, WebhookEvent
-from app.models.lead import Contact, Lead, LeadEvent, Message
+from app.models.lead import Contact, Lead, LeadEvent, LeadPhone, Message
 from app.models.member import Team, WorkspaceMember
 from app.models.meta import BusinessManager, Page, PageAssignment
 from app.models.session import AuthSession
@@ -33,6 +33,7 @@ __all__ = [
     "Lead",
     "LeadEvent",
     "LeadEventType",
+    "LeadPhone",
     "LeadSource",
     "LeadStatus",
     "LeadgenFetchStatus",
