@@ -31,6 +31,9 @@ DEV_VALUES = {
     "POSTGRES_PASSWORD": secrets.token_urlsafe(24),
     "POSTGRES_APP_PASSWORD": secrets.token_urlsafe(24),
     "META_WEBHOOK_VERIFY_TOKEN": secrets.token_urlsafe(24),
+    # Bí mật giả cho MOCK_MODE (lệnh giả lập ký webhook bằng giá trị này). Khi nối ứng dụng Meta
+    # thật thì thay bằng App Secret trong phần Cài đặt cơ bản của ứng dụng.
+    "META_APP_SECRET": secrets.token_hex(16),
     "TOKEN_ENCRYPTION_KEY": fernet_key(),
     "MOCK_MODE": "true",
 }

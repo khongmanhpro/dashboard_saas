@@ -17,6 +17,8 @@ os.environ["APP_BASE_URL"] = "http://testserver"
 os.environ["APP_SECRET_KEY"] = secrets.token_urlsafe(48)
 os.environ["TOKEN_ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 os.environ["MOCK_MODE"] = "true"
+os.environ["META_APP_SECRET"] = secrets.token_hex(16)
+os.environ["META_WEBHOOK_VERIFY_TOKEN"] = secrets.token_urlsafe(24)
 os.environ["LOG_LEVEL"] = "WARNING"
 os.environ["POSTGRES_DB"] = os.environ.get("TEST_POSTGRES_DB", "fanpage_test")
 os.environ.setdefault("POSTGRES_HOST", "localhost")

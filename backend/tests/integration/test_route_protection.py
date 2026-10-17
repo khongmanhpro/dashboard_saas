@@ -18,7 +18,8 @@ from app.main import app
 
 pytestmark = pytest.mark.integration
 
-PUBLIC = {"/healthz", "/readyz", "/api/config", "/api/auth/login"}
+# /webhooks/meta không có phiên đăng nhập: bảo vệ bằng chữ ký X-Hub-Signature-256.
+PUBLIC = {"/healthz", "/readyz", "/api/config", "/api/auth/login", "/webhooks/meta"}
 # Chỉ cần đăng nhập, dùng được cả khi đang bị bắt đổi mật khẩu.
 SESSION_ONLY = {"/api/me", "/api/auth/logout", "/api/auth/change-password"}
 
