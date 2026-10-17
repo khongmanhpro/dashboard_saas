@@ -154,9 +154,11 @@ Bảng mới có `workspace_id` thì phải bật RLS và GRANT cho tài khoản
 
 ## Production (VPS)
 
+Hướng dẫn đầy đủ từ lúc thuê VPS: **[docs/deploy.md](docs/deploy.md)**. Tóm tắt:
+
 ```bash
-cp .env.example .env    # điền giá trị thật; APP_ENV=production, APP_BASE_URL=https://<tên miền>, APP_DOMAIN=<tên miền>
-docker compose -f docker-compose.prod.yml up -d --build
+make env-prod DOMAIN=<tên miền>   # .env production, bí mật ngẫu nhiên; chủ sở hữu điền các mã còn trống
+scripts/deploy.sh                 # sao lưu, git pull, build, migration, chờ backend khỏe (cũng dùng để cập nhật)
 docker compose -f docker-compose.prod.yml run --rm migrate python -m app.cli bootstrap-owner
 ```
 
