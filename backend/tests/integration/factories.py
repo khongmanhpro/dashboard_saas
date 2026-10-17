@@ -10,7 +10,16 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
-from app.models import MemberRole, Team, User, Workspace, WorkspaceMember, WorkspaceSettings
+from app.models import (
+    BusinessManager,
+    MemberRole,
+    Page,
+    Team,
+    User,
+    Workspace,
+    WorkspaceMember,
+    WorkspaceSettings,
+)
 
 _seq = itertools.count(1)
 
@@ -109,3 +118,38 @@ async def login(client: httpx.AsyncClient, account: Account) -> str:
     assert resp.status_code == 200, resp.text
     client.headers["X-CSRF-Token"] = resp.json()["csrf_token"]
     return str(resp.json()["csrf_token"])
+
+
+async def create_business_manager(
+    db: AsyncSession, workspace: Workspace, name: str | None = None
+) -> BusinessManager:
+    n = next(_seq)
+    bm = BusinessManager(
+        workspace_id=workspace.id, fb_business_id=f"9{n:014d}", name=name or f"[BM {n}]"
+    )
+    db.add(bm)
+    await db.flush()
+    return bm
+
+
+async def create_page(
+    db: AsyncSession,
+    workspace: Workspace,
+    *,
+    bm: BusinessManager | None = None,
+    fb_page_id: str | None = None,
+    name: str | None = None,
+    is_tracked: bool = True,
+) -> Page:
+    n = next(_seq)
+    bm = bm or await create_business_manager(db, workspace)
+    page = Page(
+        workspace_id=workspace.id,
+        business_manager_id=bm.id,
+        fb_page_id=fb_page_id or f"1{n:014d}",
+        name=name or f"[Trang {n}]",
+        is_tracked=is_tracked,
+    )
+    db.add(page)
+    await db.flush()
+    return page

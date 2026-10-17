@@ -2,8 +2,23 @@
 
 from app.models.audit import AuditLog
 from app.models.base import Base
-from app.models.enums import MemberRole, MemberStatus, WorkspaceStatus
+from app.models.enums import (
+    ConnectionStatus,
+    LeadEventType,
+    LeadgenFetchStatus,
+    LeadSource,
+    LeadStatus,
+    LostReason,
+    MemberRole,
+    MemberStatus,
+    MessageDirection,
+    WebhookEventStatus,
+    WorkspaceStatus,
+)
+from app.models.inbound import LeadgenSubmission, WebhookEvent
+from app.models.lead import Contact, Lead, LeadEvent, Message
 from app.models.member import Team, WorkspaceMember
+from app.models.meta import BusinessManager, Page, PageAssignment
 from app.models.session import AuthSession
 from app.models.user import User
 from app.models.workspace import Workspace, WorkspaceSettings
@@ -12,10 +27,27 @@ __all__ = [
     "AuditLog",
     "AuthSession",
     "Base",
+    "BusinessManager",
+    "ConnectionStatus",
+    "Contact",
+    "Lead",
+    "LeadEvent",
+    "LeadEventType",
+    "LeadSource",
+    "LeadStatus",
+    "LeadgenFetchStatus",
+    "LeadgenSubmission",
+    "LostReason",
     "MemberRole",
     "MemberStatus",
+    "Message",
+    "MessageDirection",
+    "Page",
+    "PageAssignment",
     "Team",
     "User",
+    "WebhookEvent",
+    "WebhookEventStatus",
     "Workspace",
     "WorkspaceMember",
     "WorkspaceSettings",
