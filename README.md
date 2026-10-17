@@ -46,6 +46,18 @@ make e2e-down          # gỡ stack e2e, xóa DB e2e (make e2e tự gọi khi ch
 
 Các lệnh trên từ chối tạo lại, migrate hay xóa bất kỳ DB nào không có đuôi `_test` (`app/mock/sandbox.py`). `app.cli e2e-seed` cũng vậy, nên chạy nhầm trên container `migrate` (DB dev) sẽ bị chặn.
 
+### CI (GitHub Actions)
+
+`.github/workflows/ci.yml` chạy mỗi khi mở hoặc cập nhật PR vào `main` và khi `main` có commit mới. Ba việc chạy song song, PR chỉ gộp được khi cả ba xanh (decisions.md mục P):
+
+| Việc | Chạy |
+|---|---|
+| Backend | `make env` (bí mật ngẫu nhiên, MOCK_MODE) → `make lint`, `make test`, `make simulate` |
+| Giao diện | `make test-frontend` |
+| E2E | `make e2e`; fail thì tải `e2e-test-results` (trace Playwright) ở trang của lần chạy |
+
+CI không dùng bí mật thật nào.
+
 ## Webhook Meta
 
 - `GET /webhooks/meta`: Meta xác minh bằng `META_WEBHOOK_VERIFY_TOKEN`.

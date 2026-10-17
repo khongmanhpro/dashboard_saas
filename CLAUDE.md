@@ -189,7 +189,8 @@ Sau bước 7: chạy thử 2 tuần với 4 Trang và 4–10 nhân viên thật
 ### Cách làm việc đã thống nhất với sếp
 - Giao tiếp bằng **tiếng Việt**, câu ngắn, rõ.
 - Mỗi bước: đọc thiết kế liên quan trong `docs/design/` → đưa **kế hoạch ngắn kèm các quyết định cần duyệt** → **dừng chờ duyệt** → ghi quyết định vào `decisions.md` (mục mới) → code.
-- **Commit nhỏ, mỗi commit một việc**, message tiếng Việt kiểu `feat(phạm vi): …`. **Chỉ push khi sếp bảo.**
+- **Commit nhỏ, mỗi commit một việc**, message tiếng Việt kiểu `feat(phạm vi): …`.
+- **Làm qua PR** (decisions.md mục P): mỗi đợt việc một nhánh từ `main` (`feat/…`, `fix/…`, `docs/…`, `ci/…`). Tự push nhánh và mở PR (tóm tắt + kết quả test), chờ CI xanh. **Chỉ gộp vào `main` khi sếp bảo**, cách gộp "Rebase and merge". `main` bị khóa: không push thẳng, kể cả chủ repo.
 - Trước khi báo xong phải chạy và báo kết quả thật của: `make test`, `make lint`, `make test-frontend`, `make e2e`, `make simulate`.
 - Dữ liệu mẫu chỉ dùng tên giả (`[Khách 1042]`, `[Nhân viên 186]`). Không đưa mã truy cập, mật khẩu, SĐT thật vào code, log hay git.
 

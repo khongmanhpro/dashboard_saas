@@ -211,3 +211,13 @@ Thay quyết định #4 và mục F phần "xếp phần trăm".
 | MOCK_MODE ở production | `APP_ENV=production` mà `MOCK_MODE=true` thì backend không khởi động. Mặc định trong code là `false`; dev bật qua `.env` (`make env`). | Chép `.env.example` lên máy chủ là chạy dữ liệu giả mà không báo lỗi. |
 | Địa chỉ nhận thông báo đẩy | Chỉ nhận https cổng 443 của `fcm.googleapis.com`, `updates.push.services.mozilla.com`, `web.push.apple.com`, `*.notify.windows.com`. Lúc gửi kiểm tra lại, địa chỉ không hợp lệ thì xóa, không gọi. | Địa chỉ bất kỳ làm worker gửi request vào mạng nội bộ (SSRF). |
 | Ô chữ trong file Excel | Mọi chuỗi ghi vào file Excel (mẫu nhập, mật khẩu tạm, xuất Tổng quan, Fanpage) ép kiểu chữ, Excel không chạy như công thức, không thêm dấu `'`. | Tên Trang hay họ tên bắt đầu bằng `=` thành công thức; thêm dấu `'` làm sai mật khẩu tạm bắt đầu bằng `-`. |
+
+## P. Làm qua PR và CI (sếp duyệt 17/10/2026)
+
+| Chủ đề | Quyết định | Lý do |
+|---|---|---|
+| Nhánh và PR | Mỗi đợt việc một nhánh từ `main` (`feat/…`, `fix/…`, `docs/…`, `ci/…`), commit nhỏ như cũ. Claude tự push nhánh và mở PR; **chỉ gộp vào `main` khi sếp bảo**. Thay quy tắc "Chỉ push khi sếp bảo". | Sếp xem diff và kết quả CI trước khi vào `main`. |
+| Cách gộp | "Rebase and merge": giữ từng commit nhỏ, lịch sử thẳng. Gộp xong tự xóa nhánh. | Giữ quy ước mỗi commit một việc. |
+| CI | GitHub Actions (`.github/workflows/ci.yml`) chạy khi có PR vào `main` và khi `main` đổi: Backend (`make lint`, `make test`, `make simulate`), Giao diện (`make test-frontend`), E2E (`make e2e`). `.env` sinh ngẫu nhiên bằng `make env`, không dùng bí mật thật. | Kiểm tra tự động, không phụ thuộc máy ai. |
+| Khóa `main` | Bắt buộc PR và cả ba việc CI xanh; cấm force-push và xóa; áp dụng cả chủ repo. Bật sau khi PR CI đầu tiên được gộp. | Không ai lỡ tay push thẳng. |
+| Repo công khai | Giữ Public. Gói GitHub miễn phí chỉ khóa được nhánh của repo công khai. Lịch sử git đã quét: không có mã, mật khẩu, SĐT thật. Xem lại khi lên gói trả phí. | |
