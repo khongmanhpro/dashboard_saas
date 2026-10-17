@@ -205,11 +205,13 @@ Sau bước 7: chạy thử 2 tuần với 4 Trang và 4–10 nhân viên thật
 - **MOCK_MODE:** client Graph giả đọc `backend/tests/fixtures/meta/graph_mock.json`; mã giả `MOCK-BM-1` (BM demo, seed tự gắn), `MOCK-BM-2`, `MOCK-BM-NOLEADS`, `MOCK-INVALID`, `MOCK-BM-E2E` và `MOCK-BM-E2E-ADS` (chỉ cho e2e). Số liệu QC/bài đăng giả sinh từ mục `content`, cố định theo ngày. Telegram giả: không gửi thật.
 - **Số liệu khách và điểm chỉ tính qua `app/services/metrics.py`** (tập khách của kỳ + `summarize`), định nghĩa ở `docs/metrics.md`, quyết định mục J. Không màn nào tự đếm riêng; kỳ chưa chốt tính điểm trực tiếp (`score_service.live_period`). `test_metrics_consistency` kiểm tra Tổng quan = /staff = /pages.
 - **Báo cáo:** khoảng thời gian dùng `app/services/report_range.py`; số liệu QC dùng chung `app/services/ads_service.py` (Tổng quan, Quảng cáo, cảnh báo đều qua `level_stats`). Handler/service ghi phải tự `db.commit()`.
-- **E2E:** `frontend/e2e/global-setup.ts` gọi `python -m app.cli e2e-seed` để tạo tài khoản và khách mới mỗi lần chạy; test phải chạy lại nhiều lần vẫn pass.
+- **Test không bao giờ ghi vào DB dev** (decisions.md mục L): `make test` → `fanpage_test`, `make simulate` → `fanpage_simulate_test`, `make e2e` → stack riêng `fanpage_e2e_test` (backend :8001, frontend :5174). Kiểm tra số liệu bằng mắt trên DB dev thì chỉ đọc, không chạy lệnh ghi.
+- **E2E:** `frontend/e2e/global-setup.ts` gọi `python -m app.cli e2e-seed` (trên DB e2e) để tạo tài khoản và khách mới mỗi lần chạy; test phải chạy lại nhiều lần vẫn pass. Gọi API thẳng thì dùng backend e2e (`E2E_API_URL`, mặc định :8001).
+- **Công thức điểm:** đổi cách chấm hay trọng số là thêm phiên bản (`score_formulas.version`, `score_method`); tuần đã chốt không tính lại, giao diện ghi "khác công thức".
 
 ### Chuyển sang máy khác
 1. Cài Docker Desktop, Node 22, Python 3. Rồi `git clone` repo.
 2. `make env`: tạo `.env` mới với bí mật ngẫu nhiên, gồm cả khóa VAPID và `META_APP_SECRET` giả cho MOCK_MODE. `.env` không nằm trong git.
-3. `make up`, rồi `make seed`, rồi `make simulate` (kết quả phải là 15/15).
+3. `make up`, rồi `make seed`, rồi `make simulate` (kết quả phải là 15/15, chạy trên DB riêng).
 4. Chạy test giao diện: `cd frontend && npm ci && npx playwright install chromium`, rồi `make test-frontend` và `make e2e`.
 5. DB dev không đi theo git: máy mới bắt đầu từ dữ liệu demo do seed tạo. Mã Meta thật (nếu có) phải dán lại trên máy mới, vì `TOKEN_ENCRYPTION_KEY` mới không giải mã được dữ liệu cũ.

@@ -12,10 +12,10 @@ Cần Docker Desktop, Python 3 (chỉ để chạy script tạo `.env`) và Node
 make env     # tạo .env với bí mật ngẫu nhiên (không ghi đè nếu đã có)
 make up      # db, redis, migrate, backend, worker, frontend
 make seed    # dữ liệu demo: 5 vai trò, 4 Trang demo, 30 ngày khách mẫu, quảng cáo giả; mật khẩu ghi vào backend/.dev-credentials
-make simulate  # giả lập webhook cho 4 Trang demo, in số phút trả lời so với mong đợi
+make simulate  # giả lập webhook cho 4 Trang demo trên DB riêng, in số phút trả lời so với mong đợi
 ```
 
-`make simulate` đọc kịch bản trong `backend/tests/fixtures/meta/simulate_scenarios.json`, ký payload bằng `META_APP_SECRET`, gửi vào `/webhooks/meta` và chờ worker xử lý. Chỉ chạy khi `MOCK_MODE=true`. File `.env` tạo trước Bước 2 cần thêm `META_APP_SECRET` (chuỗi ngẫu nhiên cho máy dev) rồi `make up` lại.
+`make simulate` đọc kịch bản trong `backend/tests/fixtures/meta/simulate_scenarios.json`, ký payload bằng `META_APP_SECRET`, gửi vào `/webhooks/meta` của app trong tiến trình và chạy worker một lượt. Chạy trên DB riêng `fanpage_simulate_test` (tạo lại mỗi lần, Redis db 14), **không ghi vào DB dev**. Chỉ chạy khi `MOCK_MODE=true`.
 
 Mở http://localhost:5173 và đăng nhập bằng một tài khoản trong `backend/.dev-credentials`. File này nằm trong `.gitignore` và có quyền 600.
 
@@ -31,11 +31,20 @@ Mở http://localhost:5173 và đăng nhập bằng một tài khoản trong `ba
 ```bash
 make test              # pytest backend (unit + tích hợp trên DB fanpage_test riêng)
 make lint              # ruff + mypy --strict
-cd frontend && npm test          # vitest
-cd frontend && npx playwright install chromium && npm run e2e   # cần stack đang chạy
+make test-frontend     # typecheck + vitest
+make e2e               # Playwright trên stack e2e riêng (lần đầu: cd frontend && npx playwright install chromium)
+make e2e-down          # dừng stack e2e
 ```
 
-Test backend tự tạo lại DB `fanpage_test` mỗi lần chạy và từ chối xóa bất kỳ DB nào không có đuôi `_test`.
+**Không test nào ghi vào DB dev** (decisions.md mục L). DB dev chỉ do `make seed` và người dùng ghi.
+
+| Lệnh | DB | Redis | Ghi chú |
+|---|---|---|---|
+| `make test` | `fanpage_test` | db 15 | tạo lại mỗi lần chạy |
+| `make simulate` | `fanpage_simulate_test` | db 14 | tạo lại mỗi lần chạy |
+| `make e2e` | `fanpage_e2e_test` | db 13 | stack riêng (profile `e2e`): backend :8001, frontend :5174 |
+
+Các lệnh trên từ chối tạo lại hay migrate bất kỳ DB nào không có đuôi `_test` (`app/mock/sandbox.py`).
 
 ## Webhook Meta
 

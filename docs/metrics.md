@@ -36,6 +36,7 @@ module này; không màn nào tự đếm riêng.
 | Doanh thu | Tổng giá trị đơn của các khách Chốt trong tập khách của kỳ. |
 | Thời gian trả lời | **Trung vị** số giây trong giờ làm việc từ tin đầu tiên của khách tới tin trả lời đầu tiên. Chỉ khách nhắn tin (khách form không đo). Khách chưa được trả lời đã chờ ≥ 120 phút tính bằng 120 phút; chờ ít hơn thì chưa tính. |
 | Quá hạn 48 giờ (trong kỳ) | Khách của kỳ chưa có kết quả và đã qua hạn 48 giờ. |
+| Bài đăng | Bài có thời điểm đăng trong kỳ. Fanpage đếm theo Trang, điểm Chăm Trang đếm theo người phụ trách lúc đăng; cùng kỳ thì Trang không đổi người cho cùng số. |
 | Quá hạn 48 giờ (thẻ cảnh báo Tổng quan) | Như trên nhưng **mọi thời điểm**, không giới hạn kỳ. |
 
 ## Điểm
