@@ -172,3 +172,43 @@ Sau bước 7: chạy thử 2 tuần với 4 Trang và 4–10 nhân viên thật
 - Hoàn thiện cài đặt cơ bản của ứng dụng (chính sách quyền riêng tư, icon, danh mục) và chuyển sang **Live**.
 - Thu hẹp quyền của người dùng Dashboard trên Trang Mua Sắm Thông Minh và Phần Mềm Giá Rẻ.
 - Xác minh doanh nghiệp FISSOLUTION đang chờ Meta duyệt.
+
+## 10. Trạng thái hiện tại và cách làm việc (bàn giao, cập nhật 17/10/2026)
+
+Đọc mục này trước khi làm tiếp. Chi tiết từng quyết định ở `docs/architecture/decisions.md` (mục A–H, **ưu tiên hơn CLAUDE.md** nếu khác nhau), mô hình dữ liệu ở `data-model.md`, phân quyền ở `rbac.md`, cách chạy ở `README.md`.
+
+### Tiến độ
+- **Xong Bước 1–6** (mục 8), đã đẩy lên `origin/main`. Commit đầu mỗi bước là `docs: chốt quyết định Bước N`.
+- **Bước 7 chưa làm.** Đã tạo sẵn bảng `ad_accounts`, `sync_runs`; chưa có `campaigns`, `ad_sets`, `ads`, `ad_insights_daily`, `fx_rates`, `page_posts`, `page_insights_daily`, `alert_rules`, `alert_deliveries`, `member_telegram` (thiết kế ở `data-model.md`).
+- Việc còn nợ:
+  - Thử với Meta thật khi ứng dụng Live: webhook trên 4 Trang demo, kết nối BM bằng mã thật (README mục "Nối với Meta thật").
+  - Cài PWA lên Android/iPhone thật qua HTTPS (README mục "Kiểm tra cài lên điện thoại thật").
+  - Tiêu chí "Chăm Trang" đang được chia lại trọng số cho tới khi Bước 7 đồng bộ bài đăng.
+  - Đổi sang gửi link đặt mật khẩu qua email (#20) khi có SMTP.
+  - Ô "Sản phẩm / dịch vụ" khi chốt đơn chưa làm.
+
+### Cách làm việc đã thống nhất với sếp
+- Giao tiếp bằng **tiếng Việt**, câu ngắn, rõ.
+- Mỗi bước: đọc thiết kế liên quan trong `docs/design/` → đưa **kế hoạch ngắn kèm các quyết định cần duyệt** → **dừng chờ duyệt** → ghi quyết định vào `decisions.md` (mục mới) → code.
+- **Commit nhỏ, mỗi commit một việc**, message tiếng Việt kiểu `feat(phạm vi): …`. **Chỉ push khi sếp bảo.**
+- Trước khi báo xong phải chạy và báo kết quả thật của: `make test`, `make lint`, `make test-frontend`, `make e2e`, `make simulate`.
+- Dữ liệu mẫu chỉ dùng tên giả (`[Khách 1042]`, `[Nhân viên 186]`). Không đưa mã truy cập, mật khẩu, SĐT thật vào code, log hay git.
+
+### Quy ước kỹ thuật dễ sai
+- **Test và lệnh quản trị chạy trong container `migrate`** (có tài khoản quản trị DB). API và worker chỉ dùng tài khoản ứng dụng, bị RLS.
+- Việc phải đọc xuyên workspace dùng **hàm SECURITY DEFINER chỉ trả id**, không dùng tài khoản quản trị: `app_route_page` (0002), `app_purge_expired_data` (0003), `app_active_workspace_ids` (0005).
+- **Bảng mới có `workspace_id`:** gọi `enable_tenant_rls` + `grant_app` (`migrations/helpers.py`). `test_schema_invariants` và `test_migrations` (so model với migration) phải pass.
+- **Sau `alembic revision --autogenerate`** phải sửa tay hai chỗ: `sa.Enum(...)` → `sa.String(length=32)`, và xóa các `CheckConstraint(..., name="xxx")` trùng tên (giữ bản `op.f(...)`). Ghi chú đầu migration bằng tiếng Việt.
+- **Thêm thư viện:** `docker compose run --rm -T migrate uv add <gói>`, rồi `docker compose build migrate backend worker`, rồi `docker compose up -d`. Chỉ `restart` thì container vẫn dùng image cũ.
+- **Frontend:** mọi chữ giao diện nằm trong `frontend/src/i18n/vi.ts`; test `i18n.test.ts` fail nếu có chữ tiếng Việt ở chỗ khác. Màu lấy từ `styles/tokens.css`.
+- **Mọi route phải có `require(Perm.X)`** (`test_route_protection`). Thêm quyền thì sửa đồng thời `core/rbac.py`, `tests/unit/test_rbac.py`, `docs/architecture/rbac.md`.
+- Lỗi 422 không được trả lại giá trị người dùng gửi (đã có handler trong `main.py`).
+- **MOCK_MODE:** client Graph giả đọc `backend/tests/fixtures/meta/graph_mock.json`; mã giả `MOCK-BM-1` (BM demo, seed tự gắn), `MOCK-BM-2`, `MOCK-BM-NOLEADS`, `MOCK-INVALID`, `MOCK-BM-E2E` (chỉ cho e2e).
+- **E2E:** `frontend/e2e/global-setup.ts` gọi `python -m app.cli e2e-seed` để tạo tài khoản và khách mới mỗi lần chạy; test phải chạy lại nhiều lần vẫn pass.
+
+### Chuyển sang máy khác
+1. Cài Docker Desktop, Node 22, Python 3. Rồi `git clone` repo.
+2. `make env`: tạo `.env` mới với bí mật ngẫu nhiên, gồm cả khóa VAPID và `META_APP_SECRET` giả cho MOCK_MODE. `.env` không nằm trong git.
+3. `make up`, rồi `make seed`, rồi `make simulate` (kết quả phải là 14/14).
+4. Chạy test giao diện: `cd frontend && npm ci && npx playwright install chromium`, rồi `make test-frontend` và `make e2e`.
+5. DB dev không đi theo git: máy mới bắt đầu từ dữ liệu demo do seed tạo. Mã Meta thật (nếu có) phải dán lại trên máy mới, vì `TOKEN_ENCRYPTION_KEY` mới không giải mã được dữ liệu cũ.
