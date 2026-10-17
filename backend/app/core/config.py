@@ -34,7 +34,8 @@ class Settings(BaseSettings):
     app_secret_key: SecretStr
     app_timezone: str = "Asia/Ho_Chi_Minh"
     log_level: str = "INFO"
-    mock_mode: bool = True
+    # Mục O: mặc định là dữ liệu thật; dev bật qua .env (`make env`).
+    mock_mode: bool = False
 
     # --- Cơ sở dữ liệu & hàng đợi ---
     postgres_host: str = "db"
@@ -128,6 +129,8 @@ class Settings(BaseSettings):
             problems.append("POSTGRES_APP_PASSWORD đang trống")
         if self.postgres_app_user == self.postgres_user:
             problems.append("POSTGRES_APP_USER phải khác POSTGRES_USER để RLS có hiệu lực")
+        if self.app_env == "production" and self.mock_mode:
+            problems.append("MOCK_MODE phải tắt ở production (đặt MOCK_MODE=false)")
         if problems:
             raise ValueError("; ".join(problems))
         return self

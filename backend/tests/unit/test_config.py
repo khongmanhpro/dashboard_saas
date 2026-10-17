@@ -27,7 +27,7 @@ def _production(**overrides: object) -> dict[str, object]:
         app_base_url="https://app.example.vn",
         postgres_password="admin-pw-" + secrets.token_hex(8),
         postgres_app_password="app-pw-" + secrets.token_hex(8),
-        **overrides,
+        **{"mock_mode": False, **overrides},
     )
 
 
@@ -69,6 +69,7 @@ def test_accepts_multiple_fernet_keys_for_rotation() -> None:
         ({"app_base_url": "http://app.example.vn"}, "https"),
         ({"postgres_app_password": ""}, "POSTGRES_APP_PASSWORD"),
         ({"postgres_app_user": "fanpage"}, "RLS"),
+        ({"mock_mode": True}, "MOCK_MODE"),
     ],
 )
 def test_production_refuses_unsafe_config(override: dict[str, object], message: str) -> None:
@@ -86,3 +87,9 @@ def test_rejects_unknown_timezone() -> None:
 def test_password_with_special_chars_is_url_encoded() -> None:
     s = Settings(**_base(postgres_app_password="p@ss/w:rd"))  # type: ignore[arg-type]
     assert "p%40ss%2Fw%3Ard@" in s.database_url
+
+
+def test_mock_mode_is_off_unless_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Mục O: quên đặt MOCK_MODE thì là dữ liệu thật, không phải dữ liệu giả."""
+    monkeypatch.delenv("MOCK_MODE", raising=False)
+    assert Settings(**_base()).mock_mode is False  # type: ignore[arg-type]
