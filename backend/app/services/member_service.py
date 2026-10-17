@@ -127,6 +127,13 @@ async def create_member(db: AsyncSession, ctx: AuthContext, data: MemberCreate) 
         await _get_team(db, ctx, data.team_id)
 
     user = await db.scalar(select(User).where(User.email == email))
+    if user is not None:
+        # Mục O: chưa có luồng mời, không gắn người đã có tài khoản ở workspace khác và không lộ
+        # họ tên của họ. RLS chỉ cho thấy membership của workspace này.
+        joined = await db.scalar(
+            select(WorkspaceMember.id).where(WorkspaceMember.user_id == user.id)
+        )
+        raise ServiceError("member_exists" if joined else "email_unavailable", 409)
     if user is None:
         user = User(
             email=email,
@@ -135,7 +142,6 @@ async def create_member(db: AsyncSession, ctx: AuthContext, data: MemberCreate) 
             must_change_password=True,
         )
         db.add(user)
-    # Người đã có tài khoản ở workspace khác: chỉ thêm membership, không đổi mật khẩu của họ.
     try:
         await db.flush()
         member = WorkspaceMember(

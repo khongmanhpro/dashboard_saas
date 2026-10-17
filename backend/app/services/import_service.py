@@ -105,6 +105,14 @@ def read_rows(data: bytes) -> list[tuple[int, list[str]]]:
 # ---------------------------------------------------------------- kiểm tra
 
 
+def _email(raw: str) -> str:
+    """Email chuẩn hóa, hoặc chuỗi rỗng nếu không hợp lệ."""
+    try:
+        return normalize_email(validate_email(raw, check_deliverability=False).normalized)
+    except EmailNotValidError:
+        return ""
+
+
 async def _validate(db: AsyncSession, raw: list[tuple[int, list[str]]]) -> list[ImportRow]:
     pages = list(await db.scalars(select(Page).where(Page.is_tracked.is_(True))))
     by_id = {p.fb_page_id: p for p in pages}
@@ -132,6 +140,12 @@ async def _validate(db: AsyncSession, raw: list[tuple[int, list[str]]]) -> list[
             )
         ).all()
     }
+    # Mục O: email đã có tài khoản nhưng không thuộc workspace này (RLS chỉ cho thấy membership
+    # của workspace này) thì không nhập.
+    file_emails = {e for _, cells in raw if (e := _email(cells[1]))}
+    elsewhere = set(await db.scalars(select(User.email).where(User.email.in_(file_emails)))) - set(
+        members
+    )
     seen_emails: set[str] = set()
     seen_pages: set[uuid.UUID] = set()
     team_leads: set[str] = set()
@@ -142,13 +156,11 @@ async def _validate(db: AsyncSession, raw: list[tuple[int, list[str]]]) -> list[
             errors.append("name_required")
         elif len(name) > 200:
             errors.append("name_too_long")
-        email = ""
-        try:
-            email = normalize_email(
-                validate_email(email_raw, check_deliverability=False).normalized
-            )
-        except EmailNotValidError:
+        email = _email(email_raw)
+        if not email:
             errors.append("email_invalid")
+        elif email in elsewhere:
+            errors.append("email_unavailable")
         if email and email in seen_emails:
             errors.append("email_duplicate_in_file")
         seen_emails.add(email)
@@ -300,6 +312,8 @@ async def apply(
             credentials.append((r.full_name, r.email, passwords[r.email]))
         member = await db.scalar(select(WorkspaceMember).where(WorkspaceMember.user_id == user.id))
         role = r.role or MemberRole.STAFF
+        if member is None and r.email not in passwords:
+            continue  # Mục O: tài khoản của workspace khác, `_validate` đã chặn; phòng khi lọt.
         if member is None:
             member = WorkspaceMember(workspace_id=ctx.workspace_id, user_id=user.id, role=role)
             db.add(member)

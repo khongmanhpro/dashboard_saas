@@ -12,7 +12,16 @@ from openpyxl import Workbook, load_workbook
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AuditLog, Page, PageAssignment, Team, User, Workspace, WorkspaceMember
+from app.models import (
+    AuditLog,
+    MemberRole,
+    Page,
+    PageAssignment,
+    Team,
+    User,
+    Workspace,
+    WorkspaceMember,
+)
 from tests.integration import factories as f
 
 pytestmark = pytest.mark.integration
@@ -165,6 +174,25 @@ async def test_too_many_rows(as_role: Any) -> None:
     rows = [[f"[NV {i}]", f"nv{i}@example.com", "", "", ""] for i in range(501)]
     resp = await _preview(owner, xlsx(rows))
     assert resp.status_code == 422 and resp.json()["detail"]["code"] == "import_too_many_rows"
+
+
+async def test_user_from_other_workspace_is_refused(
+    as_role: Any, admin_db: AsyncSession, org: Any
+) -> None:
+    """Mục O: email đã có tài khoản ở workspace khác thì báo lỗi dòng, không nhập."""
+    other_ws = await f.create_workspace(admin_db, "[Workspace khác]")
+    outsider = await f.create_user(admin_db, email="nguoi-ngoai@example.com")
+    await f.create_member(admin_db, other_ws, outsider, MemberRole.STAFF)
+    await admin_db.commit()
+    manager = await as_role("manager")
+    body = (await _preview(manager, xlsx([["[Người ngoài]", outsider.email, "", "", ""]]))).json()
+    assert [r["errors"] for r in body["rows"]] == [["email_unavailable"]]
+    result = (await manager.post(f"/api/imports/{body['id']}/apply")).json()
+    assert (result["created"], result["updated"], result["skipped"]) == (0, 0, 1)
+    members = await admin_db.scalars(
+        select(WorkspaceMember.workspace_id).where(WorkspaceMember.user_id == outsider.id)
+    )
+    assert list(members) == [other_ws.id]
 
 
 @pytest.mark.parametrize("role", ["lead", "s1", "viewer"])

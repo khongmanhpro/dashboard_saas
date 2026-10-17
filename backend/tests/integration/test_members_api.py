@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AuditLog, AuthSession, MemberRole, MemberStatus, User
+from app.models import AuditLog, AuthSession, MemberRole, MemberStatus, User, WorkspaceMember
 from tests.integration import factories as f
 
 pytestmark = pytest.mark.integration
@@ -155,15 +155,24 @@ async def test_duplicate_and_validation_errors(client: httpx.AsyncClient, org: d
     assert bad_email.status_code == 422
 
 
-async def test_user_from_other_workspace_keeps_password(
+async def test_user_from_other_workspace_is_refused(
     client: httpx.AsyncClient, admin_db: AsyncSession, org: dict
 ) -> None:
-    await _as(client, org, MemberRole.OWNER)
+    """Mục O: không gắn người của workspace khác, không lộ họ tên của họ."""
+    owner = await _as(client, org, MemberRole.OWNER)
     outsider = org["other"]
     resp = await client.post("/api/members", json=_new_member(email=outsider.email))
-    assert resp.status_code == 201
+    assert (resp.status_code, resp.json()["detail"]["code"]) == (409, "email_unavailable")
     user = await admin_db.scalar(select(User).where(User.email == outsider.email))
     assert user is not None and not user.must_change_password
+    assert user.full_name not in resp.text
+    joined = await admin_db.scalar(
+        select(WorkspaceMember.id).where(
+            WorkspaceMember.user_id == user.id,
+            WorkspaceMember.workspace_id == owner.member.workspace_id,
+        )
+    )
+    assert joined is None
 
 
 # ---------------- Sửa thành viên ----------------
