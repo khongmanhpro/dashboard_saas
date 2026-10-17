@@ -260,3 +260,14 @@ Thay cho cách "mỗi BM một người dùng hệ thống Dashboard" ở CLAUDE
 | T3 | Số người dùng hệ thống | Một `Dashboard` (vai trò Nhân viên). Mức Standard Access của Meta chỉ cho 1 người dùng hệ thống thường và 1 quản trị. | Đủ cho cách làm này. |
 | T4 | Ngoài phạm vi | Bán SaaS cho doanh nghiệp khác cần họ tự cấp quyền cho ứng dụng (Facebook Login for Business hoặc Business On Behalf Of, Tech Provider). Vẫn **chưa làm** (CLAUDE.md mục 1). Màn hình "Kết nối BM" cho nhiều mã vẫn giữ để dùng sau. | |
 | T5 | Chưa thử với Meta thật | Trang được chia sẻ từ BM đối tác có hiện trong `/me/accounts` và đăng ký webhook được không; quyền đọc form khách hàng tiềm năng (Leads Access) trên Trang được chia sẻ. Kiểm lại khi chạy thật. | |
+
+## U. Trang chính sách quyền riêng tư và xóa dữ liệu (sếp duyệt 17/10/2026)
+
+Meta bắt buộc có hai URL này mới chuyển ứng dụng sang Live (`docs/meta-setup.md` mục 1).
+
+| # | Chủ đề | Quyết định | Lý do |
+|---|---|---|---|
+| U1 | Hình thức | Hai trang HTML tĩnh `frontend/public/privacy/index.html` và `frontend/public/data-deletion/index.html`, phục vụ ở `/privacy` và `/data-deletion`, không cần đăng nhập, không cần JavaScript. Ngoại lệ có chủ đích với quy tắc "chữ giao diện nằm trong `vi.ts`". Link tới trang chính sách trên màn hình đăng nhập vẫn lấy chữ từ `vi.ts`. | Trình kiểm tra của Meta đọc được ngay. |
+| U2 | Ngôn ngữ | Tiếng Việt, bản tiếng Anh ngay bên dưới trên cùng trang. | Người duyệt App Review đọc tiếng Anh. |
+| U3 | Cách xóa theo Meta | Dùng **URL hướng dẫn xóa dữ liệu**, không làm callback xóa dữ liệu. | Khách là người nhắn Trang, không đăng nhập ứng dụng. |
+| U4 | Xử lý yêu cầu xóa | Khách gửi email, công ty xử lý trong **30 ngày** bằng lệnh `python -m app.cli delete-customer` (container `migrate`): xóa khách theo Trang + PSID hoặc theo số điện thoại, cùng tin nhắn, số điện thoại, sự kiện, form khách hàng tiềm năng, thông báo và bản ghi webhook gốc có PSID đó. Ghi `audit_logs` chỉ với số đếm, không ghi dữ liệu khách. Bản sao lưu tự hết hạn sau 14 ngày (mục R). | Có công cụ thật để giữ lời hứa trên trang. |
