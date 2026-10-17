@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.meta.events import WebhookPayload
 from app.mock import payloads as p
-from app.models import Lead
+from app.models import Lead, LeadStatus
 from app.workers.webhook import process_webhook
 from tests.integration import factories as f
 from tests.integration.leads_fixtures import NOW, Org, lead_id_of, send
@@ -149,6 +149,33 @@ async def test_pagination(as_role: Any) -> None:
     assert len(set(ids)) == 4
     bad = await client.get("/api/leads", params={"cursor": "rác"})
     assert bad.status_code == 400
+
+
+async def test_callback_column_sorted_by_callback_time(
+    as_role: Any, admin_db: AsyncSession
+) -> None:
+    """Mục M: hẹn đã qua lâu nhất trước, rồi hẹn sắp tới gần nhất trước, kể cả qua nhiều trang."""
+    client = await as_role("owner")
+    leads = list(await admin_db.scalars(select(Lead).order_by(Lead.first_inbound_at)))
+    assert len(leads) == 4
+    for lead, hours in zip(leads, (3, -50, 1, -2), strict=True):
+        lead.status = LeadStatus.CALLBACK
+        lead.callback_at = NOW + dt.timedelta(hours=hours)
+    await admin_db.commit()
+
+    got: list[dt.datetime] = []
+    cursor = None
+    while True:
+        params: dict[str, Any] = {"period": "30d", "status": "callback", "limit": 2}
+        if cursor:
+            params["cursor"] = cursor
+        body = (await client.get("/api/leads", params=params)).json()
+        got += [dt.datetime.fromisoformat(i["callback_at"]) for i in body["items"]]
+        cursor = body["next_cursor"]
+        if not cursor:
+            break
+    expected = sorted(NOW + dt.timedelta(hours=h) for h in (3, -50, 1, -2))
+    assert got == expected
 
 
 async def test_filter_options_follow_scope(as_role: Any) -> None:

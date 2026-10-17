@@ -107,6 +107,24 @@ export function sourceLabel(lead: Pick<LeadCard, "source" | "from_ad" | "status"
 export interface Timer {
   text: string;
   hot: boolean;
+  /** Hiện thành nhãn đỏ (hẹn gọi lại đã qua). */
+  badge?: boolean;
+}
+
+export function timerClass(timer: Timer): string {
+  if (timer.badge) return "timer timer--badge";
+  return timer.hot ? "timer timer--hot" : "timer";
+}
+
+/** "Quá hẹn 2 ngày" (dưới 1 ngày: giờ, dưới 1 giờ: phút), hoặc null khi chưa tới giờ hẹn (decisions.md mục M). */
+export function callbackOverdue(callbackAt: string, now: Date): string | null {
+  const ms = now.getTime() - Date.parse(callbackAt);
+  if (ms <= 0) return null;
+  const days = Math.floor(ms / 86_400_000);
+  if (days >= 1) return format(t.leads.callbackOverdueDays, { n: days });
+  const hours = Math.floor(ms / 3_600_000);
+  if (hours >= 1) return format(t.leads.callbackOverdueHours, { n: hours });
+  return format(t.leads.callbackOverdueMinutes, { n: Math.max(1, Math.floor(ms / 60_000)) });
 }
 
 /** Chữ góc phải của thẻ khách, theo thiết kế Leads.dc.html. */
@@ -114,6 +132,8 @@ export function cardTimer(lead: LeadCard, now: Date, timeZone: string): Timer {
   if (lead.status === "won" && lead.won_value_vnd !== null) return { text: formatVnd(lead.won_value_vnd), hot: false };
   if (lead.status === "lost") return { text: "", hot: false };
   if (lead.status === "callback" && lead.callback_at) {
+    const late = callbackOverdue(lead.callback_at, now);
+    if (late) return { text: late, hot: true, badge: true };
     return { text: format(t.leads.callbackAt, { time: formatDateTime(lead.callback_at, timeZone) }), hot: false };
   }
   if (lead.overdue) {

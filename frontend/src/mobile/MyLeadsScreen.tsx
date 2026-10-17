@@ -7,7 +7,17 @@ import { MOBILE_TABS, useMobileHome, useMobileLeads, type MobileLead, type Mobil
 import type { Me } from "../api/types";
 import { usePublicConfig } from "../auth/useAuth";
 import { errorMessage, format, t } from "../i18n";
-import { cardTimer, displayName, formatDuration, formatVnd, groupThousands, parseVndInput, sourceLabel, zonedLocalToIso } from "../leads/format";
+import {
+  cardTimer,
+  displayName,
+  formatDuration,
+  formatVnd,
+  groupThousands,
+  parseVndInput,
+  sourceLabel,
+  timerClass,
+  zonedLocalToIso,
+} from "../leads/format";
 import { inboxUrl } from "../pages/leads/LeadDetailPage";
 import { formatPercent, formatScore } from "../staff/format";
 import { quickCallbackTimes } from "./callbackOptions";
@@ -210,7 +220,7 @@ function LeadCardItem({ lead, timeZone, onAction }: { lead: MobileLead; timeZone
         <Link to={`/m/leads/${lead.id}`} className="m-card__name">
           {displayName(lead)}
         </Link>
-        <span className={timer.hot ? "timer timer--hot" : "timer"}>{timer.text}</span>
+        <span className={timerClass(timer)}>{timer.text}</span>
       </div>
       {snippet ? <p className="m-card__snippet">{snippet}</p> : null}
       <div className="m-card__meta">

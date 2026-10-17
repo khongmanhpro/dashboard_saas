@@ -16,7 +16,7 @@ import {
 import type { Me } from "../../api/types";
 import { PageHeader } from "../../components/PageHeader";
 import { t } from "../../i18n";
-import { cardTimer, displayName, initials, sourceLabel } from "../../leads/format";
+import { cardTimer, displayName, initials, sourceLabel, timerClass } from "../../leads/format";
 
 type View = "board" | "table";
 const VIEW_KEY = "leads.view";
@@ -91,7 +91,7 @@ function LeadCardView({ lead, timeZone, now }: { lead: LeadCard; timeZone: strin
     <Link to={`/leads/${lead.id}`} className="lead-card" data-testid="lead-card">
       <span className="lead-card__top">
         <span className="lead-card__name">{displayName(lead)}</span>
-        <span className={timer.hot ? "timer timer--hot" : "timer"}>{timer.text}</span>
+        <span className={timerClass(timer)}>{timer.text}</span>
       </span>
       <span className="lead-card__meta">{lead.page.name}</span>
       <span className="lead-card__source">{sourceLabel(lead)}</span>
@@ -177,7 +177,9 @@ function LeadTable({ filters, timeZone, now }: { filters: LeadFilters; timeZone:
                   {lead.page.name} · {lead.owner?.name ?? t.leads.noOwner}
                 </td>
                 <td className="muted">{sourceLabel(lead)}</td>
-                <td className={timer.hot ? "timer timer--hot" : "timer"}>{timer.text}</td>
+                <td>
+                  <span className={timerClass(timer)}>{timer.text}</span>
+                </td>
                 <td>{lead.phone ?? "—"}</td>
                 <td>
                   <span className={`pill pill--${lead.status}`}>{t.leads.status[lead.status]}</span>

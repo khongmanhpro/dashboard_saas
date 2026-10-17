@@ -101,6 +101,11 @@ describe("thẻ khách", () => {
     expect(cardTimer(card({ status: "callback", callback_at: "2026-10-18T03:00:00Z" }), now, VN).text).toBe(
       "hẹn 18/10 10:00",
     );
+    // Hẹn đã qua: nhãn đỏ "Quá hẹn" thay cho giờ hẹn.
+    const late = (iso: string) => cardTimer(card({ status: "callback", callback_at: iso }), now, VN);
+    expect(late("2026-10-13T07:00:00Z")).toEqual({ text: "Quá hẹn 2 ngày", hot: true, badge: true });
+    expect(late("2026-10-15T05:00:00Z").text).toBe("Quá hẹn 3 giờ");
+    expect(late("2026-10-15T07:40:00Z").text).toBe("Quá hẹn 20 phút");
     const contacted = card({ status: "contacted", waiting_business_seconds: null, first_reply_at: "2026-10-15T02:00:00Z" });
     expect(cardTimer(contacted, now, VN)).toEqual({ text: "6 giờ trước", hot: false });
   });

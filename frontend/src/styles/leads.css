@@ -208,6 +208,15 @@
 .timer--hot {
   color: var(--color-bad-fg);
 }
+/* Hẹn gọi lại đã qua: nhãn đỏ "Quá hẹn X ngày" (decisions.md mục M). */
+.timer--badge {
+  background: var(--color-bad-bg);
+  color: var(--color-bad-fg);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-weight: 600;
+  white-space: nowrap;
+}
 .tags {
   display: flex;
   gap: 6px;

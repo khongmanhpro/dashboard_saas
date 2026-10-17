@@ -334,8 +334,9 @@ def _card(row: Any, access: LeadAccess, rules: Rules, now: dt.datetime) -> LeadC
     )
 
 
-def _encode_cursor(lead: Lead) -> str:
-    raw = f"{lead.first_inbound_at.isoformat()}|{lead.id}"
+def _encode_cursor(lead: Lead, *, by_callback: bool = False) -> str:
+    at = lead.callback_at if by_callback and lead.callback_at else lead.first_inbound_at
+    raw = f"{at.isoformat()}|{lead.id}"
     return base64.urlsafe_b64encode(raw.encode()).decode()
 
 
@@ -363,16 +364,24 @@ async def list_leads(
     access = await lead_access(db, ctx)
     rules = await _rules(db, ctx.workspace_id)
     stmt = _base_select().where(*_filter_conditions(filters, access, rules, now, with_chip=True))
+    # Mục M: cột Hẹn lại xếp theo giờ hẹn tăng dần: hẹn đã qua lâu nhất trước, rồi hẹn sắp tới.
+    # Ràng buộc `callback_has_time` bảo đảm khách Hẹn lại luôn có giờ hẹn.
+    by_callback = filters.status == LeadStatus.CALLBACK
+    key = tuple_(Lead.callback_at if by_callback else Lead.first_inbound_at, Lead.id)
     if cursor:
         at, lead_id = _decode_cursor(cursor)
-        stmt = stmt.where(tuple_(Lead.first_inbound_at, Lead.id) < tuple_(at, lead_id))
-    rows = (
-        await db.execute(
-            stmt.order_by(Lead.first_inbound_at.desc(), Lead.id.desc()).limit(limit + 1)
-        )
-    ).all()
+        after = tuple_(at, lead_id)
+        stmt = stmt.where(key > after if by_callback else key < after)
+    order = (
+        (Lead.callback_at.asc(), Lead.id.asc())
+        if by_callback
+        else (Lead.first_inbound_at.desc(), Lead.id.desc())
+    )
+    rows = (await db.execute(stmt.order_by(*order).limit(limit + 1))).all()
     items = [_card(r, access, rules, now) for r in rows[:limit]]
-    next_cursor = _encode_cursor(rows[limit - 1].Lead) if len(rows) > limit else None
+    next_cursor = (
+        _encode_cursor(rows[limit - 1].Lead, by_callback=by_callback) if len(rows) > limit else None
+    )
     return LeadPage(items=items, next_cursor=next_cursor)
 
 

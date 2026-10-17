@@ -183,6 +183,9 @@ export const vi = {
     overdue: "quá {hours} giờ",
     ago: "{time} trước",
     callbackAt: "hẹn {time}",
+    callbackOverdueDays: "Quá hẹn {n} ngày",
+    callbackOverdueHours: "Quá hẹn {n} giờ",
+    callbackOverdueMinutes: "Quá hẹn {n} phút",
     table: {
       customer: "Khách",
       pageOwner: "Trang · phụ trách",
