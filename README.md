@@ -46,6 +46,18 @@ make e2e-down          # gỡ stack e2e, xóa DB e2e (make e2e tự gọi khi ch
 
 Các lệnh trên từ chối tạo lại, migrate hay xóa bất kỳ DB nào không có đuôi `_test` (`app/mock/sandbox.py`). `app.cli e2e-seed` cũng vậy, nên chạy nhầm trên container `migrate` (DB dev) sẽ bị chặn.
 
+### CI (GitHub Actions)
+
+`.github/workflows/ci.yml` chạy mỗi khi mở hoặc cập nhật PR vào `main` và khi `main` có commit mới. Ba việc chạy song song, PR chỉ gộp được khi cả ba xanh (decisions.md mục P):
+
+| Việc | Chạy |
+|---|---|
+| Backend | `make env` (bí mật ngẫu nhiên, MOCK_MODE) → `make lint`, `make test`, `make simulate` |
+| Giao diện | `make test-frontend` |
+| E2E | `make e2e`; fail thì tải `e2e-test-results` (trace Playwright) ở trang của lần chạy |
+
+CI không dùng bí mật thật nào.
+
 ## Webhook Meta
 
 - `GET /webhooks/meta`: Meta xác minh bằng `META_WEBHOOK_VERIFY_TOKEN`.
@@ -82,6 +94,17 @@ Việc cài cần HTTPS, nên làm trên bản production (`APP_DOMAIN`), không
 1. **Android (Chrome):** mở `https://<tên miền>/m` → đăng nhập → menu ⋮ → "Cài đặt ứng dụng" (hoặc "Thêm vào màn hình chính"). Mở app từ màn hình chính → Tài khoản → Bật thông báo.
 2. **iPhone (Safari, iOS 16.4 trở lên):** mở `https://<tên miền>/m` → nút Chia sẻ → "Thêm vào MH chính". **Mở app từ màn hình chính** rồi vào Tài khoản → Bật thông báo (Safari thường không bật được thông báo đẩy).
 3. Thử nhận thông báo: Quản lý mở một khách của nhân viên trên máy tính → "Nhắc người phụ trách". Điện thoại nhân viên phải hiện thông báo; bấm vào thì mở đúng khách.
+
+### Demo từ máy dev qua Cloudflare
+
+Cloudflare quick tunnel cho một link HTTPS tạm (`https://<tên ngẫu nhiên>.trycloudflare.com`) trỏ về máy dev, không cần tài khoản hay tên miền. Dùng để demo cho người khác hoặc thử PWA trên điện thoại khi chưa có VPS.
+
+1. `brew install cloudflared` (một lần), stack dev đang chạy (`make up`).
+2. `cloudflared tunnel --no-autoupdate --url http://localhost:5173`, chép link `trycloudflare.com` in ra.
+3. Trong `.env` đặt `APP_BASE_URL=<link đó>`, rồi `docker compose up -d backend worker`. Không đổi thì mọi thao tác ghi bị chặn (`origin_not_allowed`).
+4. Demo xong: tắt `cloudflared` (Ctrl+C), trả `APP_BASE_URL=http://localhost:5173`, chạy lại `docker compose up -d backend worker`.
+
+Lưu ý: link đổi mỗi lần chạy; máy phải bật suốt lúc demo; ai có link đều mở được trang đăng nhập (tài khoản demo ở `backend/.dev-credentials`). Không dùng link này cho webhook Meta lâu dài. Chạy `make test` sau khi đã trả `APP_BASE_URL` về `localhost`.
 
 ## Kết nối BM và nhập Excel (Bước 6)
 
