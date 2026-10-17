@@ -1,4 +1,6 @@
 # Caddy tự lấy chứng chỉ HTTPS cho APP_DOMAIN (Let's Encrypt).
+# Qua Cloudflare Tunnel (docker-compose.tunnel.yml, decisions.md mục Q): CADDY_SITE_PREFIX=http://,
+# Caddy chỉ phục vụ HTTP trong mạng Docker, Cloudflare giữ HTTPS.
 {
 	servers {
 		# Chỉ tin CF-Connecting-IP từ cloudflared (mạng edge). Không có tunnel: không tin ai.
@@ -7,7 +9,7 @@
 	}
 }
 
-{$APP_DOMAIN} {
+{$CADDY_SITE_PREFIX}{$APP_DOMAIN} {
 	encode zstd gzip
 
 	header {
