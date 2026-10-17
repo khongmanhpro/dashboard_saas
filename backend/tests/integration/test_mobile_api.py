@@ -120,7 +120,7 @@ async def test_push_subscription_lifecycle(as_role: Any, admin_db: AsyncSession,
     s1 = await as_role("s1")
     assert (await s1.get("/api/push/config")).json() == {"enabled": False, "public_key": None}
     body = {
-        "endpoint": "https://push.example/abc",
+        "endpoint": "https://fcm.googleapis.com/fcm/send/abc",
         "keys": {"p256dh": "k", "auth": "a"},
         "expirationTime": None,
     }
@@ -128,8 +128,14 @@ async def test_push_subscription_lifecycle(as_role: Any, admin_db: AsyncSession,
     assert (await s1.post("/api/push/subscriptions", json=body)).status_code == 204
     rows = (await admin_db.scalars(select(PushSubscription))).all()
     assert len(rows) == 1 and rows[0].member_id == org.accounts["s1"].member.id
-    bad = {**body, "endpoint": "http://push.example/abc"}
-    assert (await s1.post("/api/push/subscriptions", json=bad)).status_code == 422
+    for endpoint in (
+        "http://fcm.googleapis.com/fcm/send/abc",
+        "https://push.example/abc",
+        "https://10.0.0.5/noi-bo",
+        "https://fcm.googleapis.com:8443/fcm/send/abc",
+    ):
+        bad = {**body, "endpoint": endpoint}
+        assert (await s1.post("/api/push/subscriptions", json=bad)).status_code == 422, endpoint
     assert (
         await s1.post("/api/push/unsubscribe", json={"endpoint": body["endpoint"]})
     ).status_code == 204

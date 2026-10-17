@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models import NotificationType, Tier
 from app.schemas.leads import LeadCard
+from app.services.push import is_push_endpoint
 
 MobileTab = Literal["todo", "callback", "done"]
 
@@ -86,9 +87,9 @@ class PushSubscribe(BaseModel):
 
     @field_validator("endpoint")
     @classmethod
-    def _https(cls, value: str) -> str:
-        if not value.startswith("https://"):
-            raise ValueError("endpoint_must_be_https")
+    def _push_service(cls, value: str) -> str:
+        if not is_push_endpoint(value):
+            raise ValueError("endpoint_not_push_service")
         return value
 
 

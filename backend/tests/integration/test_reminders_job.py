@@ -32,6 +32,11 @@ VN = ZoneInfo("Asia/Ho_Chi_Minh")
 MORNING = dt.datetime(2026, 10, 14, 10, 0, tzinfo=VN)
 
 
+OK = "https://fcm.googleapis.com/fcm/send/ok"
+GONE = "https://fcm.googleapis.com/fcm/send/gone"
+INTERNAL = "https://10.0.0.5/noi-bo"
+
+
 @pytest.fixture
 def sent(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, dict[str, Any]]]:
     """Thay hàm gửi thật: ghi lại (endpoint, nội dung). Endpoint chứa "gone" thì trả 410."""
@@ -64,7 +69,7 @@ async def setup(admin_db: AsyncSession) -> dict[str, Any]:
         phone="0900000123",
     )
     lead.phone_captured_at = MORNING - dt.timedelta(hours=3)
-    for endpoint in ("https://push.example/ok", "https://push.example/gone"):
+    for endpoint in (OK, GONE, INTERNAL):
         admin_db.add(
             PushSubscription(
                 workspace_id=ws.id, member_id=staff.id, endpoint=endpoint, p256dh="k", auth="a"
@@ -89,7 +94,9 @@ async def test_job_creates_each_reminder_once_and_pushes(
     assert "0900000123" not in json.dumps(payloads)
     # Máy trả 410 bị xóa đăng ký.
     endpoints = (await admin_db.scalars(select(PushSubscription.endpoint))).all()
-    assert endpoints == ["https://push.example/ok"]
+    assert endpoints == [OK]
+    # Mục O: địa chỉ không phải dịch vụ đẩy thì xóa, không gọi tới.
+    assert INTERNAL not in [e for e, _ in sent]
     events = await admin_db.scalar(
         select(func.count()).where(LeadEvent.type == LeadEventType.REMINDER_SENT)
     )

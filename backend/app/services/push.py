@@ -13,6 +13,7 @@ import logging
 import uuid
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlsplit
 
 from pywebpush import WebPushException, webpush
 from sqlalchemy import select
@@ -24,8 +25,30 @@ from app.models import PushSubscription
 log = logging.getLogger(__name__)
 
 GONE_STATUSES = {404, 410}
+# Mục O: chỉ gửi tới dịch vụ đẩy của trình duyệt, không tới địa chỉ bất kỳ (chặn SSRF).
+PUSH_HOSTS = frozenset(
+    {"fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com"}
+)
+PUSH_HOST_SUFFIXES = (".notify.windows.com",)
 MAX_FAILURES = 5
 TTL_SECONDS = 6 * 3600
+
+
+def is_push_endpoint(url: str) -> bool:
+    """https, cổng 443, không có tên/mật khẩu trong URL, máy chủ thuộc dịch vụ đẩy đã biết."""
+    try:
+        parts = urlsplit(url)
+        port = parts.port
+    except ValueError:
+        return False
+    host = (parts.hostname or "").lower()
+    return (
+        parts.scheme == "https"
+        and port in (None, 443)
+        and parts.username is None
+        and parts.password is None
+        and (host in PUSH_HOSTS or host.endswith(PUSH_HOST_SUFFIXES))
+    )
 
 
 def push_configured() -> bool:
@@ -88,6 +111,9 @@ async def send_to_member(db: AsyncSession, member_id: uuid.UUID, message: PushMe
     delivered = 0
     data = message.json()
     for sub in subs:
+        if not is_push_endpoint(sub.endpoint):
+            await db.delete(sub)
+            continue
         status = await asyncio.to_thread(_send_one, sub, data)
         if status is None:
             delivered += 1
