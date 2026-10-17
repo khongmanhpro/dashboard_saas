@@ -41,3 +41,39 @@ BM_BODIES: dict[str, str] = {
         "{name} đã mất kết nối (mã hết hạn hoặc bị thu hồi). Dán mã mới trong Kết nối BM."
     ),
 }
+
+# ---------------------------------------------------------------- xuất Excel (Bước 7)
+
+EXPORT_OVERVIEW_SHEET = "Tong quan"
+EXPORT_CAMPAIGN_SHEET = "Chien dich"
+EXPORT_PAGES_SHEET = "Fanpage"
+EXPORT_OVERVIEW_HEADER = ["Chỉ số", "Kỳ này", "Kỳ trước"]
+EXPORT_OVERVIEW_ROWS = {
+    "new_leads": "Khách mới",
+    "median_response_seconds": "Trả lời (trung vị, giây)",
+    "phone_rate": "Có số điện thoại (%)",
+    "close_rate": "Tỉ lệ chốt (%)",
+    "revenue_vnd": "Doanh thu (₫)",
+    "cost_per_won_vnd": "Chi phí / khách chốt (₫)",
+}
+EXPORT_RANGE = "Khoảng thời gian: {first} – {last}"
+EXPORT_CAMPAIGN_HEADER = ["Chiến dịch", "Chi tiêu (₫)", "Khách", "Chốt", "Chi phí / chốt (₫)"]
+EXPORT_PAGES_HEADER = [
+    "Trang",
+    "ID Trang",
+    "BM",
+    "Người phụ trách",
+    "Điểm",
+    "Hạng",
+    "Khách 7 ngày",
+    "Trả lời TB (phút)",
+    "Chốt 7 ngày",
+    "Bài tuần này",
+    "Lượt xem 30 ngày",
+    "Trạng thái",
+]
+EXPORT_PAGE_STATUS = {
+    "ok": "Hoạt động",
+    "declining": "Giảm tương tác",
+    "disconnected": "Mất kết nối",
+}

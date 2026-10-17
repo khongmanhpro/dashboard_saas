@@ -11,7 +11,6 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.crypto import get_token_cipher
 from app.core.db import TenantContext, app_sessionmaker, set_tenant
 from app.meta.events import WebhookPayload
 from app.meta.graph import GraphError, MockGraphClient, set_graph
@@ -31,7 +30,6 @@ from app.models import (
     Workspace,
 )
 from app.services import meta_sync
-from app.services.bm_service import sync_bm
 from app.workers.meta_sync import sync_meta
 from app.workers.webhook import process_webhook
 from tests.integration import factories as f
@@ -47,10 +45,7 @@ NOW = dt.datetime.now(dt.UTC)
 async def _demo_workspace(admin_db: AsyncSession) -> Workspace:
     """Workspace có BM demo (MOCK-BM-1): 4 Trang có mã Trang, 2 tài khoản QC (VND và USD)."""
     ws = await f.create_workspace(admin_db)
-    bm = await f.create_business_manager(admin_db, ws)
-    bm.fb_business_id = "900000000000000"
-    bm.token_ciphertext = get_token_cipher().encrypt(TOKEN)
-    await sync_bm(admin_db, bm, NOW, MockGraphClient(), kind="test")
+    await f.connect_mock_bm(admin_db, ws, TOKEN)
     await admin_db.commit()
     return ws
 

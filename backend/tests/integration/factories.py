@@ -10,7 +10,9 @@ from dataclasses import dataclass
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.crypto import get_token_cipher
 from app.core.security import hash_password
+from app.meta.graph import MockGraphClient
 from app.models import (
     BusinessManager,
     Lead,
@@ -213,3 +215,19 @@ async def create_lead(
     db.add(lead)
     await db.flush()
     return lead
+
+
+MOCK_BM_TOKEN = "MOCK-BM-1"
+
+
+async def connect_mock_bm(
+    db: AsyncSession, workspace: Workspace, token: str = MOCK_BM_TOKEN
+) -> BusinessManager:
+    """BM demo của client Graph giả: Trang có mã Trang, tài khoản QC VND và USD. Gọi commit sau."""
+    from app.services.bm_service import sync_bm
+
+    bm = await create_business_manager(db, workspace)
+    bm.fb_business_id = "900000000000000"
+    bm.token_ciphertext = get_token_cipher().encrypt(token)
+    await sync_bm(db, bm, dt.datetime.now(dt.UTC), MockGraphClient(), kind="test")
+    return bm
