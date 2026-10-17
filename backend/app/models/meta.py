@@ -106,6 +106,8 @@ class Page(Base):
     )
     # Vì sao không theo dõi: other_workspace (#22), removed_from_bm, bm_disconnected.
     untracked_reason: Mapped[str | None] = mapped_column(String(32))
+    # Lần cuối đồng bộ được bài đăng và số liệu Trang (Bước 7). NULL: chưa có dữ liệu Chăm Trang.
+    content_synced_at: Mapped[dt.datetime | None]
     created_at: Mapped[dt.datetime] = created_at_col()
     updated_at: Mapped[dt.datetime] = updated_at_col()
 

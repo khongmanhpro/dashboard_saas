@@ -6,8 +6,7 @@
 - `nightly_scores`: 01:00 giờ Việt Nam mỗi đêm, tính điểm và chốt tuần (app.workers.scoring).
 - `send_reminders`: mỗi 5 phút, nhắc việc và thông báo đẩy (app.workers.reminders).
 - `check_bms`: mỗi 6 giờ, kiểm tra mã, quyền BM, Trang mới, form leadgen (app.workers.meta_checks).
-
-Đồng bộ định kỳ thêm ở các bước sau.
+- `sync_meta`: mỗi giờ phút 40, chi tiêu quảng cáo, bài đăng, số liệu Trang (app.workers.meta_sync).
 """
 
 from __future__ import annotations
@@ -23,6 +22,7 @@ from app.core.db import dispose_engines
 from app.core.logging import setup_logging
 from app.core.queue import redis_settings as queue_redis_settings
 from app.workers.meta_checks import check_bms
+from app.workers.meta_sync import sync_meta
 from app.workers.reminders import send_reminders
 from app.workers.retention import purge_expired_data
 from app.workers.scoring import nightly_scores
@@ -36,6 +36,7 @@ PURGE_MINUTE_UTC = 30
 PURGE_TIMEOUT_SECONDS = 30 * 60
 SCORES_HOUR_UTC = 18  # 01:00 Asia/Ho_Chi_Minh
 SCORES_TIMEOUT_SECONDS = 60 * 60
+SYNC_TIMEOUT_SECONDS = 50 * 60
 
 log = logging.getLogger(__name__)
 
@@ -75,6 +76,13 @@ class WorkerSettings:
             minute=15,
             second=0,
             timeout=30 * 60,
+            run_at_startup=False,
+        ),
+        cron(
+            sync_meta,
+            minute=40,
+            second=0,
+            timeout=SYNC_TIMEOUT_SECONDS,
             run_at_startup=False,
         ),
         cron(

@@ -28,6 +28,7 @@ from app.meta.events import LeadgenEvent, MessageEvent, ReferralEvent
 from app.meta.graph import GraphError, get_graph
 from app.meta.leadgen import keep_needed_fields, mock_field_data
 from app.models import (
+    Ad,
     Contact,
     Lead,
     LeadEvent,
@@ -203,6 +204,17 @@ def _add_event(
             workspace_id=lead.workspace_id, lead_id=lead.id, type=type_, occurred_at=at, data=data
         )
     )
+
+
+async def _link_ad(db: AsyncSession, lead: Lead) -> None:
+    """Gắn khách với quảng cáo đã đồng bộ (Bước 7). Chưa có thì job đồng bộ gắn bù."""
+    if lead.fb_ad_id is None or lead.ad_id is not None:
+        return
+    row = (
+        await db.execute(select(Ad.id, Ad.campaign_id).where(Ad.fb_ad_id == lead.fb_ad_id))
+    ).first()
+    if row is not None:
+        lead.ad_id, lead.campaign_id = row
 
 
 def _apply_referral(lead: Lead, referral: dict[str, Any] | None) -> None:
@@ -536,6 +548,7 @@ async def handle_message(
         await _record_message_phones(db, page, lead, message, rules)
     if lead is not None:
         await refresh_response(db, lead, rules)
+        await _link_ad(db, lead)
     return Outcome.PROCESSED
 
 
@@ -548,6 +561,7 @@ async def handle_referral(
         last = lead.last_inbound_at or lead.first_inbound_at
         if ev.occurred_at - last <= rules.session_gap:
             _apply_referral(lead, ev.referral)
+            await _link_ad(db, lead)
             return Outcome.PROCESSED
     # Chưa có đợt phù hợp: tin nhắn tới sau sẽ nhận referral này (_claim_pending_referral).
     return Outcome.REFERRAL_PENDING
@@ -591,6 +605,7 @@ async def handle_leadgen(
             db.add(submission)
             await db.flush()
             await _absorb_submissions(db, target, [submission])
+            await _link_ad(db, target)
             await _add_phone(db, target, phone, "leadgen", ev.created_time)
             _add_event(
                 db, target, LeadEventType.MERGED, ev.created_time, {"leadgen_id": ev.leadgen_id}
@@ -616,6 +631,7 @@ async def handle_leadgen(
         phone_captured_at=ev.created_time if phone else None,
     )
     db.add(lead)
+    await _link_ad(db, lead)
     await db.flush()
     submission.lead_id = lead.id
     db.add(submission)

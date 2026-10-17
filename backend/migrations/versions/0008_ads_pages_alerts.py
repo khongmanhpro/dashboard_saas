@@ -451,6 +451,9 @@ def upgrade() -> None:
     op.add_column(
         "workspace_settings", sa.Column("telegram_chat_id", sa.String(length=32), nullable=True)
     )
+    op.add_column(
+        "pages", sa.Column("content_synced_at", sa.DateTime(timezone=True), nullable=True)
+    )
     for table, privileges in TABLE_GRANTS:
         enable_tenant_rls(table)
         grant_app(table, privileges)
@@ -459,6 +462,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     for table, _ in TABLE_GRANTS:
         revoke_app(table)
+    op.drop_column("pages", "content_synced_at")
     op.drop_column("workspace_settings", "telegram_chat_id")
     op.drop_constraint("fk_leads_campaign", "leads", type_="foreignkey")
     op.drop_constraint("fk_leads_ad", "leads", type_="foreignkey")
