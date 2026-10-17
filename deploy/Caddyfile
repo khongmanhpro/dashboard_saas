@@ -1,4 +1,12 @@
 # Caddy tự lấy chứng chỉ HTTPS cho APP_DOMAIN (Let's Encrypt).
+{
+	servers {
+		# Chỉ tin CF-Connecting-IP từ cloudflared (mạng edge). Không có tunnel: không tin ai.
+		trusted_proxies static {$TRUSTED_PROXY_CIDR:127.0.0.1/32}
+		client_ip_headers CF-Connecting-IP
+	}
+}
+
 {$APP_DOMAIN} {
 	encode zstd gzip
 
@@ -15,7 +23,10 @@
 	# /readyz chỉ dùng trong mạng nội bộ Docker, không mở ra ngoài.
 	@backend path /api/* /webhooks/* /healthz
 	handle @backend {
-		reverse_proxy backend:8000
+		reverse_proxy backend:8000 {
+			# Backend chỉ thấy IP thật đã xác định ở trên, không nhận X-Forwarded-For khách tự gửi.
+			header_up X-Forwarded-For {client_ip}
+		}
 	}
 
 	# Service worker và manifest phải luôn lấy bản mới, nếu không máy người dùng giữ bản cũ.
