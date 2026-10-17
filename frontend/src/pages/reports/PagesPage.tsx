@@ -117,6 +117,11 @@ function OwnerCell({
   );
 }
 
+/** Bộ lọc trong nút "Lọc (n)": BM và nhóm. Sắp xếp không thu hẹp danh sách nên không đếm và "Xóa lọc" không đổi (mục N). */
+const FILTER_KEYS = ["bm_id", "team_id"] as const;
+export const activeFilterCount = (query: PageQuery) => FILTER_KEYS.filter((k) => query[k]).length;
+export const clearedFilters: Partial<PageQuery> = { bm_id: "", team_id: "" };
+
 export function PagesPage() {
   const me = useOutletContext<Me>();
   const [params, setParams] = useSearchParams();
@@ -229,8 +234,8 @@ export function PagesPage() {
           />
         </label>
         <FilterSheet
-          active={[query.bm_id, query.team_id, query.sort !== "leads"].filter(Boolean).length}
-          onClear={() => update({ bm_id: "", team_id: "", sort: "leads" })}
+          active={activeFilterCount(query)}
+          onClear={() => update(clearedFilters)}
         >
           {data && data.bms.length > 1 ? (
             <label className="report-select">
