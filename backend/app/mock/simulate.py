@@ -48,6 +48,7 @@ from app.models import (
 )
 from app.services.assignment import assign_page
 from app.services.phone import mask_phone
+from app.workers.meta_sync import sync_meta
 
 SCENARIOS_FILE = (
     Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "meta" / "simulate_scenarios.json"
@@ -321,6 +322,8 @@ async def main(argv: list[str] | None = None) -> int:
     if demo is None:
         print("Chưa có dữ liệu demo. Chạy `make seed` trước.")
         return 2
+    # Quảng cáo phải có trong DB thì khách từ QC mới gắn được chiến dịch (client Graph giả).
+    await sync_meta({})
 
     queue = await get_queue()
 

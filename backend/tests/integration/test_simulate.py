@@ -18,6 +18,7 @@ from app.core.queue import close_queue, get_queue
 from app.meta.signature import SIGNATURE_HEADER
 from app.mock.seed import DEMO_PAGES, ensure_demo_workspace, load_demo_workspace
 from app.mock.simulate import Simulator, load_scenarios, main
+from app.workers.meta_sync import sync_meta
 from app.workers.settings import WorkerSettings
 
 pytestmark = pytest.mark.integration
@@ -34,6 +35,7 @@ async def _simulator(client: httpx.AsyncClient, admin_db: AsyncSession) -> Simul
     await admin_db.commit()
     demo = await load_demo_workspace(admin_db)
     assert demo is not None
+    await sync_meta({})  # như `make seed` / `make simulate`: có quảng cáo để gắn chiến dịch
     queue = await get_queue()
 
     async def post(body: bytes, signature: str) -> int:
