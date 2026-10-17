@@ -50,3 +50,32 @@ async def test_upgrade_downgrade_upgrade_and_models_match() -> None:
         assert diff == [], f"Model và migration lệch nhau: {diff}"
     finally:
         await engine.dispose()
+
+
+async def test_downgrade_0003_drops_purge_function() -> None:
+    await recreate_database(MIGRATION_DB)
+    url = admin_url_for(MIGRATION_DB)
+    cfg = alembic_config(url)
+    exists_sql = text(
+        "SELECT count(*) FROM pg_proc WHERE proname = 'app_purge_expired_data'"
+        " UNION ALL SELECT count(*) FROM pg_indexes"
+        " WHERE indexname = 'ix_messages_sent_at_with_text'"
+    )
+
+    await asyncio.to_thread(command.upgrade, cfg, "0003")
+    engine = create_async_engine(url)
+    try:
+        async with engine.connect() as conn:
+            assert list(await conn.scalars(exists_sql)) == [1, 1]
+        await asyncio.to_thread(command.downgrade, cfg, "0002")
+        async with engine.connect() as conn:
+            assert list(await conn.scalars(exists_sql)) == [0, 0]
+            # Hàm của 0002 vẫn còn.
+            assert (
+                await conn.scalar(
+                    text("SELECT count(*) FROM pg_proc WHERE proname = 'app_route_page'")
+                )
+                == 1
+            )
+    finally:
+        await engine.dispose()

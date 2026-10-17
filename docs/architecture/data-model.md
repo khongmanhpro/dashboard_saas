@@ -42,6 +42,8 @@ Quy ước chung:
 
 Định tuyến webhook: worker không biết workspace trước khi đọc Trang, nhưng không được dùng tài khoản quản trị DB. Hàm `app_route_page(fb_page_id)` (`SECURITY DEFINER`, `search_path` cố định) chỉ trả về `workspace_id` của Trang đang theo dõi; tài khoản ứng dụng chỉ có quyền EXECUTE hàm này. Sự kiện của Trang không ai theo dõi bị bỏ, log chỉ ghi `fb_page_id`.
 
+Hạn lưu: job ban đêm gọi hàm `app_purge_expired_data(webhook_days, message_text_days)` (`SECURITY DEFINER`, `search_path` cố định, chỉ tài khoản ứng dụng được EXECUTE). Hàm chỉ xóa `webhook_events` cũ và đặt `messages.text = NULL` cho tin cũ, từ chối ngưỡng dưới 30 / 180 ngày, trả về số dòng đã xử lý. Chỉ mục một phần `ix_messages_sent_at_with_text` giúp job không quét cả bảng.
+
 ## Khách (Bước 2–3)
 
 | Bảng | Cột chính |

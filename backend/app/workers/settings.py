@@ -2,6 +2,7 @@
 
 - `heartbeat`: mỗi phút, để giám sát biết worker còn chạy.
 - `process_webhook`: xử lý webhook Meta (app.workers.webhook).
+- `purge_expired_data`: 02:30 giờ Việt Nam mỗi đêm, hạn lưu dữ liệu (app.workers.retention).
 
 Đồng bộ định kỳ và tính điểm ban đêm thêm ở các bước sau.
 """
@@ -18,10 +19,15 @@ from app.core.config import get_settings
 from app.core.db import dispose_engines
 from app.core.logging import setup_logging
 from app.core.queue import redis_settings as queue_redis_settings
+from app.workers.retention import purge_expired_data
 from app.workers.webhook import MAX_TRIES, process_webhook
 
 HEARTBEAT_KEY = "worker:heartbeat"
 HEARTBEAT_TTL_SECONDS = 300
+# Lịch cron tính theo UTC (khai báo rõ, không phụ thuộc múi giờ của container).
+PURGE_HOUR_UTC = 19  # 02:30 Asia/Ho_Chi_Minh
+PURGE_MINUTE_UTC = 30
+PURGE_TIMEOUT_SECONDS = 30 * 60
 
 log = logging.getLogger(__name__)
 
@@ -45,7 +51,18 @@ async def _shutdown(_ctx: dict[str, Any]) -> None:
 
 class WorkerSettings:
     functions: ClassVar[list[Any]] = [heartbeat, func(process_webhook, max_tries=MAX_TRIES)]
-    cron_jobs: ClassVar[list[Any]] = [cron(heartbeat, second=0, run_at_startup=False)]
+    cron_jobs: ClassVar[list[Any]] = [
+        cron(heartbeat, second=0, run_at_startup=False),
+        cron(
+            purge_expired_data,
+            hour=PURGE_HOUR_UTC,
+            minute=PURGE_MINUTE_UTC,
+            second=0,
+            timeout=PURGE_TIMEOUT_SECONDS,
+            run_at_startup=False,
+        ),
+    ]
+    timezone = dt.UTC
     on_startup = _startup
     on_shutdown = _shutdown
     redis_settings = queue_redis_settings()

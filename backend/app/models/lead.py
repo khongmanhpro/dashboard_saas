@@ -173,6 +173,12 @@ class Message(Base):
         Index("ix_messages_contact_sent", "contact_id", "sent_at"),
         Index("ix_messages_lead_id", "lead_id"),
         Index("ix_messages_workspace_id", "workspace_id"),
+        # Cho job hạn lưu (app_purge_expired_data): chỉ những tin còn nội dung.
+        Index(
+            "ix_messages_sent_at_with_text",
+            "sent_at",
+            postgresql_where=sql_text("text IS NOT NULL"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
