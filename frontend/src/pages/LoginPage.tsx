@@ -69,6 +69,11 @@ export function LoginPage() {
             {login.isPending ? t.login.submitting : t.login.submit}
           </button>
         </form>
+        {/* Trang tĩnh, không qua router (decisions.md mục U1). */}
+        <nav className="auth-links">
+          <a href="/privacy">{t.login.privacy}</a>
+          <a href="/data-deletion">{t.login.dataDeletion}</a>
+        </nav>
       </div>
     </main>
   );

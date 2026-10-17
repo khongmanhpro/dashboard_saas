@@ -34,9 +34,32 @@ jobs:
         run: make test
       - name: Giả lập webhook
         run: make simulate
+      - name: Sao lưu và khôi phục thử
+        run: make check-backup
       - name: Dọn
         if: always()
         run: docker compose down -v
+
+  deploy:
+    name: Triển khai
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Caddyfile (IP thật qua tunnel)
+        run: make check-caddy
+      - name: Ghép compose production + tunnel
+        env:
+          ENV_FILE: .env.example
+          POSTGRES_DB: x
+          POSTGRES_USER: x
+          POSTGRES_PASSWORD: x
+          POSTGRES_APP_USER: x
+          POSTGRES_APP_PASSWORD: x
+          APP_DOMAIN: app.example.vn
+          CLOUDFLARE_TUNNEL_TOKEN: x
+          BACKUP_AGE_RECIPIENT: x
+        run: docker compose -f docker-compose.prod.yml -f docker-compose.tunnel.yml config -q
 
   frontend:
     name: Giao diện

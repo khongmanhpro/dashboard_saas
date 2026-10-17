@@ -115,6 +115,21 @@ services:
       retries: 60
     restart: unless-stopped
 
+  # Image sao lưu (decisions.md mục R), chỉ dùng cho `make check-backup`. Không chạy khi `docker compose up`.
+  backup:
+    profiles: ["tools"]
+    build:
+      context: ./deploy/backup
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER}
+    depends_on:
+      db:
+        condition: service_healthy
+
   # ---------- Stack e2e riêng (decisions.md mục L): `make e2e`. Không chạy khi `docker compose up`.
   # DB fanpage_e2e_test, Redis db 13, backend :8001, frontend :5174. Không đụng DB dev.
   e2e-migrate:

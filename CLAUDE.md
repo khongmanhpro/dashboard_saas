@@ -84,7 +84,7 @@ Kiểm tra quyền ở **tầng backend** cho mọi API, không chỉ ẩn trên
 ## 4. Kết nối Meta
 
 ### Nhiều BM
-Mỗi BM kết nối bằng **một người dùng hệ thống riêng** tên "Dashboard", vai trò Nhân viên, chỉ được gán đúng các quyền tài sản cần thiết. Thêm BM qua màn hình "Kết nối BM": dán mã → hệ thống kiểm tra quyền → liệt kê Trang và tài khoản quảng cáo → đăng ký webhook cho từng Trang.
+Chỉ **một người dùng hệ thống** tên "Dashboard", vai trò Nhân viên, ở BM FISSOLUTION (BM sở hữu ứng dụng), chỉ được gán đúng các quyền tài sản cần thiết. BM khác **chia sẻ Trang và tài khoản quảng cáo cho BM FISSOLUTION**, rồi gán cho "Dashboard" (decisions.md mục T): Meta không cho người dùng hệ thống của BM khác dùng ứng dụng của FISSOLUTION. Màn hình "Kết nối BM": dán mã → hệ thống kiểm tra quyền → liệt kê Trang và tài khoản quảng cáo → đăng ký webhook cho từng Trang; Trang mới chia sẻ thêm tự hiện sau "Kiểm tra lại" hoặc lần kiểm tra 6 giờ. Hướng dẫn phía Meta: `docs/meta-setup.md`.
 
 ### Quyền cần có
 `pages_show_list`, `pages_read_engagement`, `read_insights`, `pages_read_user_content`, `pages_messaging`, `pages_manage_metadata`, `leads_retrieval`, `ads_read`, `business_management`
@@ -94,7 +94,7 @@ Mỗi BM kết nối bằng **một người dùng hệ thống riêng** tên "D
 - **Bắt buộc** kiểm tra chữ ký `X-Hub-Signature-256` bằng `META_APP_SECRET`. Sai chữ ký thì trả 403.
 - Trả 200 ngay, đẩy payload vào hàng đợi, xử lý ở worker. Xử lý phải idempotent theo `mid` / `leadgen_id`: Meta có thể gửi lặp.
 - Trường cần đăng ký cho Trang: `messages`, `message_echoes`, `messaging_referrals`, `leadgen`, `feed`.
-- Webhook chỉ chạy khi ứng dụng đã ở chế độ **Live**. Trong lúc chờ, dùng `MOCK_MODE=true` (mục 7).
+- Webhook chỉ chạy khi ứng dụng đã ở chế độ **Live**. Nhận tin của khách không có vai trò trong ứng dụng có thể cần thêm **Advanced Access** cho `pages_messaging` (qua App Review); tài liệu Meta nói chưa thống nhất, phải thử thật (`docs/meta-setup.md` mục 6). Trong lúc chờ, dùng `MOCK_MODE=true` (mục 7).
 
 ### Đồng bộ định kỳ
 - Mỗi giờ: insights Trang, bài đăng mới, chi tiêu quảng cáo theo chiến dịch.
@@ -169,18 +169,21 @@ Sau bước 7: chạy thử 2 tuần với 4 Trang và 4–10 nhân viên thật
 
 ## 9. Việc còn chờ phía Facebook (không chặn việc code)
 
-- Hoàn thiện cài đặt cơ bản của ứng dụng (chính sách quyền riêng tư, icon, danh mục) và chuyển sang **Live**.
+- Hoàn thiện cài đặt cơ bản của ứng dụng (chính sách quyền riêng tư, hướng dẫn xóa dữ liệu, icon, danh mục) và chuyển sang **Live**. Hệ thống chưa có trang chính sách quyền riêng tư; tạm dùng trang trên website công ty.
+- Nếu khách thật nhắn mà không có webhook: xin **Advanced Access** cho `pages_messaging` qua App Review (`docs/meta-setup.md` mục 6a).
+- Các BM khác chia sẻ Trang và tài khoản quảng cáo cho BM FISSOLUTION (decisions.md mục T).
 - Thu hẹp quyền của người dùng Dashboard trên Trang Mua Sắm Thông Minh và Phần Mềm Giá Rẻ.
 - Xác minh doanh nghiệp FISSOLUTION đang chờ Meta duyệt.
 
 ## 10. Trạng thái hiện tại và cách làm việc (bàn giao, cập nhật 17/10/2026)
 
-Đọc mục này trước khi làm tiếp. Chi tiết từng quyết định ở `docs/architecture/decisions.md` (mục A–I, **ưu tiên hơn CLAUDE.md** nếu khác nhau), mô hình dữ liệu ở `data-model.md`, phân quyền ở `rbac.md`, cách chạy ở `README.md`.
+Đọc mục này trước khi làm tiếp. Chi tiết từng quyết định ở `docs/architecture/decisions.md` (mục A–T, **ưu tiên hơn CLAUDE.md** nếu khác nhau), mô hình dữ liệu ở `data-model.md`, phân quyền ở `rbac.md`, cách chạy ở `README.md`.
 
 ### Tiến độ
 - **Xong Bước 1–7** (mục 8). Commit đầu mỗi bước là `docs: chốt quyết định Bước N`. Bước 7: quyết định ở `decisions.md` mục I, migration 0008.
+- **Chuẩn bị chạy thật** (PR #3 → #4 → #5, gộp theo thứ tự): Cloudflare Tunnel trước VPS và IP thật qua Caddy (mục Q, `make check-caddy`); sao lưu DB mã hóa age lên R2 (mục R, `make check-backup`); `make env-prod`, `scripts/deploy.sh`, `docs/deploy.md` (mục S); cài đặt Meta và nhiều BM qua chia sẻ tài sản (mục T, `docs/meta-setup.md`).
 - Việc còn nợ:
-  - Thử với Meta thật khi ứng dụng Live: webhook trên 4 Trang demo, kết nối BM bằng mã thật (README mục "Nối với Meta thật"). Kiểm lại tên metric Trang/bài đăng trong `PAGE_METRICS` và `post_media_view` (`app/meta/graph.py`), và cách Meta trả `actions` của insights.
+  - Thử với Meta thật khi ứng dụng Live: webhook trên 4 Trang demo, kết nối BM bằng mã thật, khách không có vai trò trong ứng dụng, Trang chia sẻ từ BM khác (`docs/meta-setup.md`). Kiểm lại tên metric Trang/bài đăng trong `PAGE_METRICS` và `post_media_view` (`app/meta/graph.py`), và cách Meta trả `actions` của insights.
   - Thử Telegram thật (README mục "Bật cảnh báo Telegram thật").
   - Cài PWA lên Android/iPhone thật qua HTTPS (README mục "Kiểm tra cài lên điện thoại thật").
   - Đổi sang gửi link đặt mật khẩu qua email (#20) và email báo cáo tuần khi có SMTP.

@@ -2,6 +2,8 @@
 
     docker compose run --rm migrate python -m app.cli bootstrap-owner
     docker compose run --rm -T migrate python -m app.cli e2e-seed < accounts.json
+    docker compose run --rm migrate python -m app.cli delete-customer --page <ID Trang> --psid <ID>
+    docker compose run --rm migrate python -m app.cli delete-customer --phone 09xxxxxxxx
 
 Không bao giờ in mật khẩu ra màn hình hay log.
 """
@@ -25,6 +27,7 @@ from app.core.security import PasswordPolicyError, hash_password, validate_passw
 from app.mock.sandbox import is_test_database
 from app.models import MemberRole, MemberStatus, User, Workspace, WorkspaceMember
 from app.services.auth_service import normalize_email
+from app.services.customer_erasure import ErasureError, erase_customer
 from app.services.workspace_service import create_workspace, slugify
 
 
@@ -272,6 +275,20 @@ async def e2e_seed(payload: dict[str, Any]) -> str:
     return f"Đã chuẩn bị {len(payload['accounts'])} tài khoản e2e."
 
 
+async def delete_customer(page: str | None, psid: str | None, phone: str | None) -> str:
+    """Xóa dữ liệu một khách theo yêu cầu (decisions.md mục U4). Chỉ in số đếm."""
+    async with admin_sessionmaker()() as db:
+        try:
+            counts = await erase_customer(db, fb_page_id=page, psid=psid, phone=phone)
+        except ErasureError as exc:
+            raise CliError(str(exc)) from None
+        await db.commit()
+    if not counts:
+        return "Không tìm thấy khách nào khớp. Không xóa gì."
+    detail = ", ".join(f"{k}: {v}" for k, v in sorted(counts.items()))
+    return f"Đã xóa dữ liệu khách ({detail})."
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -279,12 +296,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         "bootstrap-owner", help="Tạo workspace và chủ sở hữu đầu tiên từ biến BOOTSTRAP_*"
     )
     sub.add_parser("e2e-seed", help="Đọc JSON từ stdin, tạo tài khoản cho test giao diện")
+    erase = sub.add_parser("delete-customer", help="Xóa dữ liệu một khách theo yêu cầu (mục U4)")
+    erase.add_argument("--page", help="ID Trang trên Facebook (bắt buộc khi xóa theo PSID)")
+    who = erase.add_mutually_exclusive_group(required=True)
+    who.add_argument("--psid", help="PSID của khách trên Trang đó")
+    who.add_argument("--phone", help="Số điện thoại của khách (mọi Trang, hoặc chỉ --page)")
     args = parser.parse_args(argv)
 
     async def run() -> str:
         try:
             if args.command == "bootstrap-owner":
                 return await bootstrap_owner()
+            if args.command == "delete-customer":
+                return await delete_customer(args.page, args.psid, args.phone)
             return await e2e_seed(json.load(sys.stdin))
         finally:
             await dispose_engines()
