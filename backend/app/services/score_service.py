@@ -9,15 +9,18 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 from collections import defaultdict
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
     Lead,
     LeadSource,
+    Page,
     PageAssignment,
+    PagePost,
     PeriodType,
     ScoreFormula,
     ScoreSnapshot,
@@ -96,6 +99,35 @@ async def _assigned_members(
     return set(rows.all())
 
 
+async def posts_by_member(
+    db: AsyncSession, start: dt.datetime, end: dt.datetime
+) -> dict[uuid.UUID, int]:
+    """Số bài trên Trang mỗi người phụ trách, chỉ tính lúc họ đang phụ trách (mục I).
+
+    Người chỉ phụ trách Trang chưa đồng bộ được bài đăng thì không có trong kết quả."""
+    lower = func.greatest(PageAssignment.valid_from, start)
+    upper = func.least(func.coalesce(PageAssignment.valid_to, end), end)
+    rows = await db.execute(
+        select(PageAssignment.member_id, func.count(PagePost.id))
+        .join(Page, Page.id == PageAssignment.page_id)
+        .outerjoin(
+            PagePost,
+            and_(
+                PagePost.page_id == PageAssignment.page_id,
+                PagePost.created_time >= lower,
+                PagePost.created_time < upper,
+            ),
+        )
+        .where(
+            Page.content_synced_at.is_not(None),
+            PageAssignment.valid_from < end,
+            or_(PageAssignment.valid_to.is_(None), PageAssignment.valid_to > start),
+        )
+        .group_by(PageAssignment.member_id)
+    )
+    return {member_id: int(count) for member_id, count in rows.all()}
+
+
 async def compute_period(
     db: AsyncSession,
     workspace_id: uuid.UUID,
@@ -111,8 +143,15 @@ async def compute_period(
     for fact in facts:
         by_owner[fact.owner_id].append(fact)
     members = set(by_owner) | await _assigned_members(db, start, end)
-    metrics = [member_metrics(m, by_owner.get(m, []), min(now, end), params) for m in members]
-    return compute_scores(metrics, params)
+    until = min(now, end)
+    posts = await posts_by_member(db, start, until)
+    metrics = []
+    for m in members:
+        metric = member_metrics(m, by_owner.get(m, []), until, params)
+        metric.posts_count = posts.get(m)
+        metrics.append(metric)
+    elapsed = Decimal(max((until - start).total_seconds(), 0)) / 86400
+    return compute_scores(metrics, params, max(elapsed, Decimal(1)))
 
 
 async def save_period(

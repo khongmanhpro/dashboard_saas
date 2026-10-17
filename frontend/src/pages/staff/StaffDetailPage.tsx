@@ -26,7 +26,9 @@ function rawText(part: ScorePart): string {
     case "phone_rate":
       return r.rate === null ? none : format(t.staffDetail.raw.phone_rate, { rate: formatPercent(rate) });
     case "page_care":
-      return t.staffDetail.raw.page_care;
+      return r.posts === null || r.posts === undefined
+        ? t.staffDetail.raw.pageCareNone
+        : format(t.staffDetail.raw.page_care, { posts: String(r.posts), target: String(r.target) });
     case "on_time":
       return r.rate === null ? none : format(t.staffDetail.raw.on_time, { rate: formatPercent(rate) });
   }

@@ -5,9 +5,11 @@ Job ban đêm và "xem thử" trong Cài đặt dùng chung các hàm này, nên
 
 - Tốc độ trả lời: 100 điểm nếu trung vị ≤ `speed_full_minutes`, 0 điểm nếu ≥ `speed_zero_minutes`,
   nội suy tuyến tính ở giữa.
+- Chăm Trang (quyết định #5, mục I): `min(số bài / mục tiêu, 1) × 100`, mục tiêu tuần quy đổi theo
+  số ngày đã qua của kỳ.
 - Tiêu chí khác: xếp phần trăm giữa những người đủ số khách tối thiểu.
-- Tiêu chí chưa có số liệu (Chăm Trang trước Bước 7, hoặc người chưa có khách nào được trả lời):
-  bỏ khỏi tổng, trọng số của nó chia lại cho các tiêu chí còn lại theo tỉ lệ.
+- Tiêu chí chưa có số liệu (Trang chưa đồng bộ được bài đăng, hoặc người chưa có khách nào được trả
+  lời): bỏ khỏi tổng, trọng số của nó chia lại cho các tiêu chí còn lại theo tỉ lệ.
 """
 
 from __future__ import annotations
@@ -94,7 +96,8 @@ class MemberMetrics:
     phone_rate: Decimal | None = None
     on_time_rate: Decimal | None = None
     median_response_seconds: int | None = None
-    posts_count: int | None = None  # Bước 7
+    # Bài đăng trên Trang mình phụ trách trong kỳ. None: Trang chưa đồng bộ được bài đăng.
+    posts_count: int | None = None
 
 
 @dataclass
@@ -166,6 +169,15 @@ def speed_score(median_seconds: int | None, params: FormulaParams) -> Decimal | 
     return _q(_HUNDRED * Decimal(zero - median_seconds) / Decimal(zero - full))
 
 
+def page_care_score(
+    posts: int | None, period_days: Decimal, params: FormulaParams
+) -> Decimal | None:
+    target = Decimal(params.posts_per_week_target) * period_days / 7
+    if posts is None or target <= 0:
+        return None
+    return _q(min(Decimal(posts) / target, Decimal(1)) * _HUNDRED)
+
+
 def percentile_scores(
     values: Mapping[uuid.UUID, Decimal | int | None],
 ) -> dict[uuid.UUID, Decimal | None]:
@@ -208,8 +220,12 @@ def tier_of(total: Decimal, params: FormulaParams) -> Tier:
     return Tier.D
 
 
-def compute_scores(metrics: Iterable[MemberMetrics], params: FormulaParams) -> list[MemberScore]:
-    """Điểm cho mọi người trong một kỳ. Thứ hạng kiểu 1, 2, 2, 4 khi bằng điểm."""
+def compute_scores(
+    metrics: Iterable[MemberMetrics], params: FormulaParams, period_days: Decimal = Decimal(7)
+) -> list[MemberScore]:
+    """Điểm cho mọi người trong một kỳ. Thứ hạng kiểu 1, 2, 2, 4 khi bằng điểm.
+
+    `period_days`: số ngày đã qua của kỳ, để quy đổi mục tiêu bài đăng."""
     all_metrics = list(metrics)
     sufficient = [m for m in all_metrics if m.lead_count >= params.min_leads and m.lead_count > 0]
     ids = {m.member_id for m in sufficient}
@@ -218,7 +234,6 @@ def compute_scores(metrics: Iterable[MemberMetrics], params: FormulaParams) -> l
     revenue = percentile_scores({m.member_id: m.revenue_vnd for m in sufficient})
     phone = percentile_scores({m.member_id: m.phone_rate for m in sufficient})
     on_time = percentile_scores({m.member_id: m.on_time_rate for m in sufficient})
-    page_care = percentile_scores({m.member_id: m.posts_count for m in sufficient})
 
     scores: list[MemberScore] = []
     for m in all_metrics:
@@ -230,7 +245,7 @@ def compute_scores(metrics: Iterable[MemberMetrics], params: FormulaParams) -> l
             "response_speed": speed_score(m.median_response_seconds, params),
             "revenue": revenue[m.member_id],
             "phone_rate": phone[m.member_id],
-            "page_care": page_care[m.member_id],
+            "page_care": page_care_score(m.posts_count, period_days, params),
             "on_time": on_time[m.member_id],
         }
         total = weighted_total(components, params.weights)

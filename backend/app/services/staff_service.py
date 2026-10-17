@@ -90,7 +90,9 @@ def _rate(part: int, whole: int) -> Decimal | None:
 # ---------------------------------------------------------------- công thức
 
 
-def _formula_out(f: ScoreFormula, created_by: str | None, can_edit: bool) -> FormulaOut:
+def _formula_out(
+    f: ScoreFormula, created_by: str | None, can_edit: bool, page_care_available: bool
+) -> FormulaOut:
     return FormulaOut(
         version=f.version,
         weights=Weights(**{c: getattr(f, f"w_{c}") for c in CRITERIA}),
@@ -103,7 +105,7 @@ def _formula_out(f: ScoreFormula, created_by: str | None, can_edit: bool) -> For
         posts_per_week_target=f.posts_per_week_target,
         effective_from=f.effective_from,
         created_by=created_by,
-        page_care_available=False,
+        page_care_available=page_care_available,
         can_edit=can_edit,
     )
 
@@ -117,7 +119,8 @@ async def get_formula(db: AsyncSession, ctx: AuthContext) -> FormulaOut:
             .join(WorkspaceMember, WorkspaceMember.user_id == User.id)
             .where(WorkspaceMember.id == f.created_by_member_id)
         )
-    return _formula_out(f, created_by, ctx.can(Perm.SCORE_FORMULA_EDIT))
+    synced = await db.scalar(select(Page.id).where(Page.content_synced_at.is_not(None)).limit(1))
+    return _formula_out(f, created_by, ctx.can(Perm.SCORE_FORMULA_EDIT), synced is not None)
 
 
 async def _member_names(db: AsyncSession, ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:

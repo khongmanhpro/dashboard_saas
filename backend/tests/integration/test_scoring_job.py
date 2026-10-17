@@ -13,6 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import (
     Lead,
     MemberRole,
+    Page,
+    PagePost,
     PeriodType,
     ScoreSnapshot,
     Tier,
@@ -105,7 +107,7 @@ async def test_nightly_job_writes_week_and_reference_periods(
     assert good.lead_count == 10 and good.won_count == 5 and good.revenue_vnd == 5_000_000
     assert good.median_response_seconds == 120
     assert good.s_response_speed == 100 and slow.s_response_speed == 0
-    assert good.s_page_care is None  # Chăm Trang chưa có số liệu (Bước 7)
+    assert good.s_page_care is None  # Trang chưa đồng bộ được bài đăng
     assert good.total == 100 and good.tier == Tier.A and good.rank == 1
     assert slow.total == 0 and slow.tier == Tier.D and slow.rank == 2
     assert few.insufficient_data and few.total is None and few.rank is None
@@ -178,3 +180,44 @@ async def test_member_assigned_but_without_leads_is_listed(
     await nightly_scores({}, now=WEDNESDAY)
     week = await _rows(admin_db, PeriodType.WEEK, dt.date(2026, 10, 12))
     assert week[idle_id].lead_count == 0 and week[idle_id].insufficient_data
+
+
+async def test_page_care_counts_posts_while_member_owns_the_page(
+    team: Team, admin_db: AsyncSession
+) -> None:
+    pages = {
+        p.name: p
+        for p in await admin_db.scalars(select(Page).where(Page.workspace_id == team.ws_id))
+    }
+    good_page, slow_page = pages["[Trang 0]"], pages["[Trang 1]"]
+    good_page.content_synced_at = vn(14, 1)
+    # Tuần 12–18/10: 3 bài trên Trang của người tốt, 1 bài tuần trước (không tính).
+    for i, at in enumerate([vn(12, 8), vn(13, 8), vn(14, 8), vn(9, 8)]):
+        admin_db.add(
+            PagePost(
+                workspace_id=team.ws_id,
+                page_id=good_page.id,
+                fb_post_id=f"post-{i}",
+                created_time=at,
+                type="photo",
+            )
+        )
+    # Trang của người chậm chưa đồng bộ được bài: Chăm Trang "chưa có dữ liệu".
+    admin_db.add(
+        PagePost(
+            workspace_id=team.ws_id,
+            page_id=slow_page.id,
+            fb_post_id="post-slow",
+            created_time=vn(13, 8),
+            type="photo",
+        )
+    )
+    await admin_db.commit()
+
+    await nightly_scores({}, now=WEDNESDAY)
+    week = await _rows(admin_db, PeriodType.WEEK, dt.date(2026, 10, 12))
+    good, slow = week[team.good], week[team.slow]
+    assert good.posts_count == 3
+    # Thứ Tư 12:00: kỳ đã qua 2,5 ngày → mục tiêu 5 × 2,5 / 7 ≈ 1,79 bài → đạt 100.
+    assert good.s_page_care == 100
+    assert slow.posts_count is None and slow.s_page_care is None

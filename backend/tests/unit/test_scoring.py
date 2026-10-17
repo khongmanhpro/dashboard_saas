@@ -17,6 +17,7 @@ from app.services.scoring import (
     MemberMetrics,
     compute_scores,
     member_metrics,
+    page_care_score,
     percentile_scores,
     speed_score,
     tier_of,
@@ -64,6 +65,27 @@ def test_percentile_with_ties_and_single_member() -> None:
     assert percentile_scores({a: 5}) == {a: Decimal(100)}
     assert percentile_scores({a: 5, b: None}) == {a: Decimal(100), b: None}
     assert percentile_scores({a: 7, b: 7}) == {a: Decimal("50.00"), b: Decimal("50.00")}
+
+
+@pytest.mark.parametrize(
+    ("posts", "days", "expected"),
+    [
+        (5, "7", "100.00"),
+        (9, "7", "100.00"),  # vượt mục tiêu vẫn tối đa 100
+        (2, "7", "40.00"),
+        (0, "7", "0.00"),
+        (2, "3.5", "80.00"),  # kỳ mới qua nửa tuần: mục tiêu 2,5 bài
+        (10, "30", "46.67"),  # 30 ngày: mục tiêu 21,43 bài
+    ],
+)
+def test_page_care_follows_decision_5(posts: int, days: str, expected: str) -> None:
+    assert page_care_score(posts, Decimal(days), DEFAULT) == Decimal(expected)
+
+
+def test_page_care_without_data_or_target() -> None:
+    assert page_care_score(None, Decimal(7), DEFAULT) is None
+    no_target = FormulaParams(weights=DEFAULT.weights, posts_per_week_target=0)
+    assert page_care_score(3, Decimal(7), no_target) is None
 
 
 def test_missing_page_care_redistributes_weight() -> None:
