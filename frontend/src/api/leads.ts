@@ -77,6 +77,9 @@ export interface LeadDetail extends LeadCard {
   timeline: TimelineItem[];
   timeline_truncated: boolean;
   permissions: { can_update: boolean; can_edit_result: boolean; can_remind: boolean; edit_until: string | null };
+  campaign_name: string | null;
+  cost_visible: boolean;
+  estimated_cost_vnd: number | null;
 }
 
 export interface LeadFilters {

@@ -557,7 +557,10 @@ export const vi = {
       notReplied: "Chưa trả lời",
       notMeasured: "Không đo (khách từ form)",
       cost: "Chi phí ước tính",
-      costLater: "Có ở Bước 7 (đồng bộ chi tiêu quảng cáo)",
+      campaign: "Chiến dịch",
+      costHint: "Chi tiêu của chiến dịch trong ngày ÷ số khách mới từ chiến dịch cùng ngày",
+      costNoSpend: "Chưa có số liệu chi tiêu ngày này",
+      costOrganic: "Không từ quảng cáo đã đồng bộ",
     },
   },
   errors: {

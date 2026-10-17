@@ -95,6 +95,10 @@ class LeadDetail(LeadCard):
     timeline: list[TimelineItem]
     timeline_truncated: bool
     permissions: LeadPermissions
+    campaign_name: str | None
+    # Chỉ trả cho người có `ads.cost.view`: None với người khác, `cost_visible` cho biết lý do.
+    cost_visible: bool
+    estimated_cost_vnd: int | None
 
 
 class CalledUpdate(BaseModel):

@@ -387,8 +387,22 @@ export function SourcePanel({ lead }: { lead: LeadDetail }) {
         ) : null}
         <dt>{t.lead.source.firstReply}</dt>
         <dd className={lead.is_slow ? "timer--hot" : undefined}>{firstReply}</dd>
-        <dt>{t.lead.source.cost}</dt>
-        <dd className="muted">{t.lead.source.costLater}</dd>
+        {lead.campaign_name ? (
+          <>
+            <dt>{t.lead.source.campaign}</dt>
+            <dd>{lead.campaign_name}</dd>
+          </>
+        ) : null}
+        {lead.cost_visible ? (
+          <>
+            <dt>{t.lead.source.cost}</dt>
+            {lead.estimated_cost_vnd !== null ? (
+              <dd title={t.lead.source.costHint}>{formatVnd(lead.estimated_cost_vnd)}</dd>
+            ) : (
+              <dd className="muted">{lead.campaign_name ? t.lead.source.costNoSpend : t.lead.source.costOrganic}</dd>
+            )}
+          </>
+        ) : null}
       </dl>
     </section>
   );

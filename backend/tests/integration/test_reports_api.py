@@ -6,16 +6,17 @@ import datetime as dt
 import io
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 import pytest
 from openpyxl import load_workbook
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Ad, Campaign, MemberRole, Page
+from app.models import Ad, AdInsightDaily, Campaign, Lead, MemberRole, Page
 from app.services.assignment import assign_page
 from app.services.report_export import safe_cell
 from app.workers.meta_sync import sync_meta
@@ -284,3 +285,43 @@ def test_safe_cell_blocks_formulas() -> None:
     assert safe_cell("+84") == "'+84"
     assert safe_cell("Shop Thỏ") == "Shop Thỏ"
     assert safe_cell(Decimal("1.5")) == 1.5
+
+
+async def test_lead_detail_shows_estimated_cost_only_with_ads_permission(
+    as_user: Any, demo: Demo, admin_db: AsyncSession
+) -> None:
+    lead = await admin_db.scalar(
+        select(Lead)
+        .where(Lead.page_id == demo.pages[FISS].id)
+        .order_by(Lead.first_inbound_at.desc())
+        .limit(1)
+    )
+    assert lead is not None
+    vn = ZoneInfo("Asia/Ho_Chi_Minh")
+    day = lead.first_inbound_at.astimezone(vn).date()
+    spend = await admin_db.scalar(
+        select(AdInsightDaily.spend_vnd).where(
+            AdInsightDaily.level == "campaign",
+            AdInsightDaily.object_id == lead.campaign_id,
+            AdInsightDaily.date == day,
+        )
+    )
+    start = dt.datetime.combine(day, dt.time(0), tzinfo=vn)
+    same_day = await admin_db.scalar(
+        select(func.count()).where(
+            Lead.campaign_id == lead.campaign_id,
+            Lead.first_inbound_at >= start,
+            Lead.first_inbound_at < start + dt.timedelta(days=1),
+        )
+    )
+    assert spend and same_day
+
+    owner = (await (await as_user("owner")).get(f"/api/leads/{lead.id}")).json()
+    assert owner["campaign_name"] == "[Tin nhắn - Giải pháp tài chính]"
+    assert owner["cost_visible"] is True
+    expected = (Decimal(spend) / same_day).quantize(Decimal(1), rounding=ROUND_HALF_UP)
+    assert owner["estimated_cost_vnd"] == int(expected)
+
+    staff = (await (await as_user("s2")).get(f"/api/leads/{lead.id}")).json()
+    assert staff["campaign_name"] == "[Tin nhắn - Giải pháp tài chính]"
+    assert staff["cost_visible"] is False and staff["estimated_cost_vnd"] is None

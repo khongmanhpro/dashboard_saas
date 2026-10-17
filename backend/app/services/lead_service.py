@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rbac import Perm, Scope
 from app.models import (
+    Campaign,
     Contact,
     Lead,
     LeadEvent,
@@ -47,7 +48,7 @@ from app.schemas.leads import (
     ResultUpdate,
     TimelineItem,
 )
-from app.services import audit
+from app.services import ads_service, audit
 from app.services.errors import ServiceError
 from app.services.member_service import visible_team_ids
 from app.services.phone import mask_phone, mask_phones_in_text
@@ -536,6 +537,7 @@ async def get_lead(
     ).all()
     timeline, truncated = await _timeline(db, lead, can_phone, now)
     card = _card(row, access, rules, now)
+    cost_visible = ctx.can(Perm.ADS_COST_VIEW)
     return LeadDetail(
         **card.model_dump(),
         fb_page_id=row.fb_page_id,
@@ -545,6 +547,13 @@ async def get_lead(
         timeline=timeline,
         timeline_truncated=truncated,
         permissions=await _with_remind(db, ctx, lead, permissions_for(ctx, lead, now)),
+        campaign_name=await db.scalar(select(Campaign.name).where(Campaign.id == lead.campaign_id))
+        if lead.campaign_id
+        else None,
+        cost_visible=cost_visible,
+        estimated_cost_vnd=await ads_service.lead_cost(db, lead, rules.tz.key)
+        if cost_visible
+        else None,
     )
 
 
