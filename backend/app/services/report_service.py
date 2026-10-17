@@ -348,7 +348,9 @@ async def _boards(db: AsyncSession, r: DateRange, owner_ids: set[uuid.UUID] | No
             note_value=Decimal(raw) if raw is not None else None,
         )
 
-    top = [row(s, n, True) for s, n in ranked[:BOARD_SIZE]]
+    # Ít người có điểm thì chia đôi, để "cần hỗ trợ" không trống khi ai cũng lọt top 5.
+    top_size = min(BOARD_SIZE, (len(ranked) + 1) // 2)
+    top = [row(s, n, True) for s, n in ranked[:top_size]]
     top_ids = {b.member.id for b in top}
     bottom = [row(s, n, False) for s, n in reversed(ranked) if s.member_id not in top_ids][
         :BOARD_SIZE

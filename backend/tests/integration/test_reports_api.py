@@ -64,7 +64,11 @@ async def test_overview_numbers_for_owner(as_user: Any, demo: Demo) -> None:
     assert alerts["unassigned_pages"] == 1
     assert alerts["bm_disconnected"] == 0
     assert body["is_mock"] is True
-    assert {b["member"]["name"] for b in body["boards"]["top"]} == {
+    # Hai người có điểm: chia đôi để mục "cần hỗ trợ" không trống.
+    top, bottom = body["boards"]["top"], body["boards"]["bottom"]
+    assert len(top) == 1 and len(bottom) == 1
+    assert Decimal(top[0]["total"]) >= Decimal(bottom[0]["total"])
+    assert {b["member"]["name"] for b in top + bottom} == {
         demo.accounts["s1"].user.full_name,
         demo.accounts["s2"].user.full_name,
     }
