@@ -113,12 +113,26 @@ def _rate(part: int, whole: int) -> Decimal | None:
     return (Decimal(part) / Decimal(whole)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
 
 
+def speed_samples(leads: Iterable[LeadFacts], params: FormulaParams) -> list[int]:
+    """Số giây trả lời dùng để lấy trung vị. Khách chờ quá ngưỡng 0 điểm mà chưa được trả lời
+    tính bằng ngưỡng; khách đang chờ ít hơn và khách từ form thì chưa tính (quyết định Bước 4)."""
+    zero_seconds = params.speed_zero_minutes * 60
+    samples = []
+    for lead in leads:
+        if lead.source != LeadSource.MESSAGE:
+            continue
+        if lead.response_seconds is not None:
+            samples.append(lead.response_seconds)
+        elif lead.waiting_seconds is not None and lead.waiting_seconds >= zero_seconds:
+            samples.append(zero_seconds)
+    return samples
+
+
 def member_metrics(
     member_id: uuid.UUID, leads: Iterable[LeadFacts], now: dt.datetime, params: FormulaParams
 ) -> MemberMetrics:
+    leads = list(leads)
     m = MemberMetrics(member_id=member_id)
-    zero_seconds = params.speed_zero_minutes * 60
-    speeds: list[int] = []
     due_count = 0
     on_time = 0
     for lead in leads:
@@ -132,13 +146,7 @@ def member_metrics(
             due_count += 1
             if lead.result_at is not None and lead.result_at <= lead.result_due_at:
                 on_time += 1
-        if lead.source != LeadSource.MESSAGE:
-            continue
-        if lead.response_seconds is not None:
-            speeds.append(lead.response_seconds)
-        elif lead.waiting_seconds is not None and lead.waiting_seconds >= zero_seconds:
-            # Chờ quá ngưỡng 0 điểm mà chưa được trả lời: tính bằng ngưỡng (quyết định Bước 4).
-            speeds.append(zero_seconds)
+    speeds = speed_samples(leads, params)
     m.close_rate = _rate(m.won_count, m.lead_count)
     m.phone_rate = _rate(m.phone_count, m.lead_count)
     m.on_time_rate = _rate(on_time, due_count)

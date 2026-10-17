@@ -113,6 +113,7 @@ async def test_owner_sees_full_leaderboard(as_role: Any, org: Org) -> None:
     assert board["tiers"]["A"] >= 1
     assert board["kpis"]["lead_count"] == 30
     assert board["kpis"]["revenue_vnd"] == 9_000_000
+    assert board["kpis"]["median_response_seconds"] == 900  # trung vị của 10×120, 10×900, 10×7200
     assert {t["name"] for t in board["teams"]} == {"[Nhóm 1]", "[Nhóm 2]"}
     for period in ("rolling_7", "rolling_30", "month"):
         assert (await _board(await as_role("owner"), period))["rows"]

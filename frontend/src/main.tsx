@@ -4,6 +4,7 @@ import "@fontsource/be-vietnam-pro/600.css";
 import "@fontsource/be-vietnam-pro/700.css";
 import "./styles/global.css";
 import "./styles/leads.css";
+import "./styles/staff.css";
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

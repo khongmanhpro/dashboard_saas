@@ -57,8 +57,13 @@ from app.services import audit, inbound
 from app.services.errors import ServiceError
 from app.services.lead_service import member_ids_for
 from app.services.periods import Period, period_for
-from app.services.score_service import compute_period, current_formula, recompute_workspace
-from app.services.scoring import CRITERIA, FormulaParams
+from app.services.score_service import (
+    compute_period,
+    current_formula,
+    lead_facts,
+    recompute_workspace,
+)
+from app.services.scoring import CRITERIA, FormulaParams, speed_samples
 
 if TYPE_CHECKING:
     from app.api.deps import AuthContext
@@ -421,20 +426,13 @@ async def _kpis(
     phones = sum(s.phone_count for s in snapshots)
     median: int | None = None
     if info.first_day and info.last_day and member_ids:
+        # Cùng cách lấy mẫu với điểm tốc độ, để thẻ chỉ số khớp với từng hàng.
         rules = await inbound.load_rules(db, ctx.workspace_id)
+        params = FormulaParams.from_model(await current_formula(db, ctx.workspace_id))
         start, end = Period(info.type, info.first_day, info.last_day).utc_range(rules.tz)
-        seconds = (
-            await db.scalars(
-                select(Lead.response_business_seconds).where(
-                    Lead.owner_member_id.in_(member_ids),
-                    Lead.merged_into_lead_id.is_(None),
-                    Lead.first_inbound_at >= start,
-                    Lead.first_inbound_at < end,
-                    Lead.response_business_seconds.is_not(None),
-                )
-            )
-        ).all()
-        median = int(statistics.median([s for s in seconds if s is not None])) if seconds else None
+        facts = await lead_facts(db, rules, start, end, min(now, end))
+        samples = speed_samples((x for x in facts if x.owner_id in member_ids), params)
+        median = int(statistics.median(samples)) if samples else None
     return Kpis(
         lead_count=lead_count,
         median_response_seconds=median,

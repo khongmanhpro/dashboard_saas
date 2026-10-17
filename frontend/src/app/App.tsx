@@ -12,14 +12,20 @@ import { NotFoundPage } from "../pages/NotFoundPage";
 import { LeadDetailPage } from "../pages/leads/LeadDetailPage";
 import { LeadsPage } from "../pages/leads/LeadsPage";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
+import { SettingsPage } from "../pages/settings/SettingsPage";
+import { StaffDetailPage } from "../pages/staff/StaffDetailPage";
+import { StaffPage } from "../pages/staff/StaffPage";
 import { canSee, homePath, NAV, type NavItem } from "./nav";
 
 /** Màn hình đã làm xong theo từng mục menu. Mục chưa làm hiện PlaceholderPage. */
 const SCREENS: Partial<Record<NavItem["key"], () => JSX.Element>> = {
   leads: LeadsPage,
+  staff: StaffPage,
+  settings: SettingsPage,
 };
 
 const LEADS_ITEM = NAV.find((i) => i.key === "leads") as NavItem;
+const STAFF_ITEM = NAV.find((i) => i.key === "staff") as NavItem;
 
 /** Chặn màn hình khi vai trò không có quyền. Backend vẫn kiểm tra lại mọi API. */
 function Screen({ item, children }: { item: NavItem; children: ReactNode }) {
@@ -80,6 +86,14 @@ export function App() {
               element={
                 <Screen item={LEADS_ITEM}>
                   <LeadDetailPage />
+                </Screen>
+              }
+            />
+            <Route
+              path="/staff/:id"
+              element={
+                <Screen item={STAFF_ITEM}>
+                  <StaffDetailPage />
                 </Screen>
               }
             />

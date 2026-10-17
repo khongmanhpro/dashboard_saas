@@ -46,7 +46,7 @@ async def current_formula(db: AsyncSession, workspace_id: uuid.UUID) -> ScoreFor
     return formula
 
 
-async def _lead_facts(
+async def lead_facts(
     db: AsyncSession,
     rules: inbound.WorkspaceRules,
     start: dt.datetime,
@@ -106,7 +106,7 @@ async def compute_period(
 ) -> list[MemberScore]:
     rules = await inbound.load_rules(db, workspace_id)
     start, end = period.utc_range(tz or rules.tz)
-    facts = await _lead_facts(db, rules, start, end, min(now, end))
+    facts = await lead_facts(db, rules, start, end, min(now, end))
     by_owner: dict[uuid.UUID, list[LeadFacts]] = defaultdict(list)
     for fact in facts:
         by_owner[fact.owner_id].append(fact)
