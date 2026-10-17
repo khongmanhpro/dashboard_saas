@@ -59,6 +59,7 @@ make env-prod DOMAIN=app.vidu.vn
 | Biến | Lấy ở đâu |
 |---|---|
 | `META_APP_ID`, `META_APP_SECRET` | Ứng dụng Meta → Cài đặt → Cơ bản |
+| `META_GRAPH_VERSION` | Phiên bản Graph API ứng dụng đang dùng (ví dụ `v23.0`), xem ở trang quản lý ứng dụng Meta |
 | `CLOUDFLARE_TUNNEL_TOKEN` | Cloudflare Zero Trust → Tunnels → tunnel vừa tạo |
 | `BACKUP_AGE_RECIPIENT` | Dòng `# public key: age1…` trong file khóa age |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Cloudflare R2 → bucket và API token |

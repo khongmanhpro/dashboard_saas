@@ -89,10 +89,12 @@ DEV_VALUES = {
 }
 
 
-# Mã do chủ sở hữu giữ: để trống, chủ sở hữu tự dán trên VPS (CLAUDE.md mục 5).
+# Để trống, chủ sở hữu tự điền trên VPS: mã của chủ sở hữu (CLAUDE.md mục 5) và phiên bản Graph API
+# đang dùng (không viết cứng, CLAUDE.md mục 4).
 OWNER_FILLED = [
     "META_APP_ID",
     "META_APP_SECRET",
+    "META_GRAPH_VERSION",
     "CLOUDFLARE_TUNNEL_TOKEN",
     "BACKUP_AGE_RECIPIENT",
     "R2_ACCOUNT_ID",
