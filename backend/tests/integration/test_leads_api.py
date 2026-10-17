@@ -92,6 +92,11 @@ async def test_summary_chips(as_role: Any) -> None:
     assert s["phone_not_called"] == 1
     assert s["by_status"]["new"] == 1
     assert s["by_status"]["contacted"] == 1
+    with_chip = (
+        await client.get("/api/leads/summary", params={"period": "30d", "chip": "overdue"})
+    ).json()
+    assert with_chip["overdue"] == 1 and with_chip["total"] == 2
+    assert with_chip["by_status"] == {"new": 0, "contacted": 1, "callback": 0, "won": 0, "lost": 0}
     # Kỳ 7 ngày mặc định vẫn thấy cả hai (72 giờ trước).
     assert (await client.get("/api/leads/summary")).json()["total"] == 2
 

@@ -389,7 +389,15 @@ async def summary(
             func.count().filter(_chip_condition(c, now, rules))
             for c in ("unreplied", "overdue", "phone_not_called", "new_today")
         ),
-        *(func.count().filter(Lead.status == s) for s in statuses),
+        # Số theo cột tính trong ô lọc nhanh đang chọn; số của các ô lọc nhanh thì không.
+        *(
+            func.count().filter(
+                and_(Lead.status == s, _chip_condition(filters.chip, now, rules))
+                if filters.chip
+                else Lead.status == s
+            )
+            for s in statuses
+        ),
     ]
     stmt = (
         select(*columns)
