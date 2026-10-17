@@ -27,6 +27,19 @@
   --color-sample-bg: #fef0e8;
   --color-sample-fg: #9a3b12;
 
+  --color-neutral-bg: #f2f4f7;
+  --color-board-bg: #eef0f3;
+  --color-contacted-bg: #eeecfb;
+  --color-contacted-fg: #3d2f9e;
+  --color-info-fg: #174c8e;
+
+  /* Chấm màu cột khách (Leads.dc.html) */
+  --color-status-new: #e34948;
+  --color-status-contacted: #6250d6;
+  --color-status-callback: #2a78d6;
+  --color-status-won: #1baf7a;
+  --color-status-lost: #98a2b3;
+
   --color-tier-a: #1c5cab;
   --color-tier-b: #2a78d6;
   --color-tier-c: #86b6ef;

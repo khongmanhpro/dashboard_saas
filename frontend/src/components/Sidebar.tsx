@@ -1,10 +1,23 @@
 import { NavLink, useNavigate } from "react-router-dom";
 
+import { useLeadSummary } from "../api/leads";
 import type { Me } from "../api/types";
 import { visibleNav, type NavItem } from "../app/nav";
 import { useLogout } from "../auth/useAuth";
 import { t } from "../i18n";
 import { Icon } from "./Icon";
+
+/** Số khách quá 48 giờ chưa có kết quả, trong phạm vi người đang xem (theo thiết kế). */
+function OverdueCount() {
+  const summary = useLeadSummary({ period: "all" });
+  const count = summary.data?.overdue ?? 0;
+  if (!count) return null;
+  return (
+    <span className="nav-count" data-testid="nav-overdue">
+      {count}
+    </span>
+  );
+}
 
 function NavEntry({ item }: { item: NavItem }) {
   if (item.later) {
@@ -20,6 +33,7 @@ function NavEntry({ item }: { item: NavItem }) {
     <NavLink to={item.path} className="nav-link">
       <Icon name={item.icon} />
       {t.nav[item.key]}
+      {item.key === "leads" ? <OverdueCount /> : null}
     </NavLink>
   );
 }
