@@ -31,7 +31,7 @@ Sếp duyệt ngày 17/10/2026, cùng lúc duyệt kế hoạch Bước 1. Nếu
 | 18 | Kỳ tính điểm | Kỳ chính thức là **tuần T2–CN** theo múi giờ workspace. Mỗi đêm tính lại tuần hiện tại, hết Chủ nhật thì chốt (`is_final`). Các khoảng 7 ngày / 30 ngày / tháng chỉ để tham khảo. |
 | 19 | Lưu nội dung tin nhắn | **180 ngày**, sau đó xóa nội dung, giữ số liệu. |
 | 20 | Đăng nhập | Email + mật khẩu. Quản lý tạo tài khoản; hệ thống gửi link đặt mật khẩu (hạn 72 giờ). Người không có email: Quản lý đặt mật khẩu tạm, hệ thống bắt đổi ở lần đăng nhập đầu. |
-| 21 | Một người thuộc nhiều workspace | CSDL hỗ trợ (`users` + `workspace_members`). Giao diện hiện chỉ dùng 1 workspace. |
+| 21 | Một người thuộc nhiều workspace | CSDL hỗ trợ (`users` + `workspace_members`). Giao diện hiện chỉ dùng 1 workspace. Chưa cho thêm người đã có tài khoản ở workspace khác (mục O). |
 | 22 | Hai workspace cùng theo dõi một Trang | Không cho phép. |
 
 ## C. Kỹ thuật
@@ -202,3 +202,12 @@ Thay quyết định #4 và mục F phần "xếp phần trăm".
 | Nút đóng bảng | Đổi "Áp dụng" thành "Xong". Chọn ô nào lọc ngay ô đó, đóng bảng (nút Xong, chạm nền tối, phím Esc) không hoàn tác. | Bộ lọc vốn áp dụng ngay; chữ "Áp dụng" làm người dùng tưởng đóng bảng là hủy. |
 | "Lọc (n)" ở Fanpage | Không đếm cách sắp xếp; "Xóa lọc" không đổi cách sắp xếp. | Sắp xếp không thu hẹp danh sách. |
 | Hành vi bảng chọn | Mở bảng thì con trỏ vào bảng, Tab chỉ đi trong bảng, trang phía sau không cuộn; đóng thì con trỏ về nút "Lọc". Màn hình rộng ra từ 640px (xoay ngang) thì bảng tự đóng. Dùng chung kiểu bảng chọn của ứng dụng nhân viên (`m-sheet`), có chừa thanh vuốt iPhone. Màu nền tối là token `--color-overlay`. | Phát hiện khi review mục M. |
+
+## O. Sửa bảo mật sau review (sếp duyệt 17/10/2026)
+
+| Chủ đề | Quyết định | Lý do |
+|---|---|---|
+| Thêm người đã có tài khoản ở workspace khác | Từ chối: "+ Thêm nhân viên" trả `email_unavailable`, không trả họ tên; nhập Excel báo lỗi dòng đó. CSDL vẫn giữ #21; làm luồng mời (người được mời bấm chấp nhận) khi có email. | Workspace khác biết được email đó có tài khoản, thấy họ tên thật và tự gắn người ta vào mà không hỏi. |
+| MOCK_MODE ở production | `APP_ENV=production` mà `MOCK_MODE=true` thì backend không khởi động. Mặc định trong code là `false`; dev bật qua `.env` (`make env`). | Chép `.env.example` lên máy chủ là chạy dữ liệu giả mà không báo lỗi. |
+| Địa chỉ nhận thông báo đẩy | Chỉ nhận https cổng 443 của `fcm.googleapis.com`, `updates.push.services.mozilla.com`, `web.push.apple.com`, `*.notify.windows.com`. Lúc gửi kiểm tra lại, địa chỉ không hợp lệ thì xóa, không gọi. | Địa chỉ bất kỳ làm worker gửi request vào mạng nội bộ (SSRF). |
+| Ô chữ trong file Excel | Mọi chuỗi ghi vào file Excel (mẫu nhập, mật khẩu tạm, xuất Tổng quan, Fanpage) ép kiểu chữ, Excel không chạy như công thức, không thêm dấu `'`. | Tên Trang hay họ tên bắt đầu bằng `=` thành công thức; thêm dấu `'` làm sai mật khẩu tạm bắt đầu bằng `-`. |
