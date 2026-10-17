@@ -114,6 +114,7 @@ def _formula_out(
         min_leads=f.min_leads,
         posts_per_week_target=f.posts_per_week_target,
         thresholds=Thresholds(**{k: getattr(f, k) for k in THRESHOLD_FIELDS}),
+        score_method=f.score_method,
         effective_from=f.effective_from,
         created_by=created_by,
         page_care_available=page_care_available,
@@ -309,14 +310,15 @@ async def _past_pages(
 
 async def _previous_week_totals(
     db: AsyncSession, first_day: dt.date
-) -> dict[uuid.UUID, Decimal | None]:
+) -> dict[uuid.UUID, tuple[Decimal | None, uuid.UUID]]:
+    """Điểm tuần trước kèm phiên bản công thức đã dùng để tính (mục L)."""
     rows = await db.execute(
-        select(ScoreSnapshot.member_id, ScoreSnapshot.total).where(
+        select(ScoreSnapshot.member_id, ScoreSnapshot.total, ScoreSnapshot.formula_id).where(
             ScoreSnapshot.period_type == PeriodType.WEEK,
             ScoreSnapshot.period_start == first_day - dt.timedelta(days=7),
         )
     )
-    return {mid: total for mid, total in rows.all()}
+    return {mid: (total, formula_id) for mid, total, formula_id in rows.all()}
 
 
 # ---------------------------------------------------------------- bảng xếp hạng
@@ -358,7 +360,7 @@ async def leaderboard(
     )
     members = await _members_info(db, ctx.workspace_id)
     pages = await _current_pages(db)
-    deltas: dict[uuid.UUID, Decimal | None] = {}
+    deltas: dict[uuid.UUID, tuple[Decimal | None, uuid.UUID]] = {}
     if period_type == PeriodType.WEEK:
         deltas = await _previous_week_totals(db, live.period.first_day)
     by_owner = metrics.group(live.facts, lambda f: f.owner_id)
@@ -386,8 +388,11 @@ async def leaderboard(
         summary = metrics.summarize(by_owner.get(mid, []), now, live.params)
         shown = _row_metrics(summary) if in_scope else dict.fromkeys(_row_metrics(summary))
         delta = None
-        if in_scope and score.total is not None and deltas.get(mid) is not None:
-            delta = score.total - deltas[mid]  # type: ignore[operator]
+        other_formula = False
+        previous, previous_formula = deltas.get(mid, (None, formula.id))
+        if in_scope and score.total is not None and previous is not None:
+            delta = score.total - previous
+            other_formula = previous_formula != formula.id
         rows.append(
             LeaderboardRow(
                 member=NamedRef(id=mid, name=info_m.get("name", "")),
@@ -403,6 +408,7 @@ async def leaderboard(
                 insufficient_data=score.insufficient_data,
                 total=score.total if in_scope else None,
                 delta=delta,
+                delta_other_formula=other_formula,
                 **shown,
             )
         )
@@ -551,15 +557,20 @@ async def staff_detail(
     ranked_count = sum(1 for s in live.scores if s.rank is not None)
 
     delta = None
+    delta_other_formula = False
     if score and score.total is not None and period_type == PeriodType.WEEK:
-        prev = await db.scalar(
-            select(ScoreSnapshot.total).where(
-                ScoreSnapshot.period_type == PeriodType.WEEK,
-                ScoreSnapshot.member_id == member_id,
-                ScoreSnapshot.period_start == period.first_day - dt.timedelta(days=7),
+        prev = (
+            await db.execute(
+                select(ScoreSnapshot.total, ScoreSnapshot.formula_id).where(
+                    ScoreSnapshot.period_type == PeriodType.WEEK,
+                    ScoreSnapshot.member_id == member_id,
+                    ScoreSnapshot.period_start == period.first_day - dt.timedelta(days=7),
+                )
             )
-        )
-        delta = score.total - prev if prev is not None else None
+        ).first()
+        if prev is not None and prev.total is not None:
+            delta = score.total - prev.total
+            delta_other_formula = prev.formula_id != formula.id
 
     mine = [f for f in live.facts if f.owner_id == member_id]
     funnel = _funnel(
@@ -567,7 +578,7 @@ async def staff_detail(
     )
     start, end = period.utc_range(rules.tz)
     hours = await _hours(db, member_id, start, end, rules.tz)
-    trend = await _trend(db, ctx, member_id, now, rules.tz, params, period_type, score)
+    trend = await _trend(db, ctx, member_id, now, rules.tz, formula, period_type, score)
     recent = await _recent_leads(db, member_id, now)
     pages = (await _current_pages(db)).get(member_id, [])
     settings = await db.get(WorkspaceSettings, ctx.workspace_id)
@@ -593,6 +604,8 @@ async def staff_detail(
         rank=score.rank if score else None,
         ranked_count=ranked_count,
         delta=delta,
+        delta_other_formula=delta_other_formula,
+        formula_version=formula.version,
         insufficient_data=score.insufficient_data if score else True,
         min_leads=formula.min_leads,
         lead_count=len(mine),
@@ -614,15 +627,18 @@ async def _trend(
     member_id: uuid.UUID,
     now: dt.datetime,
     tz: Any,
-    params: FormulaParams,
+    formula: ScoreFormula,
     period_type: PeriodType,
     score: MemberScore | None,
 ) -> list[TrendPoint]:
-    """Các tuần đã chốt (bảng lưu) cộng tuần này (tính trực tiếp)."""
+    """Các tuần đã chốt (bảng lưu) cộng tuần này (tính trực tiếp). Ghi phiên bản công thức của
+    từng tuần để giao diện đánh dấu tuần tính bằng công thức khác (mục L)."""
+    params = FormulaParams.from_model(formula)
     week = period_for(PeriodType.WEEK, now, tz)
     rows = (
-        await db.scalars(
-            select(ScoreSnapshot)
+        await db.execute(
+            select(ScoreSnapshot, ScoreFormula.version)
+            .join(ScoreFormula, ScoreFormula.id == ScoreSnapshot.formula_id)
             .where(
                 ScoreSnapshot.period_type == PeriodType.WEEK,
                 ScoreSnapshot.member_id == member_id,
@@ -633,8 +649,15 @@ async def _trend(
         )
     ).all()
     points = [
-        TrendPoint(first_day=r.period_start, total=r.total, tier=r.tier, is_final=r.is_final)
-        for r in reversed(rows)
+        TrendPoint(
+            first_day=r.period_start,
+            total=r.total,
+            tier=r.tier,
+            is_final=r.is_final,
+            formula_version=version,
+            other_formula=r.formula_id != formula.id,
+        )
+        for r, version in reversed(rows)
     ]
     if period_type != PeriodType.WEEK:
         live = await live_period(db, ctx.workspace_id, week, now, params)
@@ -645,6 +668,8 @@ async def _trend(
             total=score.total if score else None,
             tier=score.tier if score else None,
             is_final=False,
+            formula_version=formula.version,
+            other_formula=False,
         )
     )
     return points

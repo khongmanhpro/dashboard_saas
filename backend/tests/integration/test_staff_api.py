@@ -377,3 +377,51 @@ async def test_invalid_thresholds_are_rejected(as_role: Any, change: dict[str, i
     body = {"weights": formula["weights"], "thresholds": {**THRESHOLDS, **change}}
     assert (await owner.put("/api/score/formula", json=body)).status_code == 422
     assert (await owner.post("/api/score/preview", json=body)).status_code == 422
+
+
+async def test_last_week_with_other_formula_is_flagged(
+    as_role: Any, org: Org, admin_db: AsyncSession
+) -> None:
+    """Mục L: tuần đã chốt tính bằng phiên bản công thức khác thì ▲▼ và biểu đồ ghi "khác công
+    thức"; tuần đó không bị tính lại."""
+    old = await admin_db.scalar(select(ScoreFormula).where(ScoreFormula.workspace_id == org.ws_id))
+    assert old is not None and old.score_method == "threshold"
+    old.score_method = "percentile"
+    last_week = org.week_start - dt.timedelta(days=7)
+    admin_db.add(
+        ScoreSnapshot(
+            workspace_id=org.ws_id,
+            member_id=org.ids["s1"],
+            formula_id=old.id,
+            period_type=PeriodType.WEEK,
+            period_start=last_week,
+            period_end=last_week + dt.timedelta(days=6),
+            computed_at=dt.datetime(2026, 1, 1, tzinfo=dt.UTC),
+            lead_count=12,
+            won_count=1,
+            phone_count=1,
+            revenue_vnd=1,
+            total=Decimal("42.00"),
+            insufficient_data=False,
+            is_final=True,
+        )
+    )
+    await admin_db.commit()
+    owner = await as_role("owner")
+    # Cùng phiên bản: không ghi chú.
+    row = next(r for r in (await _board(owner))["rows"] if r["member"]["id"] == str(org.ids["s1"]))
+    assert row["delta"] is not None and row["delta_other_formula"] is False
+
+    formula = (await owner.get("/api/score/formula")).json()
+    body = {"weights": formula["weights"], "thresholds": {**THRESHOLDS, "close_rate_full": 40}}
+    saved = (await owner.put("/api/score/formula", json=body)).json()
+    assert saved["version"] == 2 and saved["score_method"] == "threshold"
+
+    row = next(r for r in (await _board(owner))["rows"] if r["member"]["id"] == str(org.ids["s1"]))
+    assert row["delta_other_formula"] is True
+    detail = (await owner.get(f"/api/staff/{org.ids['s1']}")).json()
+    assert detail["delta_other_formula"] is True and detail["formula_version"] == 2
+    past, current = detail["trend"][-2], detail["trend"][-1]
+    assert past["total"] == "42.00" and past["other_formula"] is True
+    assert past["formula_version"] == 1
+    assert current["other_formula"] is False and current["formula_version"] == 2

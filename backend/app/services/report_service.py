@@ -66,11 +66,11 @@ from app.services.alert_rules import effective_rules
 from app.services.errors import ServiceError
 from app.services.lead_service import member_ids_for
 from app.services.member_service import visible_team_ids
-from app.services.periods import Period, period_for
+from app.services.periods import Period
 from app.services.report_range import DateRange, RangeKey, resolve_range
 from app.services.scoring import LeadFacts, MemberScore
 
-LOW_POSTS_THRESHOLD = 3  # "Ít đăng bài": dưới 3 bài tuần này
+LOW_POSTS_THRESHOLD = 3  # "Ít đăng bài": dưới 3 bài trong 7 ngày (mục L)
 DECLINE_RATIO = Decimal("0.7")  # "Giảm tương tác": lượt xem 7 ngày giảm ≥ 30%
 HEATMAP_MIN_POSTS = 10
 HEAT_SLOTS = ((6, 9), (9, 12), (12, 15), (15, 18), (18, 21), (21, 24))
@@ -502,13 +502,12 @@ async def _page_rows(
             )
         ).all()
     }
-    week = period_for(PeriodType.WEEK, now, tz)
-    week_start, _ = week.utc_range(tz)
+    # Bài đăng cùng kỳ 7 ngày với các cột khác và với điểm Chăm Trang (decisions.md mục L).
     posts = dict(
         (
             await db.execute(
                 select(PagePost.page_id, func.count())
-                .where(PagePost.created_time >= week_start)
+                .where(PagePost.created_time >= live.start, PagePost.created_time < live.until)
                 .group_by(PagePost.page_id)
             )
         ).all()
@@ -544,7 +543,7 @@ async def _page_rows(
             won_7d=summary.won,
             revenue_7d=summary.revenue_vnd,
             overdue_7d=summary.overdue,
-            posts_week=int(posts.get(page.id, 0)) if page.content_synced_at else None,
+            posts_7d=int(posts.get(page.id, 0)) if page.content_synced_at else None,
             views_30d=sum(daily.get(d) or 0 for d in days) if has_views else None,
             views_daily=[daily.get(d) for d in days],
             status=_page_status(page, bm_status, daily, today),
@@ -579,7 +578,7 @@ def _in_tab(row: PageReportRow, tab: PageTab) -> bool:
     if tab == "unassigned":
         return row.owner is None
     if tab == "low_posts":
-        return row.posts_week is not None and row.posts_week < LOW_POSTS_THRESHOLD
+        return row.posts_7d is not None and row.posts_7d < LOW_POSTS_THRESHOLD
     if tab == "declining":
         return row.status == "declining"
     if tab == "disconnected":
@@ -591,7 +590,7 @@ def _sort_key(sort: PageSort) -> Any:
     if sort == "score":
         return lambda r: (r.owner_total is None, r.owner_total or 0, r.name)
     if sort == "posts":
-        return lambda r: (r.posts_week is None, r.posts_week or 0, r.name)
+        return lambda r: (r.posts_7d is None, r.posts_7d or 0, r.name)
     if sort == "name":
         return lambda r: r.name.lower()
     return lambda r: (-r.leads_7d, r.name)

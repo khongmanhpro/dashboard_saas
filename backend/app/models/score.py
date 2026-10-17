@@ -18,6 +18,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     SmallInteger,
+    String,
     UniqueConstraint,
     text,
 )
@@ -71,6 +72,7 @@ class ScoreFormula(Base):
             " AND revenue_full_vnd > 0",
             name="threshold_range",
         ),
+        CheckConstraint("score_method IN ('percentile', 'threshold')", name="score_method_valid"),
         ForeignKeyConstraint(
             ["workspace_id", "created_by_member_id"],
             ["workspace_members.workspace_id", "workspace_members.id"],
@@ -104,6 +106,9 @@ class ScoreFormula(Base):
     phone_rate_full: Mapped[int] = mapped_column(SmallInteger, server_default=text("80"))
     on_time_zero: Mapped[int] = mapped_column(SmallInteger, server_default=text("50"))
     on_time_full: Mapped[int] = mapped_column(SmallInteger, server_default=text("95"))
+    # Cách chấm của phiên bản (decisions.md mục L): percentile = xếp phần trăm (trước 17/10/2026),
+    # threshold = ngưỡng tuyệt đối (mục K). Điểm khác phiên bản thì giao diện ghi "khác công thức".
+    score_method: Mapped[str] = mapped_column(String(16), server_default=text("'threshold'"))
     effective_from: Mapped[dt.datetime]
     created_by_member_id: Mapped[uuid.UUID | None]
     created_at: Mapped[dt.datetime] = created_at_col()

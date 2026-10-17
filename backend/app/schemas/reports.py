@@ -159,7 +159,7 @@ class PageReportRow(BaseModel):
     won_7d: int
     revenue_7d: int
     overdue_7d: int
-    posts_week: int | None
+    posts_7d: int | None  # cùng kỳ 7 ngày; mục tiêu 7 ngày = mục tiêu tuần
     views_30d: int | None
     views_daily: list[int | None]
     status: PageStatus

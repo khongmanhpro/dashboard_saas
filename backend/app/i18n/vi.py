@@ -68,7 +68,7 @@ EXPORT_PAGES_HEADER = [
     "Khách 7 ngày",
     "Trả lời TB (phút)",
     "Chốt 7 ngày",
-    "Bài tuần này",
+    "Bài 7 ngày",
     "Lượt xem 30 ngày",
     "Trạng thái",
 ]

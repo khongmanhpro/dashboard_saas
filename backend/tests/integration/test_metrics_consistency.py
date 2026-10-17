@@ -281,3 +281,18 @@ async def test_staff_shows_page_ownership_that_ended_in_period(
         mixed.pages[RABBIT].name
     ]
     assert rows[acc["s2"].user.full_name]["past_pages"] == []
+
+
+async def test_post_counts_use_the_same_period(mixed: Demo, as_user: Any) -> None:
+    """Mục L: Fanpage đếm bài cùng kỳ 7 ngày với điểm Chăm Trang ở /staff/:id và Tổng quan."""
+    owner = await as_user("owner")
+    pages = await _get(owner, "/api/reports/pages")
+    checked = 0
+    for row in pages["rows"]:
+        if not row["owner"] or row["owners_in_range"] or row["posts_7d"] is None:
+            continue
+        detail = await _get(owner, f"/api/staff/{row['owner']['id']}?period=rolling_7")
+        care = next(p for p in detail["parts"] if p["key"] == "page_care")
+        assert care["raw"]["posts"] == row["posts_7d"], row["name"]
+        checked += 1
+    assert checked >= 2

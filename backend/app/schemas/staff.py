@@ -66,6 +66,7 @@ class FormulaOut(BaseModel):
     min_leads: int
     posts_per_week_target: int
     thresholds: Thresholds
+    score_method: str
     effective_from: dt.datetime
     created_by: str | None
     # Chăm Trang chưa có số liệu tới Bước 7: trọng số của nó được chia lại.
@@ -126,6 +127,8 @@ class LeaderboardRow(BaseModel):
     # NULL khi người xem không được thấy (nhân viên xem top 10 của người khác, quyết định #9).
     total: Decimal | None
     delta: Decimal | None
+    # Tuần trước tính bằng phiên bản công thức khác (decisions.md mục L): ▲▼ chỉ để tham khảo.
+    delta_other_formula: bool
     lead_count: int | None
     won_count: int | None
     median_response_seconds: int | None
@@ -201,6 +204,9 @@ class TrendPoint(BaseModel):
     total: Decimal | None
     tier: Tier | None
     is_final: bool
+    formula_version: int | None
+    # Tuần này tính bằng phiên bản công thức khác phiên bản đang áp dụng (mục L).
+    other_formula: bool
 
 
 class RecentLead(BaseModel):
@@ -231,6 +237,8 @@ class StaffDetail(BaseModel):
     rank: int | None
     ranked_count: int
     delta: Decimal | None
+    delta_other_formula: bool
+    formula_version: int
     insufficient_data: bool
     min_leads: int
     lead_count: int

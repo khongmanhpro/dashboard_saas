@@ -72,7 +72,7 @@ def pages_xlsx(rows: list[PageReportRow]) -> bytes:
                 r.leads_7d,
                 round(r.median_response_seconds / 60) if r.median_response_seconds else None,
                 r.won_7d,
-                r.posts_week,
+                r.posts_7d,
                 r.views_30d,
                 vi.EXPORT_PAGE_STATUS[r.status],
             ]
