@@ -144,6 +144,25 @@ docker compose run --rm migrate alembic revision --autogenerate -m "mo_ta"
 
 Bảng mới có `workspace_id` thì phải bật RLS và GRANT cho tài khoản ứng dụng (xem `backend/migrations/helpers.py`). Nếu thiếu, `test_schema_invariants.py` sẽ fail.
 
+### Xử lý yêu cầu xóa dữ liệu của khách
+
+Khách gửi yêu cầu qua email theo trang `/data-deletion` (decisions.md mục U). Phải xóa trong 30 ngày rồi email báo lại cho khách. Trên VPS thêm `-f docker-compose.prod.yml` (và `-f docker-compose.tunnel.yml` nếu chạy qua tunnel) sau `docker compose`.
+
+1. **Khách gửi số điện thoại:** xóa theo số, ở mọi Trang (thêm `--page <ID Trang>` để chỉ xóa ở một Trang):
+
+   ```bash
+   docker compose run --rm migrate python -m app.cli delete-customer --phone 0912345678
+   ```
+
+2. **Khách chỉ gửi tên Facebook và thời gian nhắn:** tìm khách trên màn hình Khách hàng của Trang đó. Lấy ID Trang và PSID của khách bằng truy vấn chỉ đọc theo thời gian tin đầu tiên (sửa ID Trang và khoảng thời gian):
+
+   ```bash
+   docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT c.psid, c.display_name, l.first_inbound_at FROM contacts c JOIN pages p ON p.id = c.page_id JOIN leads l ON l.contact_id = c.id WHERE p.fb_page_id = '"'"'<ID Trang>'"'"' AND l.first_inbound_at BETWEEN '"'"'2026-10-01'"'"' AND '"'"'2026-10-03'"'"' ORDER BY 3"'
+   docker compose run --rm migrate python -m app.cli delete-customer --page <ID Trang> --psid <PSID>
+   ```
+
+Lệnh chỉ in số dòng đã xóa từng loại, ghi `audit_logs` dạng `customer.erase` chỉ với số đếm, không ghi PSID hay số điện thoại. Bản sao lưu cũ tự hết hạn sau 14 ngày (mục R).
+
 ## Bảo mật
 
 - Hai tài khoản DB: **quản trị** (chỉ migration và CLI) và **ứng dụng** (API, worker; bị Row-Level Security giới hạn theo workspace, không sửa hay xóa được `audit_logs`).

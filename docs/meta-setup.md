@@ -18,7 +18,8 @@ Vào [developers.facebook.com/apps](https://developers.facebook.com/apps):
 2. Thêm sản phẩm: **Messenger**, **Webhooks**, **Marketing API**.
 3. **Cài đặt → Cơ bản:**
    - Tên hiển thị, biểu tượng 1024×1024 (dùng `docs/brand/`), danh mục **Business and pages**.
-   - **URL chính sách quyền riêng tư** và **URL hướng dẫn xóa dữ liệu**: bắt buộc để chuyển Live. Hệ thống chưa có trang này; dùng trang trên website công ty.
+   - **URL chính sách quyền riêng tư:** `https://<tên miền>/privacy`.
+   - **URL hướng dẫn xóa dữ liệu** (chọn loại "Data deletion instructions URL", không phải callback): `https://<tên miền>/data-deletion`. Cách xử lý yêu cầu xóa: README mục "Xử lý yêu cầu xóa dữ liệu của khách".
    - Miền ứng dụng: tên miền của hệ thống (ví dụ `app.vidu.vn`).
 4. Chép **App ID** vào `META_APP_ID` và **App Secret** vào `META_APP_SECRET` trong `.env` trên VPS. Chép **phiên bản Graph API** ứng dụng đang dùng (ví dụ `v23.0`) vào `META_GRAPH_VERSION`. Sau đó chạy `scripts/deploy.sh`.
 
