@@ -1,0 +1,33 @@
+# Production qua Cloudflare Tunnel (decisions.md mục Q). Chồng lên docker-compose.prod.yml:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.tunnel.yml --env-file .env up -d --build
+# VPS không mở cổng 80/443: cloudflared chủ động nối ra Cloudflare, Cloudflare giữ HTTPS.
+# Trên dashboard Cloudflare, Public hostname của tunnel trỏ về http://caddy:80.
+
+services:
+  caddy:
+    ports: !reset []
+    environment:
+      CADDY_SITE_PREFIX: "http://"
+      TRUSTED_PROXY_CIDR: ${TUNNEL_SUBNET:-172.31.250.0/28}
+    networks:
+      - default
+      - edge
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.6.1
+    command: ["tunnel", "--no-autoupdate", "run"]
+    # Chỉ nhận token tunnel, không đọc cả .env.
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?Thiếu CLOUDFLARE_TUNNEL_TOKEN trong .env}
+    networks:
+      - edge
+    depends_on:
+      - caddy
+    restart: unless-stopped
+
+networks:
+  # Chỉ có cloudflared và Caddy. Caddy tin CF-Connecting-IP từ dải này, không tin chỗ khác.
+  edge:
+    ipam:
+      config:
+        - subnet: ${TUNNEL_SUBNET:-172.31.250.0/28}

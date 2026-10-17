@@ -4,10 +4,13 @@ ADMIN := $(COMPOSE) run --rm -T migrate
 # Giả lập và e2e chạy trên DB / Redis riêng, không ghi vào DB dev (decisions.md mục L).
 SIMULATE := $(COMPOSE) run --rm -T -e POSTGRES_DB=fanpage_simulate_test -e POSTGRES_APP_USER=fanpage_app_sim -e REDIS_URL=redis://redis:6379/14 migrate
 
-.PHONY: env vapid up down logs ps test test-frontend e2e e2e-down lint migrate bootstrap seed simulate
+.PHONY: env env-prod vapid up down logs ps test test-frontend e2e e2e-down lint migrate bootstrap seed simulate check-caddy check-backup
 
 env:            ## Tạo .env dev với bí mật ngẫu nhiên (không ghi đè)
 	python3 scripts/init_env.py
+
+env-prod:       ## Tạo .env production cho VPS: make env-prod DOMAIN=app.vidu.vn (mục S)
+	python3 scripts/init_env.py --prod --domain "$(DOMAIN)"
 
 vapid:          ## Thêm khóa VAPID (thông báo đẩy) vào .env đã có, không đổi giá trị khác
 	python3 scripts/init_env.py --add-vapid
@@ -53,3 +56,9 @@ seed:           ## Dữ liệu demo cho máy dev (mật khẩu ghi vào backend/
 
 simulate:       ## Giả lập webhook cho 4 Trang demo và kiểm tra số phút trả lời (cần make up, make seed)
 	$(SIMULATE) python -m app.mock.simulate
+
+check-caddy:    ## Kiểm tra deploy/Caddyfile bằng Caddy thật: hai chế độ, IP thật qua tunnel (mục Q)
+	sh scripts/check_caddy.sh
+
+check-backup:   ## Chạy thật sao lưu → khôi phục (mục R), so dữ liệu. Cần make up và make simulate
+	sh scripts/check_backup.sh

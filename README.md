@@ -154,13 +154,60 @@ Bảng mới có `workspace_id` thì phải bật RLS và GRANT cho tài khoản
 
 ## Production (VPS)
 
+Hướng dẫn đầy đủ từ lúc thuê VPS: **[docs/deploy.md](docs/deploy.md)**. Tóm tắt:
+
 ```bash
-cp .env.example .env    # điền giá trị thật; APP_ENV=production, APP_BASE_URL=https://<tên miền>, APP_DOMAIN=<tên miền>
-docker compose -f docker-compose.prod.yml up -d --build
+make env-prod DOMAIN=<tên miền>   # .env production, bí mật ngẫu nhiên; chủ sở hữu điền các mã còn trống
+scripts/deploy.sh                 # sao lưu, git pull, build, migration, chờ backend khỏe (cũng dùng để cập nhật)
 docker compose -f docker-compose.prod.yml run --rm migrate python -m app.cli bootstrap-owner
 ```
 
 Caddy tự lấy chứng chỉ HTTPS cho `APP_DOMAIN`. Ở production, ứng dụng từ chối khởi động nếu thiếu bí mật, bí mật yếu, hoặc `APP_BASE_URL` không dùng https.
+
+### Production qua Cloudflare Tunnel
+
+VPS không mở cổng 80/443: `cloudflared` chủ động nối ra Cloudflare, Cloudflare giữ HTTPS (decisions.md mục Q).
+
+1. Tên miền dùng nameserver của Cloudflare.
+2. Cloudflare Zero Trust → Networks → Tunnels → tạo tunnel (loại Cloudflared). Chủ sở hữu tự chép token vào `CLOUDFLARE_TUNNEL_TOKEN` trong `.env` trên VPS.
+3. Trong tunnel, thêm Public hostname: `APP_DOMAIN` → `HTTP` → `caddy:80`.
+4. Cài đặt của tên miền trên Cloudflare: **tắt** Bot Fight Mode (có thể chặn webhook Meta), Rocket Loader và Email Obfuscation (chèn script, trái CSP). Không tạo Cache Rule cho `/api/*`, `/webhooks/*`.
+5. Chạy thêm file chồng:
+
+```bash
+docker compose -f docker-compose.prod.yml -f docker-compose.tunnel.yml up -d --build
+```
+
+Caddy chỉ tin `CF-Connecting-IP` khi request đến từ `cloudflared` (mạng `edge`), rồi ghi đè `X-Forwarded-For` gửi backend, nên giới hạn đăng nhập theo IP và nhật ký thấy IP thật của khách. `make check-caddy` kiểm tra điều này bằng Caddy thật (CI chạy ở việc "Triển khai").
+
+### Sao lưu DB
+
+Service `backup` (có sẵn trong `docker-compose.prod.yml`) sao lưu lúc 02:00 giờ VN mỗi đêm: `pg_dump`, mã hóa bằng `age`, giữ 14 bản trên VPS và đẩy một bản lên Cloudflare R2 (decisions.md mục R). Chưa có bản nào xong trong 26 giờ (kể cả khi thiếu cấu hình R2) thì `docker compose ps` báo `backup` là `unhealthy`.
+
+Chuẩn bị (chủ sở hữu làm một lần):
+
+1. **Khóa mã hóa, tạo trên máy của chủ sở hữu, không tạo trên VPS:** `brew install age`, rồi `age-keygen -o fanpage-backup-key.txt`. Dòng `# public key: age1…` dán vào `BACKUP_AGE_RECIPIENT`. File khóa cất ở chỗ an toàn ngoài VPS (trình quản lý mật khẩu, USB). **Mất file này thì không mở được bản sao lưu nào.**
+2. **R2:** Cloudflare → R2 → tạo bucket riêng. Tạo API token loại "Object Read & Write", chỉ áp cho bucket đó. Điền `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` vào `.env` trên VPS.
+
+Thao tác thường dùng (thêm `-f docker-compose.tunnel.yml` nếu chạy qua tunnel):
+
+```bash
+docker compose -f docker-compose.prod.yml logs --tail 20 backup                         # kết quả các lần sao lưu
+docker compose -f docker-compose.prod.yml exec backup backup.sh                         # sao lưu ngay
+docker compose -f docker-compose.prod.yml exec backup sh -c 'rclone ls "r2:$R2_BUCKET"' # các bản trên R2
+```
+
+Khôi phục: tắt backend và worker, đưa khóa lên VPS tạm thời, khôi phục, rồi xóa khóa. `--replace` xóa DB đang có rồi tạo lại. Script giải mã xong mới đụng vào DB, nên sai khóa thì DB cũ vẫn còn nguyên.
+
+```bash
+docker compose -f docker-compose.prod.yml stop backend worker
+docker compose -f docker-compose.prod.yml run --rm --user root -v "$PWD/fanpage-backup-key.txt:/run/age-key:ro" \
+  backup restore.sh r2:<tên file .dump.age> fanpage --replace
+docker compose -f docker-compose.prod.yml up -d
+rm fanpage-backup-key.txt
+```
+
+`POSTGRES_USER` và `POSTGRES_APP_USER` trên máy khôi phục phải trùng với máy cũ. `make check-backup` chạy thật cả vòng trên máy dev và trong CI: sao lưu `fanpage_simulate_test`, khôi phục vào `fanpage_restore_test`, so số dòng từng bảng, RLS, quyền và hàm.
 
 ## Cấu trúc
 

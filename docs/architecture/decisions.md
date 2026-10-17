@@ -221,3 +221,42 @@ Thay quyết định #4 và mục F phần "xếp phần trăm".
 | CI | GitHub Actions (`.github/workflows/ci.yml`) chạy khi có PR vào `main` và khi `main` đổi: Backend (`make lint`, `make test`, `make simulate`), Giao diện (`make test-frontend`), E2E (`make e2e`). `.env` sinh ngẫu nhiên bằng `make env`, không dùng bí mật thật. | Kiểm tra tự động, không phụ thuộc máy ai. |
 | Khóa `main` | Bắt buộc PR và cả ba việc CI xanh; cấm force-push và xóa; áp dụng cả chủ repo. Bật sau khi PR CI đầu tiên được gộp. | Không ai lỡ tay push thẳng. |
 | Repo công khai | Giữ Public. Gói GitHub miễn phí chỉ khóa được nhánh của repo công khai. Lịch sử git đã quét: không có mã, mật khẩu, SĐT thật. Xem lại khi lên gói trả phí. | |
+
+## Q. Cloudflare Tunnel trước VPS (sếp duyệt 17/10/2026)
+
+| # | Chủ đề | Quyết định | Lý do |
+|---|---|---|---|
+| Q1 | Cách bật | File chồng `docker-compose.tunnel.yml` thêm service `cloudflared`, bỏ cổng 80/443 của Caddy, Caddy chỉ phục vụ HTTP trong mạng Docker (không xin chứng chỉ). Bỏ file chồng thì quay về Caddy tự lo HTTPS như cũ. | VPS không mở cổng web nào; không phá cách triển khai cũ. |
+| Q2 | Token tunnel | Tunnel tạo và quản lý trên dashboard Cloudflare. **Chủ sở hữu tự tạo và dán** `CLOUDFLARE_TUNNEL_TOKEN` vào `.env` trên VPS. Không đưa token vào chat, log, git. `cloudflared` chỉ nhận đúng biến này, không đọc cả `.env`. | Giống quy tắc mã Meta (CLAUDE.md mục 5). |
+| Q3 | IP thật của khách | Caddy chỉ tin `CF-Connecting-IP` khi request đến từ mạng `edge` (dải `TUNNEL_SUBNET`, chỉ có `cloudflared` và Caddy). Caddy ghi đè `X-Forwarded-For` bằng IP đó trước khi chuyển cho backend. Không có tunnel thì `TRUSTED_PROXY_CIDR` mặc định `127.0.0.1/32`: không tin header nào. | Giới hạn đăng nhập sai theo IP và nhật ký cần IP thật; khách không gửi IP giả được. |
+| Q4 | Cài đặt Cloudflare | Chủ sở hữu tắt Bot Fight Mode, Rocket Loader, Email Obfuscation; không bật cache cho `/api/*`, `/webhooks/*`. | Bot Fight Mode có thể chặn webhook Meta; Rocket Loader và Email Obfuscation chèn script, trái CSP. |
+
+## R. Sao lưu DB (sếp duyệt 17/10/2026)
+
+| # | Chủ đề | Quyết định | Lý do |
+|---|---|---|---|
+| R1 | Lịch và nơi lưu | Service `backup` (image `deploy/backup`) chạy `pg_dump -Fc` lúc **02:00 giờ VN** mỗi đêm, giữ **14 bản** trên VPS (volume `backups`) và đẩy một bản lên **Cloudflare R2** (xóa bản trên R2 cũ hơn 14 ngày). Khởi động mà chưa có bản nào trong 26 giờ thì sao lưu ngay. | VPS hỏng ổ vẫn còn bản ngoài máy. |
+| R2 | Mã hóa | Mọi bản sao lưu mã hóa bằng `age` trước khi ghi ra đĩa. VPS chỉ có khóa công khai (`BACKUP_AGE_RECIPIENT`); **khóa giải mã chủ sở hữu giữ ngoài VPS**, chỉ đưa vào lúc khôi phục. | Lộ VPS hay bucket R2 cũng không đọc được bản sao lưu cũ. |
+| R3 | Quyền | Container `backup` dùng tài khoản quản trị DB (như `migrate`), chỉ nhận biến `POSTGRES_*`, `R2_*`, `BACKUP_*`, không đọc cả `.env`. Khóa R2 chỉ cấp quyền đọc/ghi đúng một bucket. | Ít quyền nhất có thể. |
+| R4 | Theo dõi | Sao lưu chỉ tính là xong khi đã mã hóa, ghi trên VPS **và** đẩy lên R2. Healthcheck của `backup` báo `unhealthy` nếu 26 giờ chưa có lần xong; thiếu cấu hình R2 thì cũng `unhealthy`. | Hỏng sao lưu thì `docker compose ps` thấy ngay. |
+| R5 | Khôi phục | `restore.sh <bản> <DB>` giải mã bằng khóa của chủ sở hữu, tạo DB mới và `pg_restore`; ghi đè DB đang có phải thêm `--replace`. `make check-backup` chạy thật cả vòng: sao lưu, đẩy lên kho giả, khôi phục vào `fanpage_restore_test`, so số dòng từng bảng, chính sách RLS và quyền của tài khoản ứng dụng. CI chạy việc này. | Bản sao lưu chưa từng khôi phục thử thì không tin được. |
+
+## S. Đưa lên VPS (sếp duyệt 17/10/2026)
+
+| # | Chủ đề | Quyết định | Lý do |
+|---|---|---|---|
+| S1 | Cập nhật bản mới | Làm tay bằng `scripts/deploy.sh` trên VPS: sao lưu ngay, `git pull --ff-only` nhánh `main`, build, `up -d` (migration tự chạy trước backend), chờ backend khỏe. Có `CLOUDFLARE_TUNNEL_TOKEN` trong `.env` thì tự thêm `docker-compose.tunnel.yml`. Tự động deploy từ GitHub để sau giai đoạn chạy thử. | Ít thành phần; sếp quyết khi nào lên bản mới. |
+| S2 | Cấu hình VPS | Ubuntu 24.04, 2 vCPU, 4 GB RAM, 40 GB SSD, đặt ở Singapore hoặc Việt Nam. Chỉ mở SSH (đăng nhập bằng khóa), tự cài bản vá bảo mật. Hướng dẫn ở `docs/deploy.md`. | Đủ cho 200 Trang; qua tunnel thì không cần mở cổng web. |
+| S3 | `.env` production | `make env-prod DOMAIN=<tên miền>` sinh `.env` với bí mật ngẫu nhiên, `APP_ENV=production`, `MOCK_MODE=false`, không ghi đè `.env` đã có, không in bí mật. Các mã do chủ sở hữu giữ (Meta, tunnel, R2, khóa age công khai, tài khoản chủ sở hữu đầu tiên) để trống, lệnh in tên các biến còn phải điền. | Không ai phải tự nghĩ bí mật; mã thật chỉ chủ sở hữu dán. |
+
+## T. Nhiều BM qua chia sẻ tài sản (sếp duyệt 17/10/2026)
+
+Thay cho cách "mỗi BM một người dùng hệ thống Dashboard" ở CLAUDE.md mục 4 và Bước 6. Cách cũ không làm được với một ứng dụng: Meta chỉ cho gán ứng dụng cho người dùng hệ thống **cùng BM** với ứng dụng ([System Users](https://developers.facebook.com/docs/marketing-api/system-users/overview)). Hướng dẫn từng bước ở `docs/meta-setup.md`.
+
+| # | Chủ đề | Quyết định | Lý do |
+|---|---|---|---|
+| T1 | Cách nối BM khác | Mỗi BM khác **chia sẻ Trang và tài khoản quảng cáo cho BM FISSOLUTION** (Đối tác). Trong BM FISSOLUTION, chủ sở hữu gán các tài sản đó cho người dùng hệ thống `Dashboard` với đúng các quyền một phần như Trang của FISSOLUTION. | Một ứng dụng, một người dùng hệ thống, một mã. |
+| T2 | Trong hệ thống | Chỉ có **một** kết nối BM (FISSOLUTION). Trang và tài khoản quảng cáo của BM khác hiện dưới kết nối đó sau "Kiểm tra lại" hoặc lần kiểm tra 6 giờ, và tự được đăng ký webhook. **Không sửa code**: hệ thống đã đọc `/me/accounts` và `/me/adaccounts` của mã. | Code Bước 6 dùng được nguyên. |
+| T3 | Số người dùng hệ thống | Một `Dashboard` (vai trò Nhân viên). Mức Standard Access của Meta chỉ cho 1 người dùng hệ thống thường và 1 quản trị. | Đủ cho cách làm này. |
+| T4 | Ngoài phạm vi | Bán SaaS cho doanh nghiệp khác cần họ tự cấp quyền cho ứng dụng (Facebook Login for Business hoặc Business On Behalf Of, Tech Provider). Vẫn **chưa làm** (CLAUDE.md mục 1). Màn hình "Kết nối BM" cho nhiều mã vẫn giữ để dùng sau. | |
+| T5 | Chưa thử với Meta thật | Trang được chia sẻ từ BM đối tác có hiện trong `/me/accounts` và đăng ký webhook được không; quyền đọc form khách hàng tiềm năng (Leads Access) trên Trang được chia sẻ. Kiểm lại khi chạy thật. | |
