@@ -1,0 +1,91 @@
+# CI (decisions.md mục P): chạy khi có PR vào main và khi main đổi.
+# Không dùng bí mật thật: `make env` sinh .env ngẫu nhiên với MOCK_MODE=true.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tạo .env
+        run: make env
+      - name: Build image
+        run: docker compose build migrate
+      - name: Bật DB và Redis
+        run: docker compose up -d --wait db redis
+      - name: Lint
+        run: make lint
+      - name: Test
+        run: make test
+      - name: Giả lập webhook
+        run: make simulate
+      - name: Dọn
+        if: always()
+        run: docker compose down -v
+
+  frontend:
+    name: Giao diện
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Cài thư viện
+        run: npm ci
+        working-directory: frontend
+      - name: Typecheck và vitest
+        run: make test-frontend
+
+  e2e:
+    name: E2E
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Tạo .env
+        run: make env
+      - name: Cài thư viện và Chromium
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Build image
+        run: docker compose build migrate
+      - name: Bật DB và Redis
+        run: docker compose up -d --wait db redis
+      - name: Playwright
+        run: make e2e
+      - name: Tải kết quả khi lỗi
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: frontend/test-results
+          retention-days: 7
+      - name: Dọn
+        if: always()
+        run: docker compose --profile e2e down -v
