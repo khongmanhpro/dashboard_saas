@@ -39,6 +39,7 @@ from app.services import audit
 from app.services.assignment import assign_page, end_assignment
 from app.services.auth_service import normalize_email
 from app.services.errors import ServiceError
+from app.services.xlsx import append_row, to_bytes
 
 if TYPE_CHECKING:
     from app.api.deps import AuthContext
@@ -247,12 +248,10 @@ def _credentials_xlsx(rows: list[tuple[str, str, str]]) -> str:
     ws = wb.active
     assert ws is not None  # noqa: S101 — Workbook mới luôn có một sheet
     ws.title = "Mat khau tam"
-    ws.append(["Họ tên", "Email", "Mật khẩu tạm (bắt đổi ở lần đăng nhập đầu)"])
+    append_row(ws, ["Họ tên", "Email", "Mật khẩu tạm (bắt đổi ở lần đăng nhập đầu)"])
     for row in rows:
-        ws.append(list(row))
-    buffer = io.BytesIO()
-    wb.save(buffer)
-    return base64.b64encode(buffer.getvalue()).decode()
+        append_row(ws, row)
+    return base64.b64encode(to_bytes(wb)).decode()
 
 
 async def apply(
@@ -382,17 +381,15 @@ async def template(db: AsyncSession) -> bytes:
     ws = wb.active
     assert ws is not None  # noqa: S101
     ws.title = "Nhan vien"
-    ws.append(list(HEADERS))
-    ws.append(["[Nhân viên mẫu 1]", "nhanvien1@example.com", "[Nhóm mẫu]", "Trưởng nhóm", ""])
-    ws.append(["[Nhân viên mẫu 2]", "nhanvien2@example.com", "[Nhóm mẫu]", "Nhân viên", ""])
+    append_row(ws, HEADERS)
+    append_row(ws, ["[Nhân viên mẫu 1]", "nhanvien1@example.com", "[Nhóm mẫu]", "Trưởng nhóm", ""])
+    append_row(ws, ["[Nhân viên mẫu 2]", "nhanvien2@example.com", "[Nhóm mẫu]", "Nhân viên", ""])
     for column, width in zip("ABCDE", (28, 32, 20, 16, 30), strict=True):
         ws.column_dimensions[column].width = width
     pages = wb.create_sheet("Trang")
-    pages.append(["ID Trang", "Tên Trang"])
+    append_row(pages, ["ID Trang", "Tên Trang"])
     for page in await db.scalars(select(Page).where(Page.is_tracked.is_(True)).order_by(Page.name)):
-        pages.append([page.fb_page_id, page.name])
+        append_row(pages, [page.fb_page_id, page.name])
     pages.column_dimensions["A"].width = 22
     pages.column_dimensions["B"].width = 40
-    buffer = io.BytesIO()
-    wb.save(buffer)
-    return buffer.getvalue()
+    return to_bytes(wb)

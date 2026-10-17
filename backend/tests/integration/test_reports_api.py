@@ -14,7 +14,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AdInsightDaily, Campaign, Lead
-from app.services.report_export import safe_cell
 from tests.integration.report_fixtures import FISS, RABBIT, SMART, SOFTWARE, Demo
 
 pytestmark = pytest.mark.integration
@@ -208,13 +207,6 @@ async def test_exports(as_user: Any) -> None:
     lead = await as_user("lead")
     lead_book = load_workbook(io.BytesIO((await lead.get("/api/reports/overview.xlsx")).content))
     assert lead_book.sheetnames == ["Tong quan"]  # không có số tiền QC
-
-
-def test_safe_cell_blocks_formulas() -> None:
-    assert safe_cell("=HYPERLINK(1)") == "'=HYPERLINK(1)"
-    assert safe_cell("+84") == "'+84"
-    assert safe_cell("Shop Thỏ") == "Shop Thỏ"
-    assert safe_cell(Decimal("1.5")) == 1.5
 
 
 async def test_lead_detail_shows_estimated_cost_only_with_ads_permission(
