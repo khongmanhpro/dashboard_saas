@@ -37,16 +37,18 @@ Quy ước chung:
 
 | Bảng | Cột chính |
 |---|---|
-| `webhook_events` | `bigint` id, received_at, object, fb_page_id, workspace_id (**được NULL** cho tới khi định tuyến xong), dedupe_key, payload jsonb, status (`pending`/`processed`/`ignored`/`failed`), attempts, error, processed_at. Xóa sau 30 ngày. |
-| `leadgen_submissions` | leadgen_id (**unique**), page_id, form_id, fb_ad_id, created_time, field_data (chỉ giữ trường cần), lead_id |
+| `webhook_events` | `bigint` id, received_at, object, fb_page_id, dedupe_key (unique trong workspace), kind, payload jsonb, status (`processed`/`ignored`/`failed`), attempts, error, processed_at. Xóa sau 30 ngày. Worker chỉ ghi **sau khi** định tuyến được Trang sang workspace, nên `workspace_id` NOT NULL như mọi bảng khác. |
+| `leadgen_submissions` | leadgen_id (**unique**), page_id, form_id, fb_ad_id, created_time, field_data (chỉ giữ trường cần), fetch_status (`fetched`/`pending`), lead_id |
+
+Định tuyến webhook: worker không biết workspace trước khi đọc Trang, nhưng không được dùng tài khoản quản trị DB. Hàm `app_route_page(fb_page_id)` (`SECURITY DEFINER`, `search_path` cố định) chỉ trả về `workspace_id` của Trang đang theo dõi; tài khoản ứng dụng chỉ có quyền EXECUTE hàm này. Sự kiện của Trang không ai theo dõi bị bỏ, log chỉ ghi `fb_page_id`.
 
 ## Khách (Bước 2–3)
 
 | Bảng | Cột chính |
 |---|---|
 | `contacts` | page_id, psid, first_seen_at, last_inbound_at. unique(page_id, psid). |
-| `leads` (một đợt) | page_id, contact_id (NULL nếu chỉ từ form), episode_no, **owner_member_id** (NULL khi Trang chưa có người), source (`message`/`leadgen`), ad_id, campaign_id, fb_ad_id (bản gốc khi chưa đồng bộ QC), referral (jsonb), first_inbound_at, first_inbound_mid, first_reply_at, first_reply_mid, **response_business_seconds**, status (`new`/`contacted`/`callback`/`won`/`lost`), status_changed_at, callback_at, won_value_vnd, lost_reason (`price`/`out_of_area`/`no_answer`/`bought_elsewhere`/`other`), lost_note, called_at, phone, phone_source, phone_captured_at, result_due_at, result_at, last_inbound_at. CHECK: `won ⇒ won_value_vnd > 0`, `lost ⇒ lost_reason IS NOT NULL`, `callback ⇒ callback_at IS NOT NULL`. |
-| `messages` | `bigint` id, lead_id, page_id, mid (**unique**), direction (`in`/`out`), is_echo, app_id, is_automated, sent_at, text (xóa sau 180 ngày), has_attachments, meta jsonb |
+| `leads` (một đợt) | page_id, contact_id (NULL nếu chỉ từ form), episode_no, **owner_member_id** (NULL khi Trang chưa có người), source (`message`/`leadgen`), ad_id, campaign_id (*thêm ở Bước 7, khi có bảng quảng cáo*), fb_ad_id (bản gốc khi chưa đồng bộ QC), referral (jsonb), first_inbound_at, first_inbound_mid, first_reply_at, first_reply_mid, **response_business_seconds**, status (`new`/`contacted`/`callback`/`won`/`lost`), status_changed_at, callback_at, won_value_vnd, lost_reason (`price`/`out_of_area`/`no_answer`/`bought_elsewhere`/`other`), lost_note, called_at, phone, phone_source, phone_captured_at, result_due_at, result_at, last_inbound_at. CHECK: `won ⇒ won_value_vnd > 0`, `lost ⇒ lost_reason IS NOT NULL`, `callback ⇒ callback_at IS NOT NULL`. |
+| `messages` | `bigint` id, page_id, contact_id, lead_id (**được NULL**: echo đến trước tin của khách, hoặc Trang nhắn trước), mid (**unique**), direction (`in`/`out`), is_echo, app_id, is_automated, sent_at, text (xóa sau 180 ngày), has_attachments, meta jsonb |
 | `lead_phones` | lead_id, phone, source, message_id, detected_at. unique(lead_id, phone). |
 | `lead_events` | `bigint` id, lead_id, type (`created`, `replied`, `phone_detected`, `called`, `status_changed`, `overdue`, `reminder_sent`, `reassigned`), actor_member_id, data jsonb, occurred_at |
 
@@ -92,4 +94,3 @@ Mở đợt mới: khóa dòng `contacts` (`SELECT … FOR UPDATE`) rồi mới 
 | `users`, `password_tokens`, `fx_rates` | Dữ liệu toàn cục, không thuộc workspace nào. |
 | `auth_sessions` | Có `workspace_id` nhưng không bật RLS: phải tra theo token trước khi biết workspace. |
 | `workspaces` | Bản thân nó là tenant; RLS theo `id`. |
-| `webhook_events` | `workspace_id` được NULL cho tới khi định tuyến; chỉ worker (role quản trị) đọc. |

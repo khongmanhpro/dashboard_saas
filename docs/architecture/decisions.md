@@ -45,3 +45,13 @@ Sếp duyệt ngày 17/10/2026, cùng lúc duyệt kế hoạch Bước 1. Nếu
 | Mã truy cập Meta | Fernet; `TOKEN_ENCRYPTION_KEY` nhận nhiều khóa cách nhau dấu phẩy để xoay khóa (khóa đầu dùng để mã hóa). | |
 | ID | UUIDv7 sinh ở ứng dụng. | Sắp theo thời gian, index gọn hơn UUIDv4. |
 | Log | JSON, tự che SĐT, chuỗi giống mã truy cập, header Authorization/Cookie. | |
+
+## D. Bước 2 (sếp duyệt 17/10/2026)
+
+| Chủ đề | Quyết định | Lý do |
+|---|---|---|
+| Định tuyến webhook | API chỉ kiểm tra chữ ký rồi đẩy vào hàng đợi, không ghi DB. Worker gọi `app_route_page(fb_page_id)` (SECURITY DEFINER, chỉ trả `workspace_id`), đặt workspace rồi mới ghi. `webhook_events.workspace_id` NOT NULL và bật RLS. | Worker không được dùng tài khoản quản trị DB. |
+| `messages.contact_id`, `lead_id` được NULL | Lưu được echo đến trước tin của khách và tin Trang nhắn trước. | Meta có thể gửi sai thứ tự. |
+| Thời gian trả lời | Tính lại từ dữ liệu trong DB: tin đầu tiên = tin khách sớm nhất của đợt; trả lời = echo không tự động sớm nhất sau mốc đó. | Kết quả đúng kể cả khi Meta gửi lặp hoặc sai thứ tự. |
+| Echo tự động | `app_id` nằm trong `META_AUTOMATED_APP_IDS` (mặc định rỗng) thì không tính. Echo khác, kể cả từ Business Suite, là người trả lời. Worker log số echo theo `app_id` để điền danh sách khi ứng dụng Live. | Meta không đánh dấu rõ tin tự động. |
+| Để sau | Nhận SĐT trong tin nhắn và gộp khách leadgen với khách nhắn tin: Bước 3. Khách chưa được trả lời tính điểm thế nào: Bước 4. Job xóa `webhook_events` sau 30 ngày và nội dung tin sau 180 ngày: việc riêng. | |
