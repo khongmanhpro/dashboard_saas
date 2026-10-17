@@ -25,6 +25,7 @@ from app.core.config import get_settings
 from app.core.crypto import get_token_cipher, last4
 from app.core.db import admin_sessionmaker, dispose_engines
 from app.meta.graph import MockGraphClient
+from app.mock.history import seed_history
 from app.models import (
     BusinessManager,
     MemberRole,
@@ -37,6 +38,8 @@ from app.models import (
 )
 from app.services.assignment import assign_page
 from app.services.bm_service import sync_bm
+from app.workers.meta_sync import sync_meta
+from app.workers.scoring import nightly_scores
 
 WORKSPACE_NAME = "FISS Demo"
 WORKSPACE_SLUG = "fiss-demo"
@@ -188,17 +191,29 @@ async def seed() -> None:
     if get_settings().app_env != "development":
         raise SystemExit("Chỉ chạy seed demo ở môi trường development.")
     lines = [f"# Tài khoản demo workspace '{WORKSPACE_NAME}'. KHÔNG commit file này."]
+    history = 0
     async with admin_sessionmaker()() as db:
         demo = await ensure_demo_workspace(db)
         for email, _, role, _ in ACCOUNTS:
             lines.append(f"{role.value:<10} {email:<28} {demo.passwords[email]}")
+        if get_settings().mock_mode:
+            owners = {name: demo.members[key] if key else None for _, name, key in DEMO_PAGES}
+            history = await seed_history(
+                db, demo.workspace.id, demo.pages, owners, dt.datetime.now(dt.UTC)
+            )
         await db.commit()
+    if get_settings().mock_mode:
+        # Như worker chạy thật: đồng bộ quảng cáo, bài đăng (client Graph giả), rồi tính điểm.
+        await sync_meta({})
+        await nightly_scores({})
     await dispose_engines()
 
     CREDENTIALS_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
     os.chmod(CREDENTIALS_FILE, 0o600)
     print(f"Đã tạo dữ liệu demo. Tài khoản và mật khẩu: backend/{CREDENTIALS_FILE.name}")
     print("4 Trang demo: " + ", ".join(name for _, name, _ in DEMO_PAGES))
+    if history:
+        print(f"Thêm {history} khách mẫu trong 30 ngày, đã đồng bộ quảng cáo và tính điểm.")
 
 
 if __name__ == "__main__":
