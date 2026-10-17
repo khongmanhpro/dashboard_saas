@@ -68,7 +68,7 @@ _FINAL = (LeadStatus.WON, LeadStatus.LOST)
 # ---------------------------------------------------------------- phạm vi
 
 
-async def _member_ids_for(
+async def member_ids_for(
     db: AsyncSession, ctx: AuthContext, scope: Scope | None
 ) -> set[uuid.UUID] | None:
     """None = mọi người (ALL). Tập rỗng = không ai."""
@@ -110,8 +110,8 @@ class LeadAccess:
 
 async def lead_access(db: AsyncSession, ctx: AuthContext) -> LeadAccess:
     return LeadAccess(
-        view_owner_ids=await _member_ids_for(db, ctx, ctx.scope(Perm.LEAD_VIEW)),
-        phone_owner_ids=await _member_ids_for(db, ctx, ctx.scope(Perm.LEAD_PHONE_VIEW)),
+        view_owner_ids=await member_ids_for(db, ctx, ctx.scope(Perm.LEAD_VIEW)),
+        phone_owner_ids=await member_ids_for(db, ctx, ctx.scope(Perm.LEAD_PHONE_VIEW)),
         can_search_phone=ctx.can(Perm.LEAD_PHONE_VIEW),
     )
 

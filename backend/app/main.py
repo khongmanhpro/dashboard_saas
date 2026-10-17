@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.api import auth, health, leads, members, public, webhooks
+from app.api import auth, health, leads, members, public, staff, webhooks
 from app.core.config import get_settings
 from app.core.db import dispose_engines
 from app.core.logging import setup_logging
@@ -39,6 +39,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(members.router)
     app.include_router(leads.router)
+    app.include_router(staff.router)
     app.include_router(webhooks.router)
 
     @app.exception_handler(ServiceError)
