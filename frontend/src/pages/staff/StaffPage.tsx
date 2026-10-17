@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useOutletContext } from "react-router-dom";
+import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 
 import { ApiError } from "../../api/client";
 import {
@@ -17,6 +17,8 @@ import { PageHeader } from "../../components/PageHeader";
 import { errorMessage, format, t } from "../../i18n";
 import { formatDateTime, formatDuration, initials } from "../../leads/format";
 import { formatCompactVnd, formatDelta, formatPercent, formatScore, tierRanges } from "../../staff/format";
+import { AddMemberDialog } from "./AddMemberDialog";
+import { ImportDialog } from "./ImportDialog";
 
 export function TierBadge({ tier }: { tier: Tier | null }) {
   if (!tier) return null;
@@ -64,6 +66,13 @@ export function StaffPage() {
   const recompute = useRecompute();
   const canSettings = "settings.manage" in me.permissions || "team.manage" in me.permissions;
   const canRecompute = "score_formula.edit" in me.permissions;
+  const canManage = "member.manage" in me.permissions;
+  const [params, setParams] = useSearchParams();
+  const [dialog, setDialog] = useState<"import" | "add" | null>(params.get("import") ? "import" : null);
+  const closeDialog = () => {
+    setDialog(null);
+    if (params.get("import")) setParams({}, { replace: true });
+  };
 
   const data = board.data;
   const q = search.trim().toLowerCase();
@@ -99,12 +108,26 @@ export function StaffPage() {
             {data?.period.is_final ? <span className="tag tag--good">{t.staff.finalBadge}</span> : null}
           </div>
         </div>
-        {canRecompute ? (
-          <button type="button" className="btn" disabled={recompute.isPending} onClick={() => recompute.mutate()}>
-            {recompute.isPending ? t.staff.recomputing : t.staff.recompute}
-          </button>
-        ) : null}
+        <div className="row-actions">
+          {canManage ? (
+            <>
+              <button type="button" className="btn" onClick={() => setDialog("import")}>
+                {t.imports.open}
+              </button>
+              <button type="button" className="btn" onClick={() => setDialog("add")}>
+                {t.addMember.open}
+              </button>
+            </>
+          ) : null}
+          {canRecompute ? (
+            <button type="button" className="btn" disabled={recompute.isPending} onClick={() => recompute.mutate()}>
+              {recompute.isPending ? t.staff.recomputing : t.staff.recompute}
+            </button>
+          ) : null}
+        </div>
       </div>
+      {dialog === "import" && canManage ? <ImportDialog onClose={closeDialog} /> : null}
+      {dialog === "add" && canManage ? <AddMemberDialog me={me} onClose={closeDialog} /> : null}
       {recompute.error instanceof ApiError ? (
         <div className="alert alert--error" role="alert">
           {errorMessage(recompute.error.code)}

@@ -9,6 +9,7 @@ import { MobileShell } from "../mobile/MobileShell";
 import { ChangePasswordPage } from "../pages/ChangePasswordPage";
 import { LoginPage } from "../pages/LoginPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
+import { BmPage } from "../pages/bm/BmPage";
 import { LeadDetailPage } from "../pages/leads/LeadDetailPage";
 import { LeadsPage } from "../pages/leads/LeadsPage";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
@@ -22,6 +23,7 @@ const SCREENS: Partial<Record<NavItem["key"], () => JSX.Element>> = {
   leads: LeadsPage,
   staff: StaffPage,
   settings: SettingsPage,
+  bm: BmPage,
 };
 
 const LEADS_ITEM = NAV.find((i) => i.key === "leads") as NavItem;
