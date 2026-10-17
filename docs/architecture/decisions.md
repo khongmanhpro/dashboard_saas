@@ -171,3 +171,12 @@ Thay quyết định #4 và mục F phần "xếp phần trăm".
 | Sửa ngưỡng | Chủ sở hữu sửa trong Cài đặt → Công thức điểm, cả ngưỡng Tốc độ. Có "Xem thử" theo trọng số và ngưỡng mới trước khi lưu. Lưu là thêm phiên bản công thức; kỳ chưa chốt áp dụng ngay, tuần đã chốt giữ nguyên. | |
 | Trang Nhân viên | Người có lượt phụ trách Trang kết thúc trong kỳ: hiện tên Trang và lúc kết thúc. | |
 | Trang Fanpage | Khách của Trang trong kỳ thuộc hơn một người (tính cả "Chưa có người phụ trách", và người đang phụ trách dù 0 khách): hiện ghi chú số khách của từng người. | Giải thích vì sao số khách của Trang khác số khách của người đang phụ trách. |
+
+## L. Tách test khỏi DB dev, phiên bản công thức, kỳ đếm bài (sếp yêu cầu 17/10/2026)
+
+| Chủ đề | Quyết định | Lý do |
+|---|---|---|
+| Test không ghi vào DB dev | `make test`: DB `fanpage_test`, Redis db 15 (như cũ). `make simulate`: DB `fanpage_simulate_test` tạo mới mỗi lần, Redis db 14, gửi webhook trong tiến trình (không qua backend dev). `make e2e`: stack riêng (profile `e2e`): backend :8001, frontend :5174, worker, DB `fanpage_e2e_test`, Redis db 13. DB dev chỉ do `make seed` và người dùng ghi. Tên DB test bắt buộc kết thúc bằng `_test`. | `make simulate` từng ghi 108 khách giả lập và 14 lượt bàn giao Shop Thỏ vào workspace demo. |
+| Phiên bản công thức | Bảng `score_formulas` có `score_method` (`percentile` / `threshold`). Bản cũ đánh dấu `percentile`; mỗi workspace thêm phiên bản mới `threshold` (thường là 2). | Đổi cách chấm phải thấy được trong lịch sử. |
+| So sánh điểm khác công thức | Không tính lại tuần đã chốt (mục F). Chỗ so sánh ▲▼ với tuần trước và biểu đồ điểm theo tuần ghi chú "khác công thức" khi tuần đó dùng phiên bản công thức khác phiên bản đang áp dụng. | |
+| Kỳ đếm bài đăng | Fanpage đếm bài cùng kỳ 7 ngày với các cột khác (thay "Bài tuần này"); mục tiêu quy theo số ngày như điểm Chăm Trang. Tổng quan, Nhân viên, Fanpage cùng một cách đếm. | |
