@@ -22,7 +22,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cli import ensure_member, get_or_create_workspace
 from app.core.config import get_settings
+from app.core.crypto import get_token_cipher, last4
 from app.core.db import admin_sessionmaker, dispose_engines
+from app.meta.graph import MockGraphClient
 from app.models import (
     BusinessManager,
     MemberRole,
@@ -34,6 +36,7 @@ from app.models import (
     WorkspaceMember,
 )
 from app.services.assignment import assign_page
+from app.services.bm_service import sync_bm
 
 WORKSPACE_NAME = "FISS Demo"
 WORKSPACE_SLUG = "fiss-demo"
@@ -50,6 +53,7 @@ ACCOUNTS: list[tuple[str, str, MemberRole, str | None]] = [
 ]
 
 DEMO_BM = ("900000000000000", "[BM Demo]")
+MOCK_BM_TOKEN = "MOCK-BM-1"  # noqa: S105 — mã giả của client Graph giả, không phải bí mật
 # (fb_page_id giả, tên Trang, tài khoản phụ trách hoặc None). Trưởng nhóm cũng phụ trách
 # được Trang (quyết định #14). Mua Sắm Thông Minh để trống để thử Trang chưa có người.
 DEMO_PAGES: list[tuple[str, str, str | None]] = [
@@ -114,6 +118,10 @@ async def ensure_demo_workspace(
         bm = BusinessManager(workspace_id=ws.id, fb_business_id=DEMO_BM[0], name=DEMO_BM[1])
         db.add(bm)
         await db.flush()
+    if get_settings().mock_mode and bm.token_ciphertext is None:
+        # Mã giả của client Graph giả (tests/fixtures/meta/graph_mock.json), không phải mã thật.
+        bm.token_ciphertext = get_token_cipher().encrypt(MOCK_BM_TOKEN)
+        bm.token_last4 = last4(MOCK_BM_TOKEN)
 
     pages: dict[str, Page] = {}
     for fb_page_id, name, owner_key in DEMO_PAGES:
@@ -142,6 +150,9 @@ async def ensure_demo_workspace(
         )
         if owner_key is not None and has_history is None:
             await assign_page(db, page, members[owner_key], ASSIGNED_FROM, reason="[Dữ liệu demo]")
+    if get_settings().mock_mode:
+        # Gắn mã Trang giả và đăng ký webhook giả như khi kết nối BM thật (Bước 6).
+        await sync_bm(db, bm, dt.datetime.now(dt.UTC), MockGraphClient(), kind="seed")
     return DemoWorkspace(ws, members, pages, passwords)
 
 

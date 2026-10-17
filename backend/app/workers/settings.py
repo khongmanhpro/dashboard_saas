@@ -5,6 +5,7 @@
 - `purge_expired_data`: 02:30 giờ Việt Nam mỗi đêm, hạn lưu dữ liệu (app.workers.retention).
 - `nightly_scores`: 01:00 giờ Việt Nam mỗi đêm, tính điểm và chốt tuần (app.workers.scoring).
 - `send_reminders`: mỗi 5 phút, nhắc việc và thông báo đẩy (app.workers.reminders).
+- `check_bms`: mỗi 6 giờ, kiểm tra mã, quyền BM, Trang mới, form leadgen (app.workers.meta_checks).
 
 Đồng bộ định kỳ thêm ở các bước sau.
 """
@@ -21,6 +22,7 @@ from app.core.config import get_settings
 from app.core.db import dispose_engines
 from app.core.logging import setup_logging
 from app.core.queue import redis_settings as queue_redis_settings
+from app.workers.meta_checks import check_bms
 from app.workers.reminders import send_reminders
 from app.workers.retention import purge_expired_data
 from app.workers.scoring import nightly_scores
@@ -65,6 +67,14 @@ class WorkerSettings:
             minute=PURGE_MINUTE_UTC,
             second=0,
             timeout=PURGE_TIMEOUT_SECONDS,
+            run_at_startup=False,
+        ),
+        cron(
+            check_bms,
+            hour={0, 6, 12, 18},
+            minute=15,
+            second=0,
+            timeout=30 * 60,
             run_at_startup=False,
         ),
         cron(

@@ -22,9 +22,11 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.crypto import TokenDecryptError, get_token_cipher
 from app.core.ids import uuid7
 from app.meta.events import LeadgenEvent, MessageEvent, ReferralEvent
-from app.meta.leadgen import mock_field_data
+from app.meta.graph import GraphError, get_graph
+from app.meta.leadgen import keep_needed_fields, mock_field_data
 from app.models import (
     Contact,
     Lead,
@@ -87,6 +89,72 @@ async def load_rules(db: AsyncSession, workspace_id: uuid.UUID) -> WorkspaceRule
         session_gap=dt.timedelta(days=settings.lead_session_gap_days),
         automated_app_ids=get_settings().automated_app_ids,
     )
+
+
+# ---------------------------------------------------------------- Graph API (cần mã Trang)
+
+
+def _page_token(page: Page) -> str | None:
+    if page.page_token_ciphertext is None:
+        return None
+    try:
+        return get_token_cipher().decrypt(page.page_token_ciphertext)
+    except TokenDecryptError:
+        return None
+
+
+async def fetch_form_fields(page: Page, leadgen_id: str) -> dict[str, str] | None:
+    token = _page_token(page)
+    if token is None:
+        return None
+    try:
+        details = await get_graph().lead(leadgen_id, token)
+    except GraphError:
+        return None
+    return keep_needed_fields(details.field_data)
+
+
+async def fetch_user_name(page: Page, psid: str) -> str | None:
+    """Tên thật của khách (quyết định Bước 6). Meta không cho đọc thì None ("Khách ···1234")."""
+    token = _page_token(page)
+    if token is None:
+        return None
+    try:
+        return await get_graph().user_name(psid, token)
+    except GraphError:
+        return None
+
+
+async def refresh_pending_leadgen(db: AsyncSession) -> int:
+    """Lấy bù chi tiết các form đang pending (Trang đã có mã). Trả về số form lấy được."""
+    done = 0
+    rows = (
+        await db.execute(
+            select(LeadgenSubmission, Page)
+            .join(Page, Page.id == LeadgenSubmission.page_id)
+            .where(
+                LeadgenSubmission.fetch_status == LeadgenFetchStatus.PENDING,
+                Page.page_token_ciphertext.is_not(None),
+            )
+            .limit(200)
+        )
+    ).all()
+    for sub, page in rows:
+        fields = await fetch_form_fields(page, sub.leadgen_id)
+        if fields is None:
+            continue
+        sub.field_data = fields
+        sub.fetch_status = LeadgenFetchStatus.FETCHED
+        done += 1
+        lead = await db.get(Lead, sub.lead_id) if sub.lead_id else None
+        phone = normalize_vn_phone(fields.get("phone_number", ""))
+        if lead is not None and phone and lead.phone is None:
+            lead.phone = phone
+            lead.phone_source = "leadgen"
+            lead.phone_captured_at = sub.created_time
+            await _add_phone(db, lead, phone, "leadgen", sub.created_time)
+    await db.flush()
+    return done
 
 
 # ---------------------------------------------------------------- khách và đợt
@@ -429,6 +497,8 @@ async def handle_message(
     contact = await lock_contact(db, page, ev.psid, ev.sent_at)
     if await db.scalar(select(Message.id).where(Message.mid == ev.mid)) is not None:
         return Outcome.DUPLICATE
+    if ev.kind == "in" and contact.display_name is None:
+        contact.display_name = await fetch_user_name(page, ev.psid)
 
     lead: Lead | None
     if ev.kind == "in":
@@ -492,10 +562,11 @@ async def handle_leadgen(
     if exists is not None:
         return Outcome.DUPLICATE
 
-    field_data: dict[str, str] | None = None
-    if get_settings().mock_mode:
+    # Có mã Trang (Bước 6) thì lấy chi tiết form qua Graph API; MOCK_MODE không có mã thì đọc
+    # fixture; còn lại để pending, job kiểm tra BM sẽ lấy bù.
+    field_data = await fetch_form_fields(page, ev.leadgen_id)
+    if field_data is None and get_settings().mock_mode:
         field_data = mock_field_data(ev.form_id)
-    # Chế độ thật: cần mã của Trang để gọi Graph API (Bước 6), tạm đánh dấu pending.
     fetch_status = (
         LeadgenFetchStatus.FETCHED if field_data is not None else LeadgenFetchStatus.PENDING
     )

@@ -68,3 +68,14 @@ def test_route_is_protected(route: RouteInfo) -> None:
     assert get_auth_context in calls, f"{route.path} chưa chặn người đang bị bắt đổi mật khẩu"
     perms = [getattr(c, "required_permission", None) for c in calls]
     assert any(perms), f"{route.path} chưa khai báo require(Perm.X)"
+
+
+async def test_validation_errors_never_echo_input(client: Any) -> None:
+    """Lỗi 422 không được trả lại giá trị đã gửi (mã truy cập, mật khẩu…)."""
+    # Thiếu trường password: Pydantic báo lỗi kèm cả body (có email) trong "input".
+    resp = await client.post(
+        "/api/auth/login", json={"email": "bi-mat@example.com", "extra": "MatKhauBiMat123"}
+    )
+    assert resp.status_code == 422
+    assert "MatKhauBiMat123" not in resp.text and "bi-mat@example.com" not in resp.text
+    assert all(set(e) == {"type", "loc", "msg"} for e in resp.json()["detail"])

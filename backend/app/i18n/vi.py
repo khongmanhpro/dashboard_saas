@@ -29,3 +29,15 @@ BODIES: dict[NotificationType, str] = {
     NotificationType.CALLBACK_MISSED: "Đã quá giờ hẹn với {name} một ngày, hãy cập nhật kết quả.",
     NotificationType.MANUAL: "{actor} nhắc bạn xử lý {name}.",
 }
+
+BM_TITLES: dict[str, str] = {
+    "missing_permissions": "BM thiếu quyền",
+    "disconnected": "BM mất kết nối",
+}
+
+BM_BODIES: dict[str, str] = {
+    "missing_permissions": "{name} đang thiếu quyền. Vào Kết nối BM để xem và cấp lại quyền.",
+    "disconnected": (
+        "{name} đã mất kết nối (mã hết hạn hoặc bị thu hồi). Dán mã mới trong Kết nối BM."
+    ),
+}

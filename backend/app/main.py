@@ -4,9 +4,10 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.api import auth, health, leads, members, mobile, public, staff, webhooks
+from app.api import auth, bms, health, leads, members, mobile, public, staff, webhooks
 from app.core.config import get_settings
 from app.core.db import dispose_engines
 from app.core.logging import setup_logging
@@ -41,7 +42,17 @@ def create_app() -> FastAPI:
     app.include_router(leads.router)
     app.include_router(staff.router)
     app.include_router(mobile.router)
+    app.include_router(bms.router)
     app.include_router(webhooks.router)
+
+    @app.exception_handler(RequestValidationError)
+    async def _validation_error(_request: Request, exc: RequestValidationError) -> JSONResponse:
+        # Không trả lại giá trị người dùng gửi ("input"): có thể là mã truy cập, mật khẩu, SĐT.
+        errors = [
+            {"type": e.get("type"), "loc": list(e.get("loc", ())), "msg": e.get("msg")}
+            for e in exc.errors()
+        ]
+        return JSONResponse(status_code=422, content={"detail": errors})
 
     @app.exception_handler(ServiceError)
     async def _service_error(_request: Request, exc: ServiceError) -> JSONResponse:
