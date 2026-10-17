@@ -34,6 +34,8 @@ jobs:
         run: make test
       - name: Giả lập webhook
         run: make simulate
+      - name: Sao lưu và khôi phục thử
+        run: make check-backup
       - name: Dọn
         if: always()
         run: docker compose down -v
@@ -56,6 +58,7 @@ jobs:
           POSTGRES_APP_PASSWORD: x
           APP_DOMAIN: app.example.vn
           CLOUDFLARE_TUNNEL_TOKEN: x
+          BACKUP_AGE_RECIPIENT: x
         run: docker compose -f docker-compose.prod.yml -f docker-compose.tunnel.yml config -q
 
   frontend:
