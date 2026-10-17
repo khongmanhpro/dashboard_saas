@@ -90,5 +90,13 @@ async def test_refuses_outside_mock_mode(monkeypatch: pytest.MonkeyPatch) -> Non
     assert await main([]) == 2
 
 
-async def test_refuses_without_seed() -> None:
-    assert await main(["--url", "http://127.0.0.1:9/webhooks/meta"]) == 2
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("postgres_db", "fanpage"), ("redis_url", "redis://redis:6379/0")],
+)
+async def test_refuses_dev_database_or_redis(
+    monkeypatch: pytest.MonkeyPatch, field: str, value: str
+) -> None:
+    """Mục L: giả lập không bao giờ chạy trên DB dev hay Redis db 0 của dev."""
+    monkeypatch.setattr(get_settings(), field, value)
+    assert await main([]) == 2

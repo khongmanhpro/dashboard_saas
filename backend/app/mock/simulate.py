@@ -1,12 +1,10 @@
 """Giả lập webhook Meta cho 4 Trang demo và kiểm tra số phút trả lời (MOCK_MODE).
 
-    make simulate        # = docker compose run --rm migrate python -m app.mock.simulate
+    make simulate        # DB riêng fanpage_simulate_test, Redis db 14 (decisions.md mục L)
 
 Đọc kịch bản trong `tests/fixtures/meta/simulate_scenarios.json`, ký từng payload bằng
-`META_APP_SECRET`, POST vào `/webhooks/meta` của backend đang chạy, chờ worker xử lý xong rồi
-đọc DB để so với kết quả mong đợi. Mỗi lần chạy dùng PSID và mid mới.
-
-Cần `make seed` trước. Chỉ chạy khi MOCK_MODE=true và không phải production/staging.
+`META_APP_SECRET`, POST vào `/webhooks/meta` của app trong tiến trình, chạy worker một lượt rồi
+đọc DB để so với kết quả mong đợi. Không đụng DB dev: DB giả lập tạo lại mỗi lần chạy.
 """
 
 from __future__ import annotations
@@ -15,7 +13,6 @@ import argparse
 import asyncio
 import datetime as dt
 import json
-import os
 import re
 import secrets
 import sys
@@ -26,7 +23,6 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 import httpx
-from arq.jobs import Job
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -53,9 +49,7 @@ from app.workers.meta_sync import sync_meta
 SCENARIOS_FILE = (
     Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "meta" / "simulate_scenarios.json"
 )
-DEFAULT_URL = "http://backend:8000/webhooks/meta"
 BASE_DAYS_AGO = 40
-JOB_TIMEOUT_SECONDS = 30
 
 _RELATIVE = re.compile(r"^(\d+) (\d{1,2}):(\d{2})(?::(\d{2}))?$")
 _NOW = re.compile(r"^now-(\d+)s$")
@@ -300,8 +294,12 @@ def print_report(checks: list[Check]) -> None:
 
 
 async def main(argv: list[str] | None = None) -> int:
+    """Chạy trên DB và Redis riêng (decisions.md mục L), không ghi vào DB dev.
+
+    Makefile đặt POSTGRES_DB=fanpage_simulate_test và REDIS_URL db 14. DB được tạo lại mỗi lần,
+    seed workspace demo, rồi gửi webhook vào app trong tiến trình, xử lý bằng worker chạy một lượt.
+    """
     parser = argparse.ArgumentParser(description="Giả lập webhook Meta cho 4 Trang demo")
-    parser.add_argument("--url", default=os.environ.get("SIMULATE_URL", DEFAULT_URL))
     parser.add_argument("--only", nargs="*", help="chỉ chạy các kịch bản có key này")
     args = parser.parse_args(argv)
 
@@ -309,42 +307,60 @@ async def main(argv: list[str] | None = None) -> int:
     if not s.mock_mode or s.is_production_like:
         print("Chỉ chạy giả lập khi MOCK_MODE=true và không phải production/staging.")
         return 2
+    if not s.postgres_db.endswith("_test") or s.redis_url.rstrip("/").endswith("/0"):
+        print("Giả lập chỉ chạy trên DB test riêng và Redis db riêng. Dùng `make simulate`.")
+        return 2
     secret = s.meta_app_secret.get_secret_value()
     if not secret:
-        print(
-            "META_APP_SECRET trống. Đặt một chuỗi ngẫu nhiên trong .env rồi khởi động lại backend."
-        )
+        print("META_APP_SECRET trống. Đặt một chuỗi ngẫu nhiên trong .env.")
         return 2
 
+    from arq.worker import Worker
+
+    from app.core.redis import close_redis, get_redis
+    from app.main import app
+    from app.mock.sandbox import prepare
+    from app.mock.seed import ensure_demo_workspace
+    from app.workers.settings import WorkerSettings
+
+    await prepare(recreate=True)
+    await get_redis().flushdb()
     sessions = admin_sessionmaker()
+    async with sessions() as db:
+        await ensure_demo_workspace(db)
+        await db.commit()
     async with sessions() as db:
         demo = await load_demo_workspace(db)
     if demo is None:
-        print("Chưa có dữ liệu demo. Chạy `make seed` trước.")
+        print("Không tạo được workspace demo trong DB giả lập.")
         return 2
     # Quảng cáo phải có trong DB thì khách từ QC mới gắn được chiến dịch (client Graph giả).
     await sync_meta({})
-
     queue = await get_queue()
 
-    async def wait(job_id: str) -> None:
-        await Job(job_id, queue).result(timeout=JOB_TIMEOUT_SECONDS, poll_delay=0.2)
+    async def wait(_job_id: str) -> None:
+        worker = Worker(
+            functions=WorkerSettings.functions, redis_pool=queue, burst=True, poll_delay=0.01
+        )
+        await worker.main()
 
-    async with httpx.AsyncClient(timeout=10) as http:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://simulate") as http:
 
         async def post(body: bytes, signature: str) -> int:
             resp = await http.post(
-                args.url,
+                "/webhooks/meta",
                 content=body,
                 headers={"Content-Type": "application/json", SIGNATURE_HEADER: signature},
             )
             return resp.status_code
 
         sim = Simulator(demo, sessions, post, wait, secret)
-        print(f"Giả lập lần chạy {sim.run_id}, gửi tới {args.url}\n")
+        print(f"Giả lập lần chạy {sim.run_id} trên DB riêng {s.postgres_db}\n")
         checks = await sim.run_all(load_scenarios(args.only))
 
     await close_queue()
+    await close_redis()
     await dispose_engines()
     print_report(checks)
     return 0 if checks and all(c.ok for c in checks) else 1

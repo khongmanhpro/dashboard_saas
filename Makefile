@@ -1,6 +1,9 @@
 COMPOSE := docker compose
 # Container quản trị (có mật khẩu quản trị DB): test, CLI, migration.
 ADMIN := $(COMPOSE) run --rm -T migrate
+# Giả lập và e2e chạy trên DB / Redis riêng, không ghi vào DB dev (decisions.md mục L).
+SIMULATE := $(COMPOSE) run --rm -T -e POSTGRES_DB=fanpage_simulate_test -e POSTGRES_APP_USER=fanpage_app_sim -e REDIS_URL=redis://redis:6379/14 migrate
+E2E_ENV := -e POSTGRES_DB=fanpage_e2e_test -e POSTGRES_APP_USER=fanpage_app_e2e -e REDIS_URL=redis://redis:6379/13
 
 .PHONY: env vapid up down logs ps test test-frontend e2e lint migrate bootstrap seed simulate
 
@@ -44,4 +47,4 @@ seed:           ## Dữ liệu demo cho máy dev (mật khẩu ghi vào backend/
 	$(ADMIN) python -m app.mock.seed
 
 simulate:       ## Giả lập webhook cho 4 Trang demo và kiểm tra số phút trả lời (cần make up, make seed)
-	$(ADMIN) python -m app.mock.simulate
+	$(SIMULATE) python -m app.mock.simulate

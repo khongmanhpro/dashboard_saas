@@ -4,13 +4,10 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
-from pathlib import Path
 
-import asyncpg
 import httpx
 import pytest
 from alembic import command
-from alembic.config import Config
 from redis.asyncio import Redis
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,21 +15,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.db import admin_sessionmaker, dispose_engines, get_admin_engine
 from app.core.redis import close_redis, get_redis
+from app.mock.sandbox import alembic_config, ensure_database
 from app.models import Base
 
 # Fixture dữ liệu khách dùng chung cho nhiều file test (org, as_role).
 from tests.integration.leads_fixtures import as_role, org  # noqa: F401
 from tests.integration.report_fixtures import as_user, demo  # noqa: F401
-
-BACKEND_DIR = Path(__file__).resolve().parents[2]
-
-
-def alembic_config(url: str) -> Config:
-    cfg = Config(str(BACKEND_DIR / "alembic.ini"))
-    cfg.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
-    cfg.attributes["url"] = url
-    cfg.attributes["configure_logger"] = False
-    return cfg
 
 
 def admin_url_for(database: str) -> str:
@@ -40,39 +28,9 @@ def admin_url_for(database: str) -> str:
     return base.rsplit("/", 1)[0] + "/" + database
 
 
-async def _admin_connect() -> asyncpg.Connection:
-    s = get_settings()
-    return await asyncpg.connect(
-        host=s.postgres_host,
-        port=s.postgres_port,
-        user=s.postgres_user,
-        password=s.postgres_password.get_secret_value(),
-        database="postgres",
-    )
-
-
 async def recreate_database(name: str) -> None:
-    # Chặn tuyệt đối việc xóa nhầm DB dev hoặc production.
-    assert name.endswith("_test"), f"Từ chối xóa DB không phải DB test: {name}"
-    s = get_settings()
-    conn = await _admin_connect()
-    try:
-        await conn.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
-        await conn.execute(f'CREATE DATABASE "{name}"')
-        role = s.postgres_app_user
-        if not await conn.fetchval("SELECT 1 FROM pg_roles WHERE rolname = $1", role):
-            await conn.execute(
-                f'CREATE ROLE "{role}" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS'
-            )
-        alter = await conn.fetchval(
-            "SELECT format('ALTER ROLE %I WITH PASSWORD %L', $1::text, $2::text)",
-            role,
-            s.postgres_app_password.get_secret_value(),
-        )
-        await conn.execute(alter)
-        await conn.execute(f'GRANT CONNECT ON DATABASE "{name}" TO "{role}"')
-    finally:
-        await conn.close()
+    """Chỉ nhận DB tên kết thúc `_test` (app.mock.sandbox chặn)."""
+    await ensure_database(name, recreate=True)
 
 
 @pytest.fixture(scope="session")
