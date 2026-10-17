@@ -33,7 +33,7 @@ make test              # pytest backend (unit + tích hợp trên DB fanpage_tes
 make lint              # ruff + mypy --strict
 make test-frontend     # typecheck + vitest
 make e2e               # Playwright trên stack e2e riêng (lần đầu: cd frontend && npx playwright install chromium)
-make e2e-down          # dừng stack e2e
+make e2e-down          # gỡ stack e2e, xóa DB e2e (make e2e tự gọi khi chạy xong)
 ```
 
 **Không test nào ghi vào DB dev** (decisions.md mục L). DB dev chỉ do `make seed` và người dùng ghi.
@@ -42,9 +42,9 @@ make e2e-down          # dừng stack e2e
 |---|---|---|---|
 | `make test` | `fanpage_test` | db 15 | tạo lại mỗi lần chạy |
 | `make simulate` | `fanpage_simulate_test` | db 14 | tạo lại mỗi lần chạy |
-| `make e2e` | `fanpage_e2e_test` | db 13 | stack riêng (profile `e2e`): backend :8001, frontend :5174 |
+| `make e2e` | `fanpage_e2e_test` | db 13 | stack riêng (profile `e2e`): backend :8001, frontend :5174; tạo lại khi bật, xóa khi chạy xong |
 
-Các lệnh trên từ chối tạo lại hay migrate bất kỳ DB nào không có đuôi `_test` (`app/mock/sandbox.py`).
+Các lệnh trên từ chối tạo lại, migrate hay xóa bất kỳ DB nào không có đuôi `_test` (`app/mock/sandbox.py`). `app.cli e2e-seed` cũng vậy, nên chạy nhầm trên container `migrate` (DB dev) sẽ bị chặn.
 
 ## Webhook Meta
 
