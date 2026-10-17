@@ -158,3 +158,16 @@ Sau khi phát hiện số liệu lệch nhau giữa Tổng quan, Nhân viên, Fa
 | Quá hạn 48 giờ | Thẻ cảnh báo Tổng quan: mọi thời điểm, ghi rõ "tất cả thời gian". Cột ở /staff, /pages, ô chỉ số: khách trong kỳ, ghi "trong kỳ". | |
 | Thời gian trả lời | Mọi nơi dùng trung vị theo cách lấy mẫu của điểm tốc độ (khách chưa trả lời đã chờ ≥ 120 phút trong giờ làm việc tính là 120 phút). | |
 | Hiển thị điểm | "Điểm đến từ đâu" ghi cách quy đổi từng tiêu chí (xếp hạng trong workspace, ngưỡng tốc độ, mục tiêu bài). Tiêu đề khối theo số người thật. Biểu đồ điểm theo tuần có trục giá trị và ngày đầu tuần. | |
+
+## K. Chấm điểm theo ngưỡng tuyệt đối (sếp duyệt 17/10/2026)
+
+Thay quyết định #4 và mục F phần "xếp phần trăm".
+
+| Chủ đề | Quyết định | Lý do |
+|---|---|---|
+| Cách chấm | Tỉ lệ chốt, Doanh thu, % có SĐT, Cập nhật đúng hạn chấm theo **ngưỡng tuyệt đối** như Tốc độ trả lời: dưới ngưỡng "0 điểm" được 0, từ ngưỡng "100 điểm" trở lên được 100, ở giữa nội suy tuyến tính. Không còn xếp phần trăm. | Điểm của một người không còn phụ thuộc người khác; nhân viên biết cần đạt bao nhiêu. |
+| Ngưỡng mặc định | Chốt 5% → 30%; Doanh thu 0 → 20 triệu/tuần; % có SĐT 30% → 80%; Đúng hạn 50% → 95%; Tốc độ giữ 120 → 5 phút. | |
+| Doanh thu | Nhập theo tuần, quy theo số ngày đã qua của kỳ (như mục tiêu bài đăng). | Công bằng giữa kỳ 7 ngày, 30 ngày, tuần đang dở. |
+| Sửa ngưỡng | Chủ sở hữu sửa trong Cài đặt → Công thức điểm, cả ngưỡng Tốc độ. Có "Xem thử" theo trọng số và ngưỡng mới trước khi lưu. Lưu là thêm phiên bản công thức; kỳ chưa chốt áp dụng ngay, tuần đã chốt giữ nguyên. | |
+| Trang Nhân viên | Người có lượt phụ trách Trang kết thúc trong kỳ: hiện tên Trang và lúc kết thúc. | |
+| Trang Fanpage | Khách của Trang trong kỳ thuộc hơn một người (tính cả "Chưa có người phụ trách", và người đang phụ trách dù 0 khách): hiện ghi chú số khách của từng người. | Giải thích vì sao số khách của Trang khác số khách của người đang phụ trách. |

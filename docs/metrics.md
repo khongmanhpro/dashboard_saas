@@ -43,9 +43,10 @@ module này; không màn nào tự đếm riêng.
 - Công thức và trọng số: CLAUDE.md mục 3, decisions.md mục A, F, I. Tính trên đúng tập khách ở trên,
   nhóm theo người phụ trách.
 - Kỳ chưa chốt tính trực tiếp mỗi lần xem; tuần đã chốt đọc từ `score_snapshots` (không tính lại).
-- Quy đổi về 0–100: tốc độ theo ngưỡng (≤ 5 phút = 100, ≥ 120 phút = 0, ở giữa theo tỉ lệ); Chăm
-  Trang theo mục tiêu bài; các tiêu chí còn lại **xếp phần trăm** giữa những người đủ 10 khách
-  (thấp nhất 0, cao nhất 100).
+- Quy đổi về 0–100 (decisions.md mục K): mọi tiêu chí trừ Chăm Trang theo **ngưỡng tuyệt đối** sửa được
+  trong Cài đặt: tới ngưỡng "0 điểm" là 0, từ ngưỡng "100 điểm" là 100, ở giữa theo tỉ lệ. Mặc định:
+  Tốc độ 120 → 5 phút, Chốt 5% → 30%, Doanh thu 0 → 20 triệu/tuần (quy theo số ngày đã qua của kỳ),
+  % có SĐT 30% → 80%, Đúng hạn 50% → 95%. Chăm Trang theo mục tiêu bài.
 
 ## Ràng buộc luôn đúng (có test)
 
