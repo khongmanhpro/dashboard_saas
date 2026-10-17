@@ -4,7 +4,7 @@ ADMIN := $(COMPOSE) run --rm -T migrate
 # Giả lập và e2e chạy trên DB / Redis riêng, không ghi vào DB dev (decisions.md mục L).
 SIMULATE := $(COMPOSE) run --rm -T -e POSTGRES_DB=fanpage_simulate_test -e POSTGRES_APP_USER=fanpage_app_sim -e REDIS_URL=redis://redis:6379/14 migrate
 
-.PHONY: env vapid up down logs ps test test-frontend e2e e2e-down lint migrate bootstrap seed simulate
+.PHONY: env vapid up down logs ps test test-frontend e2e e2e-down lint migrate bootstrap seed simulate check-caddy
 
 env:            ## Tạo .env dev với bí mật ngẫu nhiên (không ghi đè)
 	python3 scripts/init_env.py
@@ -53,3 +53,6 @@ seed:           ## Dữ liệu demo cho máy dev (mật khẩu ghi vào backend/
 
 simulate:       ## Giả lập webhook cho 4 Trang demo và kiểm tra số phút trả lời (cần make up, make seed)
 	$(SIMULATE) python -m app.mock.simulate
+
+check-caddy:    ## Kiểm tra deploy/Caddyfile bằng Caddy thật: hai chế độ, IP thật qua tunnel (mục Q)
+	sh scripts/check_caddy.sh
