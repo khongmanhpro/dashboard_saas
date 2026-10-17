@@ -24,6 +24,8 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/webhooks/")) return;
+  // Trang tĩnh (mục U1) không phải khung ứng dụng: để trình duyệt tự tải, không lưu thành /index.html.
+  if (/^\/(privacy|data-deletion|legal)(\/|$)/.test(url.pathname)) return;
 
   if (request.mode === "navigate") {
     // Luôn lấy bản mới; mất mạng thì trả khung đã lưu, chưa có thì trang báo mất kết nối.
