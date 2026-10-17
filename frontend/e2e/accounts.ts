@@ -12,3 +12,19 @@ export function account(role: E2ERole): E2EAccount {
   const accounts = JSON.parse(raw) as Record<E2ERole, E2EAccount>;
   return accounts[role];
 }
+
+export interface E2ELeads {
+  run: string;
+  ids: Record<"flow" | "viewer" | "other", string>;
+}
+
+/** Khách do global-setup tạo cho lần chạy này. */
+export function e2eLeads(): E2ELeads {
+  const raw = process.env.E2E_LEADS;
+  if (!raw) throw new Error("E2E_LEADS chưa được global-setup đặt");
+  return JSON.parse(raw) as E2ELeads;
+}
+
+export function leadName(key: keyof E2ELeads["ids"]): string {
+  return `[Khách E2E ${e2eLeads().run} ${key}]`;
+}

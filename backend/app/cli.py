@@ -104,14 +104,87 @@ async def bootstrap_owner() -> str:
     return "Tài khoản đã tồn tại, giữ nguyên mật khẩu hiện tại."
 
 
+async def _seed_e2e_leads(
+    db: AsyncSession,
+    ws: Workspace,
+    members: dict[str, WorkspaceMember],
+    specs: list[dict[str, Any]],
+) -> dict[str, str]:
+    """Mỗi lần chạy tạo khách mới (PSID mới) trên Trang E2E, đi qua đúng service của worker."""
+    import datetime as dt
+
+    from app.meta.events import MessageEvent
+    from app.models import BusinessManager, Contact, Lead, Page
+    from app.services import inbound
+    from app.services.assignment import assign_page, owner_at
+
+    now = dt.datetime.now(dt.UTC)
+    bm = await db.scalar(
+        select(BusinessManager).where(
+            BusinessManager.workspace_id == ws.id,
+            BusinessManager.fb_business_id == "900000000000900",
+        )
+    )
+    if bm is None:
+        bm = BusinessManager(workspace_id=ws.id, fb_business_id="900000000000900", name="[BM E2E]")
+        db.add(bm)
+        await db.flush()
+    rules = await inbound.load_rules(db, ws.id)
+    lead_ids: dict[str, str] = {}
+    for spec in specs:
+        page = await db.scalar(
+            select(Page).where(Page.workspace_id == ws.id, Page.fb_page_id == spec["fb_page_id"])
+        )
+        if page is None:
+            page = Page(
+                workspace_id=ws.id,
+                business_manager_id=bm.id,
+                fb_page_id=spec["fb_page_id"],
+                name=spec["page"],
+            )
+            db.add(page)
+            await db.flush()
+        member = members[spec["owner"]]
+        if await owner_at(db, page.id, now - dt.timedelta(minutes=10)) != member.id:
+            await assign_page(db, page, member, now - dt.timedelta(minutes=30), reason="[E2E]")
+        psid = spec["psid"]
+        event = MessageEvent(
+            kind="in",
+            fb_page_id=page.fb_page_id,
+            psid=psid,
+            mid=f"m_{psid}",
+            sent_at=now - dt.timedelta(minutes=10),
+            text=spec["text"],
+            has_attachments=False,
+            app_id=None,
+            metadata=None,
+            referral=None,
+            raw={},
+        )
+        await inbound.handle_message(db, page, rules, event)
+        contact = await db.scalar(
+            select(Contact).where(Contact.page_id == page.id, Contact.psid == psid)
+        )
+        if contact is None:
+            raise CliError("không tạo được khách e2e")
+        contact.display_name = spec["name"]
+        lead_id = await db.scalar(select(Lead.id).where(Lead.contact_id == contact.id))
+        lead_ids[spec["key"]] = str(lead_id)
+    return lead_ids
+
+
 async def e2e_seed(payload: dict[str, Any]) -> str:
-    """Tạo workspace và tài khoản cho Playwright. Chỉ chạy ở development/test."""
+    """Tạo workspace, tài khoản và (tùy chọn) khách cho Playwright. Chỉ chạy ở development/test.
+
+    Có `leads` trong payload thì in ra JSON `{"leads": {key: lead_id}}` để test mở thẳng hồ sơ.
+    """
     if get_settings().app_env not in ("development", "test"):
         raise CliError("e2e-seed chỉ chạy ở môi trường development/test")
     async with admin_sessionmaker()() as db:
         ws = await get_or_create_workspace(db, payload["workspace"], slugify(payload["workspace"]))
+        members: dict[str, WorkspaceMember] = {}
         for acc in payload["accounts"]:
-            await ensure_member(
+            _, members[acc["email"]], _ = await ensure_member(
                 db,
                 ws,
                 email=acc["email"],
@@ -121,7 +194,10 @@ async def e2e_seed(payload: dict[str, Any]) -> str:
                 must_change_password=bool(acc.get("must_change_password", False)),
                 reset_password=True,
             )
+        lead_ids = await _seed_e2e_leads(db, ws, members, payload.get("leads", []))
         await db.commit()
+    if payload.get("leads"):
+        return json.dumps({"leads": lead_ids})
     return f"Đã chuẩn bị {len(payload['accounts'])} tài khoản e2e."
 
 

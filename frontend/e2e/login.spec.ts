@@ -34,8 +34,17 @@ for (const [role, expected] of Object.entries(EXPECTED)) {
     await expect(page).toHaveURL(expected.home);
 
     const nav = page.getByRole("navigation", { name: "Điều hướng chính" });
-    const items = nav.locator(".nav-link");
-    await expect(items).toHaveText(expected.menu.map((label) => (label === "Inbox" ? "InboxSau" : label)));
+    // Bỏ số đếm trên menu (khách quá hạn của các lần chạy trước) khi so chữ.
+    const labels = await nav
+      .locator(".nav-link")
+      .evaluateAll((links) =>
+        links.map((link) => {
+          const copy = link.cloneNode(true) as HTMLElement;
+          copy.querySelectorAll(".nav-count").forEach((el) => el.remove());
+          return copy.textContent ?? "";
+        }),
+      );
+    expect(labels).toEqual(expected.menu.map((label) => (label === "Inbox" ? "InboxSau" : label)));
     await expect(page.getByTestId("current-role")).toHaveText(expected.role);
     await expect(page.locator(".badge-sample")).toHaveText("Dữ liệu mẫu");
 

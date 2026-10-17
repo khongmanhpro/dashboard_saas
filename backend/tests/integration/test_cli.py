@@ -115,3 +115,44 @@ def test_cli_main_e2e_reads_stdin(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps({"workspace": "W", "accounts": []})))
     assert cli.main(["e2e-seed"]) == 0
     assert seen["workspace"] == "W"
+
+
+async def test_e2e_seed_creates_fresh_leads_each_run(admin_db: AsyncSession) -> None:
+    import json
+
+    from sqlalchemy import func, select
+
+    from app.models import Lead
+
+    def payload(run: str) -> dict[str, object]:
+        return {
+            "workspace": "E2E Leads",
+            "accounts": [
+                {
+                    "email": "e2e-s@example.com",
+                    "full_name": "[NV]",
+                    "role": "staff",
+                    "password": "Mat-khau-dai-123",
+                },
+            ],
+            "leads": [
+                {
+                    "key": "flow",
+                    "owner": "e2e-s@example.com",
+                    "fb_page_id": "100000000000991",
+                    "page": "[Trang E2E]",
+                    "psid": f"e2e-{run}",
+                    "name": f"[Khách E2E {run}]",
+                    "text": "số em 0900 000 999",
+                },
+            ],
+        }
+
+    first = json.loads(await cli.e2e_seed(payload("a")))
+    second = json.loads(await cli.e2e_seed(payload("b")))
+    assert first["leads"]["flow"] != second["leads"]["flow"]
+    lead = await admin_db.get(Lead, first["leads"]["flow"])
+    assert lead is not None
+    assert lead.owner_member_id is not None
+    assert lead.phone == "0900000999"
+    assert await admin_db.scalar(select(func.count()).select_from(Lead)) == 2

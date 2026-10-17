@@ -20,6 +20,8 @@ const ROLES: Array<[E2ERole, string, string, boolean]> = [
  */
 export default function globalSetup(): void {
   const accounts = {} as Record<E2ERole, E2EAccount>;
+  // Mỗi lần chạy một mã riêng: khách e2e luôn mới, không phụ thuộc lần chạy trước.
+  const run = randomBytes(3).toString("hex");
   const payload = {
     workspace: "E2E Playwright",
     accounts: ROLES.map(([key, role, fullName, mustChange]) => {
@@ -28,11 +30,32 @@ export default function globalSetup(): void {
       accounts[key] = { email, password };
       return { email, full_name: fullName, role, password, must_change_password: mustChange };
     }),
+    // Khách giả trên 2 Trang E2E: Trang 1 của nhân viên, Trang 2 của trưởng nhóm (quyết định #14).
+    leads: [
+      lead("flow", "e2e-staff@example.com", "100000000000901", "[Trang E2E 1]", run, "0900 000 911"),
+      lead("viewer", "e2e-staff@example.com", "100000000000901", "[Trang E2E 1]", run, "0900 000 922"),
+      lead("other", "e2e-team-lead@example.com", "100000000000902", "[Trang E2E 2]", run, "0900 000 933"),
+    ],
   };
-  execFileSync(
+  const output = execFileSync(
     "docker",
     ["compose", "run", "--rm", "-T", "migrate", "python", "-m", "app.cli", "e2e-seed"],
-    { cwd: ROOT, input: JSON.stringify(payload), stdio: ["pipe", "ignore", "inherit"] },
+    { cwd: ROOT, input: JSON.stringify(payload), stdio: ["pipe", "pipe", "inherit"], encoding: "utf8" },
   );
+  const lastLine = output.trim().split("\n").at(-1) ?? "{}";
+  const leads = (JSON.parse(lastLine) as { leads: Record<string, string> }).leads;
   process.env.E2E_ACCOUNTS = JSON.stringify(accounts);
+  process.env.E2E_LEADS = JSON.stringify({ run, ids: leads });
+}
+
+function lead(key: string, owner: string, fbPageId: string, page: string, run: string, phone: string) {
+  return {
+    key,
+    owner,
+    fb_page_id: fbPageId,
+    page,
+    psid: `e2e-${run}-${key}`,
+    name: `[Khách E2E ${run} ${key}]`,
+    text: `[Tin nhắn E2E] số em ${phone}`,
+  };
 }
