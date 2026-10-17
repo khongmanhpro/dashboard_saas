@@ -113,6 +113,19 @@ class Lead(Base):
             ondelete="SET NULL (merged_into_lead_id)",
             name="fk_leads_merged_into",
         ),
+        ForeignKeyConstraint(
+            ["workspace_id", "ad_id"],
+            ["ads.workspace_id", "ads.id"],
+            ondelete="SET NULL (ad_id)",
+            name="fk_leads_ad",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "campaign_id"],
+            ["campaigns.workspace_id", "campaigns.id"],
+            ondelete="SET NULL (campaign_id)",
+            name="fk_leads_campaign",
+        ),
+        Index("ix_leads_campaign_first_inbound", "campaign_id", "first_inbound_at"),
         Index("ix_leads_workspace_owner", "workspace_id", "owner_member_id"),
         Index("ix_leads_page_first_inbound", "page_id", "first_inbound_at"),
         Index("ix_leads_workspace_first_inbound", "workspace_id", "first_inbound_at"),
@@ -129,6 +142,9 @@ class Lead(Base):
     owner_member_id: Mapped[uuid.UUID | None]
     source: Mapped[LeadSource] = mapped_column(str_enum(LeadSource, "lead_source"))
     fb_ad_id: Mapped[str | None] = mapped_column(String(32))
+    # Gắn qua fb_ad_id khi QC đã đồng bộ (Bước 7).
+    ad_id: Mapped[uuid.UUID | None]
+    campaign_id: Mapped[uuid.UUID | None]
     referral: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     first_inbound_at: Mapped[dt.datetime]
     first_inbound_mid: Mapped[str | None] = mapped_column(String(200))

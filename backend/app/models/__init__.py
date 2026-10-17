@@ -1,5 +1,7 @@
 """Import mọi model để Alembic và test thấy đủ metadata."""
 
+from app.models.ads import Ad, AdInsightDaily, AdSet, Campaign, FxRate
+from app.models.alerts import AlertDelivery, AlertRule
 from app.models.audit import AuditLog
 from app.models.base import Base
 from app.models.enums import (
@@ -24,19 +26,27 @@ from app.models.lead import Contact, Lead, LeadEvent, LeadPhone, Message
 from app.models.member import Team, WorkspaceMember
 from app.models.meta import AdAccount, BusinessManager, Page, PageAssignment, SyncRun
 from app.models.notify import Notification, PushSubscription
+from app.models.page_stats import PageInsightDaily, PagePost
 from app.models.score import ScoreFormula, ScoreSnapshot
 from app.models.session import AuthSession
 from app.models.user import User
 from app.models.workspace import Workspace, WorkspaceSettings
 
 __all__ = [
+    "Ad",
     "AdAccount",
+    "AdInsightDaily",
+    "AdSet",
+    "AlertDelivery",
+    "AlertRule",
     "AuditLog",
     "AuthSession",
     "Base",
     "BusinessManager",
+    "Campaign",
     "ConnectionStatus",
     "Contact",
+    "FxRate",
     "ImportJob",
     "Lead",
     "LeadEvent",
@@ -55,6 +65,8 @@ __all__ = [
     "NotificationType",
     "Page",
     "PageAssignment",
+    "PageInsightDaily",
+    "PagePost",
     "PeriodType",
     "PushSubscription",
     "ScoreFormula",

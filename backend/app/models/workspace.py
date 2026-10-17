@@ -52,4 +52,6 @@ class WorkspaceSettings(Base):
     min_leads_for_ranking: Mapped[int] = mapped_column(SmallInteger, server_default="10")
     one_page_per_member: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     staff_can_see_leaderboard: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    # Nhóm/kênh Telegram nhận cảnh báo (Bước 7). Bot dùng chung cả hệ thống.
+    telegram_chat_id: Mapped[str | None] = mapped_column(String(32))
     updated_at: Mapped[dt.datetime] = updated_at_col()
