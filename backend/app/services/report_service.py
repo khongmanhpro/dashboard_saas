@@ -48,6 +48,7 @@ from app.schemas.reports import (
     OverviewAlerts,
     OverviewKpis,
     OverviewOut,
+    OwnerShare,
     PageDetailOut,
     PageKpis,
     PageReportList,
@@ -514,6 +515,7 @@ async def _page_rows(
     )
     first = today - dt.timedelta(days=29)
     views = await _views_by_page(db, first, today)
+    names = await _member_names(db)
 
     out = []
     for page, bm_name, bm_status in pages:
@@ -524,6 +526,7 @@ async def _page_rows(
             continue
         summary = metrics.summarize(items, now, live.params)
         score = scores.get(owner[0]) if owner else None
+        shares = _owner_shares(items, owner[0] if owner else None, names)
         daily = views.get(page.id, {})
         days = [first + dt.timedelta(days=i) for i in range(30)]
         has_views = any(daily.get(d) is not None for d in days)
@@ -535,6 +538,7 @@ async def _page_rows(
             owner=NamedRef(id=owner[0], name=owner[1]) if owner else None,
             owner_total=score.total if score else None,
             owner_tier=score.tier if score else None,
+            owners_in_range=shares,
             leads_7d=summary.leads,
             median_response_seconds=summary.median_response_seconds,
             won_7d=summary.won,
@@ -547,6 +551,28 @@ async def _page_rows(
         )
         out.append((row, page.business_manager_id))
     return out, r
+
+
+def _owner_shares(
+    items: list[LeadFacts], current: uuid.UUID | None, names: dict[uuid.UUID, str]
+) -> list[OwnerShare]:
+    """Số khách của Trang theo người (kể cả "chưa có người", và người đang phụ trách dù 0 khách).
+    Chỉ trả khi có hơn một người, để giải thích vì sao khách của Trang khác khách của người
+    đang phụ trách."""
+    counts: dict[uuid.UUID | None, int] = defaultdict(int)
+    for f in items:
+        counts[f.owner_id] += 1
+    if current is not None and items:
+        counts.setdefault(current, 0)
+    if len(counts) <= 1:
+        return []
+    return [
+        OwnerShare(
+            member=NamedRef(id=mid, name=names.get(mid, "")) if mid is not None else None,
+            leads=n,
+        )
+        for mid, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0] is None))
+    ]
 
 
 def _in_tab(row: PageReportRow, tab: PageTab) -> bool:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 from dataclasses import dataclass
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -64,7 +65,7 @@ async def team(admin_db: AsyncSession) -> Team:
             vn(12, 9) + dt.timedelta(minutes=i),
             response_seconds=120,
             phone="0900000001",
-            won_value_vnd=1_000_000 if i < 5 else None,
+            won_value_vnd=5_000_000 if i < 5 else None,
         )
     # Người chậm: 10 khách, trả lời 2 giờ, không SĐT, chốt 1.
     for i in range(10):
@@ -104,12 +105,16 @@ async def test_nightly_job_writes_week_and_reference_periods(
     week = await _rows(admin_db, PeriodType.WEEK, dt.date(2026, 10, 12))
     assert set(week) == {team.good, team.slow, team.few}
     good, slow, few = week[team.good], week[team.slow], week[team.few]
-    assert good.lead_count == 10 and good.won_count == 5 and good.revenue_vnd == 5_000_000
+    assert good.lead_count == 10 and good.won_count == 5 and good.revenue_vnd == 25_000_000
     assert good.median_response_seconds == 120
     assert good.s_response_speed == 100 and slow.s_response_speed == 0
     assert good.s_page_care is None  # Trang chưa đồng bộ được bài đăng
-    assert good.total == 100 and good.tier == Tier.A and good.rank == 1
-    assert slow.total == 0 and slow.tier == Tier.D and slow.rank == 2
+    # Ngưỡng tuyệt đối (mục K), Thứ Tư 12:00 (kỳ đã qua 2,5 ngày). Người tốt: chốt 50%, tốc độ,
+    # doanh thu 25 triệu (mức 100 điểm của kỳ ≈ 7,1 triệu), SĐT 100% đều 100 điểm; đúng hạn 50% → 0.
+    # Chăm Trang chưa có số liệu: (3000 + 2500 + 2000 + 1000 + 0) / 90.
+    assert good.total == Decimal("94.44") and good.tier == Tier.A and good.rank == 1
+    # Người chậm: chốt 10% → 20 điểm, doanh thu 0,5 triệu → 7 điểm, còn lại 0: (600 + 140) / 90.
+    assert slow.total == Decimal("8.22") and slow.tier == Tier.D and slow.rank == 2
     assert few.insufficient_data and few.total is None and few.rank is None
     assert not good.is_final
 
@@ -126,7 +131,7 @@ async def test_monday_finalizes_last_week_and_never_rewrites_it(
     await nightly_scores({}, now=NEXT_MONDAY)
     final = await _rows(admin_db, PeriodType.WEEK, dt.date(2026, 10, 12))
     assert all(r.is_final for r in final.values())
-    assert final[team.good].revenue_vnd == 5_000_000
+    assert final[team.good].revenue_vnd == 25_000_000
 
     # Dữ liệu tuần đã chốt bị sửa sau đó: điểm tuần đó giữ nguyên.
     lead = await admin_db.scalar(
@@ -161,8 +166,8 @@ async def test_workspaces_are_scored_separately(team: Team, admin_db: AsyncSessi
 
     assert await nightly_scores({}, now=WEDNESDAY) == {"workspaces": 2, "failed": 0}
     week = await _rows(admin_db, PeriodType.WEEK, dt.date(2026, 10, 12))
-    # Một mình trong workspace của mình: phần trăm = 100, không bị so với workspace kia.
-    assert week[member_id].s_close_rate == 100
+    # Workspace riêng: hạng 1 trong workspace của mình, không bị xếp chung với workspace kia.
+    assert week[member_id].rank == 1 and week[member_id].s_close_rate == 0
     assert week[member_id].workspace_id == other_id
     assert week[team.slow].rank == 2
 

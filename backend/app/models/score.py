@@ -62,6 +62,15 @@ class ScoreFormula(Base):
             name="tier_order",
         ),
         CheckConstraint("min_leads >= 0 AND posts_per_week_target >= 0", name="positive_limits"),
+        # Ngưỡng tuyệt đối (decisions.md mục K): "0 điểm" < "100 điểm", phần trăm trong 0–100.
+        CheckConstraint(
+            "close_rate_zero >= 0 AND close_rate_full > close_rate_zero AND close_rate_full <= 100"
+            " AND phone_rate_zero >= 0 AND phone_rate_full > phone_rate_zero"
+            " AND phone_rate_full <= 100"
+            " AND on_time_zero >= 0 AND on_time_full > on_time_zero AND on_time_full <= 100"
+            " AND revenue_full_vnd > 0",
+            name="threshold_range",
+        ),
         ForeignKeyConstraint(
             ["workspace_id", "created_by_member_id"],
             ["workspace_members.workspace_id", "workspace_members.id"],
@@ -86,6 +95,15 @@ class ScoreFormula(Base):
     tier_c: Mapped[int] = mapped_column(SmallInteger, server_default=text("50"))
     min_leads: Mapped[int] = mapped_column(SmallInteger, server_default=text("10"))
     posts_per_week_target: Mapped[int] = mapped_column(SmallInteger, server_default=text("5"))
+    # Ngưỡng tuyệt đối (mục K). Tỉ lệ tính bằng phần trăm nguyên; doanh thu là mức 100 điểm
+    # mỗi tuần, quy theo số ngày đã qua của kỳ (0 ₫ = 0 điểm).
+    close_rate_zero: Mapped[int] = mapped_column(SmallInteger, server_default=text("5"))
+    close_rate_full: Mapped[int] = mapped_column(SmallInteger, server_default=text("30"))
+    revenue_full_vnd: Mapped[int] = mapped_column(BigInteger, server_default=text("20000000"))
+    phone_rate_zero: Mapped[int] = mapped_column(SmallInteger, server_default=text("30"))
+    phone_rate_full: Mapped[int] = mapped_column(SmallInteger, server_default=text("80"))
+    on_time_zero: Mapped[int] = mapped_column(SmallInteger, server_default=text("50"))
+    on_time_full: Mapped[int] = mapped_column(SmallInteger, server_default=text("95"))
     effective_from: Mapped[dt.datetime]
     created_by_member_id: Mapped[uuid.UUID | None]
     created_at: Mapped[dt.datetime] = created_at_col()

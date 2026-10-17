@@ -208,27 +208,66 @@ async def test_scores_same_everywhere(mixed: Demo, as_user: Any) -> None:
 
 
 async def test_score_parts_explain_conversion(mixed: Demo, as_user: Any) -> None:
+    """Mục K: mọi tiêu chí trừ Chăm Trang có ngưỡng 0 điểm / 100 điểm, điểm nằm đúng giữa."""
     owner = await as_user("owner")
     board = await _get(owner, "/api/staff/leaderboard?period=rolling_7")
     ranked = [r for r in board["rows"] if r["total"] is not None]
-    worst = max(ranked, key=lambda r: r["rank"])
-    detail = await _get(owner, f"/api/staff/{worst['member']['id']}?period=rolling_7")
-    parts = {p["key"]: p for p in detail["parts"]}
-    assert parts["response_speed"]["method"] == "linear"
-    assert detail["speed_full_minutes"] == 5 and detail["speed_zero_minutes"] == 120
-    for key in ("close_rate", "revenue", "phone_rate", "on_time"):
-        part = parts[key]
-        assert part["method"] == "percentile"
-        if part["score"] is None:
-            continue
-        assert part["peers"] == len(ranked)
-        # Đứng đầu = 100 điểm, đứng cuối (không ai bằng) = 0 điểm.
-        if part["position"] == 1 and Decimal(part["score"]) == 100:
-            continue
-        if part["position"] == part["peers"]:
-            assert Decimal(part["score"]) <= 50
-    assert detail["trend"][-1]["is_final"] is False
-    assert (
-        detail["trend"][-1]["total"]
-        == (await _get(owner, f"/api/staff/{worst['member']['id']}?period=week"))["total"]
-    )
+    assert ranked
+    for row in ranked:
+        detail = await _get(owner, f"/api/staff/{row['member']['id']}?period=rolling_7")
+        parts = {p["key"]: p for p in detail["parts"]}
+        assert parts["page_care"]["method"] == "target"
+        assert (
+            Decimal(parts["response_speed"]["zero"]),
+            Decimal(parts["response_speed"]["full"]),
+        ) == (
+            Decimal(120),
+            Decimal(5),
+        )
+        for key in ("close_rate", "phone_rate", "on_time"):
+            part = parts[key]
+            assert part["method"] == "linear"
+            if part["score"] is None:
+                continue
+            rate = Decimal(part["raw"]["rate"]) * 100
+            zero, full = Decimal(part["zero"]), Decimal(part["full"])
+            expected = min(max((rate - zero) / (full - zero), Decimal(0)), Decimal(1)) * 100
+            assert abs(Decimal(part["score"]) - expected) <= Decimal("0.01")
+        assert detail["trend"][-1]["is_final"] is False
+
+
+async def test_pages_show_leads_per_owner_when_more_than_one(mixed: Demo, as_user: Any) -> None:
+    pages = await _get(await as_user("owner"), "/api/reports/pages")
+    rows = {r["fb_page_id"]: r for r in pages["rows"]}
+    acc = mixed.accounts
+    rabbit = {
+        (s["member"]["name"] if s["member"] else None): s["leads"]
+        for s in rows[RABBIT]["owners_in_range"]
+    }
+    assert rabbit == {acc["lead"].user.full_name: 4, acc["manager"].user.full_name: 2}
+    assert sum(rabbit.values()) == rows[RABBIT]["leads_7d"]
+    # Mua Sắm: khách vào lúc chưa có ai, Chủ sở hữu nhận Trang sau đó (0 khách).
+    smart = {
+        (s["member"]["name"] if s["member"] else None): s["leads"]
+        for s in rows[SMART]["owners_in_range"]
+    }
+    assert smart == {None: 3, acc["owner"].user.full_name: 0}
+    # Chỉ một người: không ghi chú.
+    assert rows[SOFTWARE]["owners_in_range"] == []
+
+
+async def test_staff_shows_page_ownership_that_ended_in_period(
+    mixed: Demo, as_user: Any, admin_db: AsyncSession
+) -> None:
+    acc = mixed.accounts
+    ended = NOW - H
+    await assign_page(admin_db, mixed.pages[SOFTWARE], acc["manager"].member, ended)
+    await admin_db.commit()
+    board = await _get(await as_user("owner"), "/api/staff/leaderboard?period=rolling_7")
+    rows = {r["member"]["name"]: r for r in board["rows"]}
+    s1 = rows[acc["s1"].user.full_name]
+    assert s1["pages"] == []
+    assert [p["name"] for p in s1["past_pages"]] == [mixed.pages[SOFTWARE].name]
+    assert dt.datetime.fromisoformat(s1["past_pages"][0]["until"]) == ended
+    assert rows[acc["manager"].user.full_name]["pages"] == [mixed.pages[SOFTWARE].name]
+    assert rows[acc["s2"].user.full_name]["past_pages"] == []

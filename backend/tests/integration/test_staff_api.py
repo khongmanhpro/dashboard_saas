@@ -28,6 +28,19 @@ from tests.integration import factories as f
 
 pytestmark = pytest.mark.integration
 
+# Ngưỡng mặc định (decisions.md mục K).
+THRESHOLDS = {
+    "speed_full_minutes": 5,
+    "speed_zero_minutes": 120,
+    "close_rate_zero": 5,
+    "close_rate_full": 30,
+    "revenue_full_vnd": 20_000_000,
+    "phone_rate_zero": 30,
+    "phone_rate_full": 80,
+    "on_time_zero": 50,
+    "on_time_full": 95,
+}
+
 VN = ZoneInfo("Asia/Ho_Chi_Minh")
 
 
@@ -72,7 +85,7 @@ async def org(admin_db: AsyncSession) -> Org:
                 start + dt.timedelta(minutes=1, seconds=i),
                 response_seconds=p["response"],
                 phone=p["phone"],
-                won_value_vnd=1_000_000 if i < p["won"] else None,
+                won_value_vnd=5_000_000 if i < p["won"] else None,
             )
     await admin_db.commit()
     return Org(ws.id, acc, {k: a.member.id for k, a in acc.items()}, week.first_day)
@@ -112,7 +125,7 @@ async def test_owner_sees_full_leaderboard(as_role: Any, org: Org) -> None:
     assert first["pages"] == ["[Trang s1]"]
     assert board["tiers"]["A"] >= 1
     assert board["kpis"]["lead_count"] == 30
-    assert board["kpis"]["revenue_vnd"] == 9_000_000
+    assert board["kpis"]["revenue_vnd"] == 45_000_000
     assert board["kpis"]["median_response_seconds"] == 900  # trung vị của 10×120, 10×900, 10×7200
     assert {t["name"] for t in board["teams"]} == {"[Nhóm 1]", "[Nhóm 2]"}
     for period in ("rolling_7", "rolling_30", "month"):
@@ -200,13 +213,14 @@ async def test_preview_matches_saved_formula_result(
         "page_care": 5,
         "on_time": 5,
     }
-    preview = await owner.post("/api/score/preview", json=weights)
+    body = {"weights": weights, "thresholds": THRESHOLDS}
+    preview = await owner.post("/api/score/preview", json=body)
     assert preview.status_code == 200, preview.text
     rows = {r["member"]["id"]: r for r in preview.json()["rows"]}
     lead_row = rows[str(org.ids["lead"])]
     assert lead_row["new_total"] != lead_row["current_total"]
 
-    saved = await owner.put("/api/score/formula", json={"weights": weights})
+    saved = await owner.put("/api/score/formula", json=body)
     assert saved.status_code == 200, saved.text
     assert saved.json()["version"] == 2
     assert saved.json()["weights"] == weights
@@ -263,7 +277,8 @@ async def test_finalized_week_is_not_recomputed_by_new_formula(
         "page_care": 10,
         "on_time": 10,
     }
-    assert (await owner.put("/api/score/formula", json={"weights": weights})).status_code == 200
+    body = {"weights": weights, "thresholds": THRESHOLDS}
+    assert (await owner.put("/api/score/formula", json=body)).status_code == 200
     assert (await owner.post("/api/score/recompute")).status_code == 200
     admin_db.expire_all()
     kept = await admin_db.scalar(
@@ -298,8 +313,9 @@ async def test_finalized_week_is_not_recomputed_by_new_formula(
 )
 async def test_invalid_weights_are_rejected(as_role: Any, weights: dict[str, int]) -> None:
     owner = await as_role("owner")
-    assert (await owner.put("/api/score/formula", json={"weights": weights})).status_code == 422
-    assert (await owner.post("/api/score/preview", json=weights)).status_code == 422
+    body = {"weights": weights, "thresholds": THRESHOLDS}
+    assert (await owner.put("/api/score/formula", json=body)).status_code == 422
+    assert (await owner.post("/api/score/preview", json=body)).status_code == 422
 
 
 @pytest.mark.parametrize("role", ["manager", "lead", "s1", "viewer"])
@@ -313,8 +329,51 @@ async def test_only_owner_edits_formula(as_role: Any, role: str) -> None:
         "page_care": 10,
         "on_time": 5,
     }
-    assert (await client.put("/api/score/formula", json={"weights": weights})).status_code == 403
-    assert (await client.post("/api/score/preview", json=weights)).status_code == 403
+    body = {"weights": weights, "thresholds": THRESHOLDS}
+    assert (await client.put("/api/score/formula", json=body)).status_code == 403
+    assert (await client.post("/api/score/preview", json=body)).status_code == 403
     assert (await client.post("/api/score/recompute")).status_code == 403
     formula = (await client.get("/api/score/formula")).json()
     assert formula["can_edit"] is False and formula["page_care_available"] is False
+
+
+async def test_threshold_change_preview_matches_saved(as_role: Any, org: Org) -> None:
+    """Đổi ngưỡng (mục K): "xem thử" khớp điểm sau khi lưu, và điểm đổi theo ngưỡng."""
+    owner = await as_role("owner")
+    formula = (await owner.get("/api/score/formula")).json()
+    assert formula["thresholds"] == THRESHOLDS
+    stricter = {**THRESHOLDS, "close_rate_full": 80, "phone_rate_zero": 60}
+    body = {"weights": formula["weights"], "thresholds": stricter}
+    preview = (await owner.post("/api/score/preview", json=body)).json()
+    rows = {r["member"]["id"]: r for r in preview["rows"]}
+    s1 = rows[str(org.ids["s1"])]
+    assert Decimal(s1["new_total"]) < Decimal(s1["current_total"])
+
+    saved = await owner.put("/api/score/formula", json=body)
+    assert saved.status_code == 200 and saved.json()["thresholds"] == stricter
+    board = await _board(owner)
+    for row in board["rows"]:
+        if row["total"] is not None:
+            assert row["total"] == rows[row["member"]["id"]]["new_total"]
+    detail = (await owner.get(f"/api/staff/{org.ids['s1']}")).json()
+    close = next(p for p in detail["parts"] if p["key"] == "close_rate")
+    assert close["method"] == "linear"
+    assert (Decimal(close["zero"]), Decimal(close["full"])) == (Decimal(5), Decimal(80))
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"close_rate_zero": 30, "close_rate_full": 30},
+        {"on_time_zero": 96},
+        {"speed_full_minutes": 120},
+        {"phone_rate_full": 101},
+        {"revenue_full_vnd": 0},
+    ],
+)
+async def test_invalid_thresholds_are_rejected(as_role: Any, change: dict[str, int]) -> None:
+    owner = await as_role("owner")
+    formula = (await owner.get("/api/score/formula")).json()
+    body = {"weights": formula["weights"], "thresholds": {**THRESHOLDS, **change}}
+    assert (await owner.put("/api/score/formula", json=body)).status_code == 422
+    assert (await owner.post("/api/score/preview", json=body)).status_code == 422

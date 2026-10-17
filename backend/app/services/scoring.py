@@ -5,15 +5,17 @@ Job ban đêm và "xem thử" trong Cài đặt dùng chung các hàm này, nên
 
 - Tốc độ trả lời: 100 điểm nếu trung vị ≤ `speed_full_minutes`, 0 điểm nếu ≥ `speed_zero_minutes`,
   nội suy tuyến tính ở giữa.
+- Tỉ lệ chốt, doanh thu, % có SĐT, cập nhật đúng hạn (decisions.md mục K): ngưỡng tuyệt đối, cũng
+  nội suy tuyến tính. Doanh thu quy mức 100 điểm mỗi tuần theo số ngày đã qua của kỳ.
 - Chăm Trang (quyết định #5, mục I): `min(số bài / mục tiêu, 1) × 100`, mục tiêu tuần quy đổi theo
   số ngày đã qua của kỳ.
-- Tiêu chí khác: xếp phần trăm giữa những người đủ số khách tối thiểu.
 - Tiêu chí chưa có số liệu (Trang chưa đồng bộ được bài đăng, hoặc người chưa có khách nào được trả
   lời): bỏ khỏi tổng, trọng số của nó chia lại cho các tiêu chí còn lại theo tỉ lệ.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import statistics
 import uuid
@@ -24,6 +26,18 @@ from decimal import ROUND_HALF_UP, Decimal
 from app.models import LeadSource, LeadStatus, ScoreFormula, Tier
 
 CRITERIA = ("close_rate", "response_speed", "revenue", "phone_rate", "page_care", "on_time")
+# Ngưỡng sửa được trong Cài đặt (cùng tên cột ở bảng score_formulas).
+THRESHOLD_FIELDS = (
+    "speed_full_minutes",
+    "speed_zero_minutes",
+    "close_rate_zero",
+    "close_rate_full",
+    "revenue_full_vnd",
+    "phone_rate_zero",
+    "phone_rate_full",
+    "on_time_zero",
+    "on_time_full",
+)
 _HUNDRED = Decimal(100)
 _CENT = Decimal("0.01")
 
@@ -42,13 +56,20 @@ class FormulaParams:
     tier_c: int = 50
     min_leads: int = 10
     posts_per_week_target: int = 5
+    # Ngưỡng tuyệt đối (mục K): tỉ lệ bằng phần trăm, doanh thu là mức 100 điểm mỗi tuần.
+    close_rate_zero: int = 5
+    close_rate_full: int = 30
+    revenue_full_vnd: int = 20_000_000
+    phone_rate_zero: int = 30
+    phone_rate_full: int = 80
+    on_time_zero: int = 50
+    on_time_full: int = 95
 
     @classmethod
     def from_model(cls, f: ScoreFormula) -> FormulaParams:
         return cls(
             weights={c: int(getattr(f, f"w_{c}")) for c in CRITERIA},
-            speed_full_minutes=f.speed_full_minutes,
-            speed_zero_minutes=f.speed_zero_minutes,
+            **{k: getattr(f, k) for k in THRESHOLD_FIELDS},
             tier_a=f.tier_a,
             tier_b=f.tier_b,
             tier_c=f.tier_c,
@@ -56,17 +77,16 @@ class FormulaParams:
             posts_per_week_target=f.posts_per_week_target,
         )
 
+    def with_changes(
+        self, weights: Mapping[str, int] | None = None, **thresholds: int
+    ) -> FormulaParams:
+        changes: dict[str, object] = dict(thresholds)
+        if weights is not None:
+            changes["weights"] = dict(weights)
+        return dataclasses.replace(self, **changes)  # type: ignore[arg-type]
+
     def with_weights(self, weights: Mapping[str, int]) -> FormulaParams:
-        return FormulaParams(
-            weights=dict(weights),
-            speed_full_minutes=self.speed_full_minutes,
-            speed_zero_minutes=self.speed_zero_minutes,
-            tier_a=self.tier_a,
-            tier_b=self.tier_b,
-            tier_c=self.tier_c,
-            min_leads=self.min_leads,
-            posts_per_week_target=self.posts_per_week_target,
-        )
+        return self.with_changes(weights=weights)
 
 
 @dataclass(frozen=True)
@@ -186,21 +206,44 @@ def page_care_score(
     return _q(min(Decimal(posts) / target, Decimal(1)) * _HUNDRED)
 
 
-def percentile_scores(
-    values: Mapping[uuid.UUID, Decimal | int | None],
-) -> dict[uuid.UUID, Decimal | None]:
-    """(số người thấp hơn + ½ số người bằng) ÷ (n − 1) × 100. Người không có giá trị: None."""
-    present = {k: Decimal(v) for k, v in values.items() if v is not None}
-    n = len(present)
-    out: dict[uuid.UUID, Decimal | None] = {k: None for k in values}
-    for key, value in present.items():
-        if n == 1:
-            out[key] = _HUNDRED
-            continue
-        lower = sum(1 for v in present.values() if v < value)
-        equal = sum(1 for v in present.values() if v == value) - 1
-        out[key] = _q(_HUNDRED * (Decimal(lower) + Decimal(equal) / 2) / Decimal(n - 1))
-    return out
+def linear_score(value: Decimal | int | None, zero: Decimal, full: Decimal) -> Decimal | None:
+    """0 điểm khi ≤ `zero`, 100 điểm khi ≥ `full`, nội suy tuyến tính ở giữa (mục K)."""
+    if value is None:
+        return None
+    v = Decimal(value)
+    if v <= zero:
+        return Decimal(0)
+    if v >= full:
+        return _HUNDRED
+    return _q(_HUNDRED * (v - zero) / (full - zero))
+
+
+def _pct(rate: Decimal | None) -> Decimal | None:
+    return rate * 100 if rate is not None else None
+
+
+def revenue_target(params: FormulaParams, period_days: Decimal) -> Decimal:
+    """Mức doanh thu 100 điểm của kỳ: mức mỗi tuần quy theo số ngày đã qua."""
+    return Decimal(params.revenue_full_vnd) * period_days / 7
+
+
+def threshold_components(
+    m: MemberMetrics, params: FormulaParams, period_days: Decimal
+) -> dict[str, Decimal | None]:
+    return {
+        "close_rate": linear_score(
+            _pct(m.close_rate), Decimal(params.close_rate_zero), Decimal(params.close_rate_full)
+        ),
+        "response_speed": speed_score(m.median_response_seconds, params),
+        "revenue": linear_score(m.revenue_vnd, Decimal(0), revenue_target(params, period_days)),
+        "phone_rate": linear_score(
+            _pct(m.phone_rate), Decimal(params.phone_rate_zero), Decimal(params.phone_rate_full)
+        ),
+        "page_care": page_care_score(m.posts_count, period_days, params),
+        "on_time": linear_score(
+            _pct(m.on_time_rate), Decimal(params.on_time_zero), Decimal(params.on_time_full)
+        ),
+    }
 
 
 def weighted_total(
@@ -238,24 +281,12 @@ def compute_scores(
     sufficient = [m for m in all_metrics if m.lead_count >= params.min_leads and m.lead_count > 0]
     ids = {m.member_id for m in sufficient}
 
-    close = percentile_scores({m.member_id: m.close_rate for m in sufficient})
-    revenue = percentile_scores({m.member_id: m.revenue_vnd for m in sufficient})
-    phone = percentile_scores({m.member_id: m.phone_rate for m in sufficient})
-    on_time = percentile_scores({m.member_id: m.on_time_rate for m in sufficient})
-
     scores: list[MemberScore] = []
     for m in all_metrics:
         if m.member_id not in ids:
             scores.append(MemberScore(metrics=m, insufficient_data=True))
             continue
-        components: dict[str, Decimal | None] = {
-            "close_rate": close[m.member_id],
-            "response_speed": speed_score(m.median_response_seconds, params),
-            "revenue": revenue[m.member_id],
-            "phone_rate": phone[m.member_id],
-            "page_care": page_care_score(m.posts_count, period_days, params),
-            "on_time": on_time[m.member_id],
-        }
+        components = threshold_components(m, params, period_days)
         total = weighted_total(components, params.weights)
         scores.append(
             MemberScore(

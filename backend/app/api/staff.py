@@ -16,7 +16,6 @@ from app.schemas.staff import (
     Leaderboard,
     PreviewOut,
     StaffDetail,
-    Weights,
 )
 from app.services import staff_service
 
@@ -50,11 +49,11 @@ async def get_formula(ctx: CanViewLeaderboard, db: DbSession) -> FormulaOut:
 
 @router.put("/score/formula", response_model=FormulaOut)
 async def update_formula(body: FormulaUpdate, ctx: CanEditFormula, db: DbSession) -> FormulaOut:
-    return await staff_service.update_formula(db, ctx, body.weights)
+    return await staff_service.update_formula(db, ctx, body)
 
 
 @router.post("/score/preview", response_model=PreviewOut)
-async def preview_formula(body: Weights, ctx: CanEditFormula, db: DbSession) -> PreviewOut:
+async def preview_formula(body: FormulaUpdate, ctx: CanEditFormula, db: DbSession) -> PreviewOut:
     return await staff_service.preview_formula(db, ctx, body)
 
 

@@ -135,6 +135,13 @@ PageTab = Literal["all", "unassigned", "low_posts", "declining", "disconnected"]
 PageSort = Literal["leads", "score", "posts", "name"]
 
 
+class OwnerShare(BaseModel):
+    """Số khách của Trang trong kỳ thuộc một người. `member` None: chưa có người phụ trách."""
+
+    member: NamedRef | None
+    leads: int
+
+
 class PageReportRow(BaseModel):
     """Số khách, chốt, trả lời, điểm: cùng kỳ 7 ngày (hôm nay và 6 ngày trước)."""
 
@@ -145,6 +152,8 @@ class PageReportRow(BaseModel):
     owner: NamedRef | None
     owner_total: Decimal | None
     owner_tier: Tier | None
+    # Chỉ có khi khách của Trang trong kỳ thuộc hơn một người (mục K).
+    owners_in_range: list[OwnerShare]
     leads_7d: int
     median_response_seconds: int | None
     won_7d: int

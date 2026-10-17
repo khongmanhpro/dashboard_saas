@@ -29,6 +29,32 @@ class Weights(BaseModel):
         return self
 
 
+class Thresholds(BaseModel):
+    """Ngưỡng tuyệt đối (decisions.md mục K). Tỉ lệ bằng phần trăm nguyên; doanh thu là mức 100 điểm
+    mỗi tuần. "0 điểm" phải nhỏ hơn "100 điểm" (riêng tốc độ: số phút 100 điểm nhỏ hơn)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    speed_full_minutes: int = Field(ge=0, le=600)
+    speed_zero_minutes: int = Field(ge=1, le=1440)
+    close_rate_zero: int = Field(ge=0, le=100)
+    close_rate_full: int = Field(ge=1, le=100)
+    revenue_full_vnd: int = Field(ge=1, le=100_000_000_000)
+    phone_rate_zero: int = Field(ge=0, le=100)
+    phone_rate_full: int = Field(ge=1, le=100)
+    on_time_zero: int = Field(ge=0, le=100)
+    on_time_full: int = Field(ge=1, le=100)
+
+    @model_validator(mode="after")
+    def _ordered(self) -> Thresholds:
+        if self.speed_full_minutes >= self.speed_zero_minutes:
+            raise ValueError("threshold_order")
+        for key in ("close_rate", "phone_rate", "on_time"):
+            if getattr(self, f"{key}_zero") >= getattr(self, f"{key}_full"):
+                raise ValueError("threshold_order")
+        return self
+
+
 class FormulaOut(BaseModel):
     version: int
     weights: Weights
@@ -39,6 +65,7 @@ class FormulaOut(BaseModel):
     tier_c: int
     min_leads: int
     posts_per_week_target: int
+    thresholds: Thresholds
     effective_from: dt.datetime
     created_by: str | None
     # Chăm Trang chưa có số liệu tới Bước 7: trọng số của nó được chia lại.
@@ -47,9 +74,12 @@ class FormulaOut(BaseModel):
 
 
 class FormulaUpdate(BaseModel):
+    """Lưu là thêm phiên bản công thức; dùng chung cho "Xem thử"."""
+
     model_config = ConfigDict(extra="forbid")
 
     weights: Weights
+    thresholds: Thresholds
 
 
 class PreviewRow(BaseModel):
@@ -75,12 +105,20 @@ class PeriodInfo(BaseModel):
     is_final: bool
 
 
+class PastPage(BaseModel):
+    """Lượt phụ trách Trang đã kết thúc trong kỳ (decisions.md mục K)."""
+
+    name: str
+    until: dt.datetime
+
+
 class LeaderboardRow(BaseModel):
     member: NamedRef
     # Vai trò, để gắn nhãn khi Chủ sở hữu / Quản lý / Trưởng nhóm phụ trách Trang (quyết định #14).
     role: MemberRole | None
     team: NamedRef | None
     pages: list[str]
+    past_pages: list[PastPage]
     is_self: bool
     rank: int | None
     tier: Tier | None
@@ -138,11 +176,11 @@ class ScorePart(BaseModel):
     score: Decimal | None
     points: Decimal | None
     raw: dict[str, int | Decimal | None]
-    # Cách quy đổi về 0–100: percentile (xếp trong workspace), linear (ngưỡng tốc độ), target (mục
-    # tiêu bài). Với percentile: đứng thứ `position` trong `peers` người có số liệu.
+    # Cách quy đổi về 0–100 (mục K): linear = ngưỡng tuyệt đối, `zero` được 0 điểm, `full` được
+    # 100 điểm (phần trăm, phút, hoặc ₫ đã quy theo kỳ); target = mục tiêu bài đăng.
     method: str
-    position: int | None
-    peers: int | None
+    zero: Decimal | None
+    full: Decimal | None
 
 
 class FunnelStep(BaseModel):

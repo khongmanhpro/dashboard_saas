@@ -16,9 +16,10 @@ from app.services.scoring import (
     LeadFacts,
     MemberMetrics,
     compute_scores,
+    linear_score,
     member_metrics,
     page_care_score,
-    percentile_scores,
+    revenue_target,
     speed_score,
     tier_of,
     weighted_total,
@@ -58,13 +59,33 @@ def test_speed_score_without_data() -> None:
     assert speed_score(None, DEFAULT) is None
 
 
-def test_percentile_with_ties_and_single_member() -> None:
-    a, b, c, d = (uuid.uuid4() for _ in range(4))
-    scores = percentile_scores({a: 10, b: 20, c: 20, d: 30})
-    assert scores == {a: Decimal(0), b: Decimal("50.00"), c: Decimal("50.00"), d: Decimal(100)}
-    assert percentile_scores({a: 5}) == {a: Decimal(100)}
-    assert percentile_scores({a: 5, b: None}) == {a: Decimal(100), b: None}
-    assert percentile_scores({a: 7, b: 7}) == {a: Decimal("50.00"), b: Decimal("50.00")}
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [(None, None), (0, "0"), (5, "0"), (17.5, "50.00"), (30, "100"), (45, "100")],
+)
+def test_linear_score_between_thresholds(value: float | None, expected: str | None) -> None:
+    got = linear_score(Decimal(str(value)) if value is not None else None, Decimal(5), Decimal(30))
+    assert got == (Decimal(expected) if expected is not None else None)
+
+
+def test_revenue_target_follows_days_elapsed() -> None:
+    assert revenue_target(DEFAULT, Decimal(7)) == Decimal(20_000_000)
+    assert revenue_target(DEFAULT, Decimal("3.5")) == Decimal(10_000_000)
+    assert revenue_target(DEFAULT, Decimal(30)).quantize(Decimal(1)) == Decimal(85_714_286)
+
+
+def test_score_does_not_depend_on_other_people() -> None:
+    """Ngưỡng tuyệt đối (mục K): thêm hay bớt người khác không đổi điểm của một người."""
+    params = FormulaParams(weights=DEFAULT.weights, min_leads=1)
+    me = MemberMetrics(
+        uuid.uuid4(), lead_count=10, close_rate=Decimal("0.2"), phone_rate=Decimal("0.5")
+    )
+    better = MemberMetrics(uuid.uuid4(), lead_count=10, close_rate=Decimal("0.9"))
+    alone = compute_scores([me], params)[0]
+    together = next(s for s in compute_scores([me, better], params) if s.metrics is me)
+    assert alone.total == together.total
+    assert alone.components["close_rate"] == Decimal("60.00")  # (20 − 5) / (30 − 5)
+    assert alone.components["phone_rate"] == Decimal("40.00")  # (50 − 30) / (80 − 30)
 
 
 @pytest.mark.parametrize(
@@ -176,7 +197,7 @@ def test_compute_scores_ranks_and_insufficient_data() -> None:
             a,
             lead_count=10,
             won_count=3,
-            revenue_vnd=900,
+            revenue_vnd=20_000_000,
             close_rate=Decimal("0.3"),
             phone_rate=Decimal("0.6"),
             on_time_rate=Decimal(1),
@@ -195,10 +216,13 @@ def test_compute_scores_ranks_and_insufficient_data() -> None:
         MemberMetrics(c, lead_count=1, won_count=1, revenue_vnd=10_000, close_rate=Decimal(1)),
     ]
     scores = {s.metrics.member_id: s for s in compute_scores(metrics, params)}
-    assert scores[a].total == Decimal("100.00") and scores[a].tier == Tier.A and scores[a].rank == 1
-    assert scores[b].total == Decimal("0.00") and scores[b].tier == Tier.D and scores[b].rank == 2
+    # a: chốt 30% → 100, tốc độ → 100, doanh thu đủ mức tuần → 100, SĐT 60% → 60, đúng hạn → 100;
+    # Chăm Trang chưa có số liệu nên chia lại trọng số: 8600 / 90.
+    assert scores[a].total == Decimal("95.56") and scores[a].tier == Tier.A and scores[a].rank == 1
+    # b: chốt 10% → 20 điểm, còn lại 0: 30 × 20 / 90.
+    assert scores[b].total == Decimal("6.67") and scores[b].tier == Tier.D and scores[b].rank == 2
     assert scores[a].components["page_care"] is None
-    # Dưới số khách tối thiểu: không điểm, không hạng, và không làm lệch phần trăm của người khác.
+    # Dưới số khách tối thiểu: không điểm, không hạng.
     assert scores[c].insufficient_data and scores[c].total is None and scores[c].rank is None
 
 

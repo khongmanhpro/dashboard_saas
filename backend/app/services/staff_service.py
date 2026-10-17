@@ -39,17 +39,20 @@ from app.schemas.leads import NamedRef
 from app.schemas.staff import (
     AssignedPage,
     FormulaOut,
+    FormulaUpdate,
     FunnelStep,
     HourBucket,
     Kpis,
     Leaderboard,
     LeaderboardRow,
+    PastPage,
     PeriodInfo,
     PreviewOut,
     PreviewRow,
     RecentLead,
     ScorePart,
     StaffDetail,
+    Thresholds,
     TrendPoint,
     UnassignedRow,
     Weights,
@@ -64,7 +67,13 @@ from app.services.score_service import (
     live_period,
     recompute_workspace,
 )
-from app.services.scoring import CRITERIA, FormulaParams, MemberScore
+from app.services.scoring import (
+    CRITERIA,
+    THRESHOLD_FIELDS,
+    FormulaParams,
+    MemberScore,
+    revenue_target,
+)
 
 if TYPE_CHECKING:
     from app.api.deps import AuthContext
@@ -104,6 +113,7 @@ def _formula_out(
         tier_c=f.tier_c,
         min_leads=f.min_leads,
         posts_per_week_target=f.posts_per_week_target,
+        thresholds=Thresholds(**{k: getattr(f, k) for k in THRESHOLD_FIELDS}),
         effective_from=f.effective_from,
         created_by=created_by,
         page_care_available=page_care_available,
@@ -136,9 +146,9 @@ async def _member_names(db: AsyncSession, ids: set[uuid.UUID]) -> dict[uuid.UUID
 
 
 async def preview_formula(
-    db: AsyncSession, ctx: AuthContext, weights: Weights, *, now: dt.datetime | None = None
+    db: AsyncSession, ctx: AuthContext, body: FormulaUpdate, *, now: dt.datetime | None = None
 ) -> PreviewOut:
-    """Điểm tuần hiện tại với công thức đang dùng và với trọng số mới (cùng hàm với job)."""
+    """Điểm tuần hiện tại với công thức đang dùng và với trọng số, ngưỡng mới (cùng hàm với job)."""
     now = now or dt.datetime.now(dt.UTC)
     formula = await current_formula(db, ctx.workspace_id)
     params = FormulaParams.from_model(formula)
@@ -149,7 +159,11 @@ async def preview_formula(
         for s in await compute_period(db, ctx.workspace_id, period, params, now)
     }
     proposed = await compute_period(
-        db, ctx.workspace_id, period, params.with_weights(weights.model_dump()), now
+        db,
+        ctx.workspace_id,
+        period,
+        params.with_changes(weights=body.weights.model_dump(), **body.thresholds.model_dump()),
+        now,
     )
     names = await _member_names(db, set(current))
     rows = [
@@ -169,7 +183,7 @@ async def preview_formula(
 
 
 async def update_formula(
-    db: AsyncSession, ctx: AuthContext, weights: Weights, *, now: dt.datetime | None = None
+    db: AsyncSession, ctx: AuthContext, body: FormulaUpdate, *, now: dt.datetime | None = None
 ) -> FormulaOut:
     """Thêm phiên bản công thức mới, áp dụng ngay cho kỳ chưa chốt rồi tính lại."""
     now = now or dt.datetime.now(dt.UTC)
@@ -177,8 +191,6 @@ async def update_formula(
     new = ScoreFormula(
         workspace_id=ctx.workspace_id,
         version=old.version + 1,
-        speed_full_minutes=old.speed_full_minutes,
-        speed_zero_minutes=old.speed_zero_minutes,
         tier_a=old.tier_a,
         tier_b=old.tier_b,
         tier_c=old.tier_c,
@@ -186,7 +198,8 @@ async def update_formula(
         posts_per_week_target=old.posts_per_week_target,
         effective_from=now,
         created_by_member_id=ctx.member_id,
-        **{f"w_{c}": v for c, v in weights.model_dump().items()},
+        **{f"w_{c}": v for c, v in body.weights.model_dump().items()},
+        **body.thresholds.model_dump(),
     )
     db.add(new)
     await db.flush()
@@ -197,8 +210,16 @@ async def update_formula(
         action="score_formula.updated",
         entity_type="score_formula",
         entity_id=new.id,
-        before={"version": old.version, **{c: getattr(old, f"w_{c}") for c in CRITERIA}},
-        after={"version": new.version, **weights.model_dump()},
+        before={
+            "version": old.version,
+            **{c: getattr(old, f"w_{c}") for c in CRITERIA},
+            **{k: getattr(old, k) for k in THRESHOLD_FIELDS},
+        },
+        after={
+            "version": new.version,
+            **body.weights.model_dump(),
+            **body.thresholds.model_dump(),
+        },
         ip=ctx.ip,
     )
     await recompute_workspace(db, ctx.workspace_id, now, finalize_previous_week=False)
@@ -249,6 +270,22 @@ async def _current_pages(db: AsyncSession) -> dict[uuid.UUID, list[AssignedPage]
     for member_id, page_id, name, since in rows.all():
         pages[member_id].append(AssignedPage(id=page_id, name=name, since=since))
     return pages
+
+
+async def _past_pages(
+    db: AsyncSession, start: dt.datetime, until: dt.datetime
+) -> dict[uuid.UUID, list[PastPage]]:
+    """Lượt phụ trách Trang kết thúc trong kỳ, theo người."""
+    rows = await db.execute(
+        select(PageAssignment.member_id, Page.name, PageAssignment.valid_to)
+        .join(Page, Page.id == PageAssignment.page_id)
+        .where(PageAssignment.valid_to >= start, PageAssignment.valid_to < until)
+        .order_by(PageAssignment.valid_to)
+    )
+    out: dict[uuid.UUID, list[PastPage]] = defaultdict(list)
+    for member_id, name, until_at in rows.all():
+        out[member_id].append(PastPage(name=name, until=until_at))
+    return out
 
 
 async def _previous_week_totals(
@@ -306,6 +343,7 @@ async def leaderboard(
     if period_type == PeriodType.WEEK:
         deltas = await _previous_week_totals(db, live.period.first_day)
     by_owner = metrics.group(live.facts, lambda f: f.owner_id)
+    past = await _past_pages(db, live.start, live.until)
 
     visible = await member_ids_for(db, ctx, scope)
     full_view = scope in (Scope.ALL, Scope.TEAM)
@@ -339,6 +377,7 @@ async def leaderboard(
                 if info_m.get("team_id")
                 else None,
                 pages=[p.name for p in pages.get(mid, [])],
+                past_pages=past.get(mid, []),
                 is_self=mid == ctx.member_id,
                 rank=score.rank,
                 tier=score.tier,
@@ -400,19 +439,12 @@ async def leaderboard(
 
 # ---------------------------------------------------------------- hồ sơ nhân viên
 
-# Tiêu chí xếp phần trăm → trường số liệu thô dùng để xếp.
-_PERCENTILE_FIELD = {
-    "close_rate": "close_rate",
-    "revenue": "revenue_vnd",
-    "phone_rate": "phone_rate",
-    "on_time": "on_time_rate",
-}
-
 
 def _parts(
     score: MemberScore | None,
-    scores: list[MemberScore],
     formula: ScoreFormula,
+    params: FormulaParams,
+    period_days: Decimal,
 ) -> list[ScorePart]:
     weights = {c: int(getattr(formula, f"w_{c}")) for c in CRITERIA}
     components: dict[str, Decimal | None] = (
@@ -431,7 +463,18 @@ def _parts(
         },
         "on_time": {"rate": m.on_time_rate if m else None},
     }
-    ranked = [s for s in scores if not s.insufficient_data]
+    # Ngưỡng hiển thị: phần trăm, phút, hoặc ₫ đã quy theo số ngày của kỳ (mục K).
+    bounds: dict[str, tuple[Decimal, Decimal] | None] = {
+        "close_rate": (Decimal(params.close_rate_zero), Decimal(params.close_rate_full)),
+        "response_speed": (
+            Decimal(params.speed_zero_minutes),
+            Decimal(params.speed_full_minutes),
+        ),
+        "revenue": (Decimal(0), revenue_target(params, period_days).quantize(Decimal(1))),
+        "phone_rate": (Decimal(params.phone_rate_zero), Decimal(params.phone_rate_full)),
+        "page_care": None,
+        "on_time": (Decimal(params.on_time_zero), Decimal(params.on_time_full)),
+    }
     parts = []
     for c in CRITERIA:
         component = components.get(c)
@@ -439,15 +482,7 @@ def _parts(
         if component is not None and used and weights[c] > 0:
             effective = (Decimal(weights[c]) * 100 / Decimal(used)).quantize(Decimal("0.01"))
             points = (component * Decimal(weights[c]) / Decimal(used)).quantize(Decimal("0.01"))
-        method = {"response_speed": "linear", "page_care": "target"}.get(c, "percentile")
-        position = peers = None
-        if method == "percentile" and m is not None and component is not None:
-            field = _PERCENTILE_FIELD[c]
-            values = [getattr(s.metrics, field) for s in ranked]
-            values = [v for v in values if v is not None]
-            mine = getattr(m, field)
-            peers = len(values)
-            position = 1 + sum(1 for v in values if v > mine)
+        bound = bounds[c]
         parts.append(
             ScorePart(
                 key=c,
@@ -456,9 +491,9 @@ def _parts(
                 score=component,
                 points=points,
                 raw=raw[c],
-                method=method,
-                position=position,
-                peers=peers,
+                method="target" if bound is None else "linear",
+                zero=bound[0] if bound else None,
+                full=bound[1] if bound else None,
             )
         )
     return parts
@@ -542,7 +577,7 @@ async def staff_detail(
         insufficient_data=score.insufficient_data if score else True,
         min_leads=formula.min_leads,
         lead_count=len(mine),
-        parts=_parts(score, live.scores, formula),
+        parts=_parts(score, formula, params, max(elapsed, Decimal(1))),
         funnel=funnel,
         hours=hours,
         trend=trend,
