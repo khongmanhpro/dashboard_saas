@@ -50,6 +50,12 @@ describe("dòng thời gian", () => {
       "Đã nhắc: Quá hạn cập nhật kết quả · Có SĐT nhưng chưa gọi.",
     );
     expect(reminderText({ type: "callback_missed" })).toBe("Đã nhắc: Quá giờ hẹn chưa cập nhật.");
-    expect(reminderText({ types: ["la_lam"] })).toBe("Đã nhắc: Nhắc việc từ quản lý.");
+  });
+
+  it("loại nhắc việc lạ hoặc thiếu loại không bị ghi là quản lý nhắc", () => {
+    expect(reminderText({ types: ["la_lam"] })).toBe("Đã nhắc: Việc cần làm khác.");
+    expect(reminderText({ types: [] })).toBe("Đã nhắc: Việc cần làm khác.");
+    expect(reminderText(null)).toBe("Đã nhắc: Việc cần làm khác.");
+    expect(reminderText({ types: ["manual", "la_lam"] })).toBe("Đã nhắc: Nhắc việc từ quản lý · Việc cần làm khác.");
   });
 });

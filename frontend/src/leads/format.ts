@@ -109,8 +109,8 @@ export function reminderText(data: Record<string, unknown> | null): string {
   const raw = data?.types ?? (data?.type ? [data.type] : []);
   const labels = (Array.isArray(raw) ? raw : [])
     .filter((x): x is string => typeof x === "string")
-    .map((x) => (x in t.lead.reminderTypes ? t.lead.reminderTypes[x as ReminderType] : t.lead.reminderTypes.manual));
-  return format(t.lead.events.reminder_sent, { what: [...new Set(labels)].join(" · ") || t.lead.reminderTypes.manual });
+    .map((x) => (x in t.lead.reminderTypes ? t.lead.reminderTypes[x as ReminderType] : t.lead.reminderOther));
+  return format(t.lead.events.reminder_sent, { what: [...new Set(labels)].join(" · ") || t.lead.reminderOther });
 }
 
 export interface Timer {

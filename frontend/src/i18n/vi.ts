@@ -576,6 +576,8 @@ export const vi = {
       callback_missed: "Quá giờ hẹn chưa cập nhật",
       manual: "Nhắc việc từ quản lý",
     },
+    /** Loại nhắc việc giao diện chưa biết: không đoán là quản lý nhắc. */
+    reminderOther: "Việc cần làm khác",
     result: {
       title: "Cập nhật kết quả",
       dueIn: "Còn {time} để cập nhật đúng hạn",
