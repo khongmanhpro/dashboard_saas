@@ -100,3 +100,20 @@ Sếp duyệt ngày 17/10/2026, cùng lúc duyệt kế hoạch Bước 1. Nếu
 | Biểu tượng | Chữ "P" trên màu chính, thay khi có tên và logo sản phẩm. | |
 | Bộ nhớ đệm | Service worker chỉ lưu khung giao diện, không lưu dữ liệu API. | SĐT khách không nằm lại trên điện thoại. |
 | Quyền mới | `notification.receive` cho cả 5 vai trò, phạm vi của mình. | Mọi route phải khai báo quyền. |
+
+## H. Bước 6 (sếp duyệt 17/10/2026)
+
+| Chủ đề | Quyết định | Lý do |
+|---|---|---|
+| Đọc từ Meta | Mã người dùng hệ thống "Dashboard": `debug_token` (hiệu lực, quyền, BM), `/me/accounts` (Trang + mã Trang), `/me/adaccounts`, `/{page}/subscribed_apps` với `messages, message_echoes, messaging_referrals, leadgen, feed`. Không tự tìm ra BM ID thì hỏi thêm ô "BM ID". | |
+| Bảo mật mã | Chỉ Chủ sở hữu dán mã. Mã BM và mã Trang mã hóa Fernet, giao diện chỉ hiện 4 ký tự cuối. Gửi mã qua header `Authorization` (không trong URL) kèm `appsecret_proof`. Bước "Kiểm tra" không lưu mã; "Lưu" gửi lại mã và kiểm tra lại. | Mã không lọt vào log khi có lỗi. |
+| Trang của workspace khác | Không theo dõi, ghi "Đang được workspace khác theo dõi", không nói là workspace nào. | Quyết định #22. |
+| Kiểm tra 6 giờ | Job `check_bms`: kiểm tra mã và quyền, đánh dấu "Thiếu quyền"/"Mất kết nối", Trang mới tự xuất hiện và tự đăng ký webhook, nhắc việc trong app cho Chủ sở hữu khi trạng thái xấu đi (Telegram ở Bước 7). Ghi `sync_runs` kèm `X-Business-Use-Case-Usage`; lùi lại khi dùng quá 80%; lỗi giới hạn thì thử lại có backoff. | |
+| Việc còn nợ | Lấy chi tiết form leadgen ở chế độ thật (và lấy bù các form "pending"); lấy tên thật của khách khi nhắn lần đầu, Meta không cho thì giữ "Khách ···1234". | Cần mã Trang. |
+| Gán Trang | Quản lý / Chủ sở hữu (`page.assign`): bảng Trang chưa có người phụ trách và Tất cả Trang. Mọi lần đổi ghi `audit_logs`; khách cũ giữ người cũ. | |
+| Cột Excel | Họ tên · Email · Nhóm · Vai trò (Nhân viên/Trưởng nhóm, trống = Nhân viên) · ID hoặc tên Trang. Trưởng nhóm làm trưởng của nhóm ghi trên dòng đó. Nhóm chưa có thì tạo. Email đã có thì cập nhật. | Cột "Trưởng nhóm" trong thiết kế không rõ nghĩa. |
+| Mật khẩu tài khoản mới | Mật khẩu tạm ngẫu nhiên, bắt đổi lần đầu. Quản lý tải `mat-khau-tam.xlsx` **một lần** ngay sau khi nhập; không lưu trên máy chủ. Có email (Bước 7) thì đổi sang link đặt mật khẩu (#20). | Chưa gửi được email. |
+| Kiểm tra dòng | Thiếu tên, email sai/trùng, Trang không có/trùng tên, Trang đã có người, 2 dòng cùng Trang, vai trò sai, dòng sửa Quản lý/Chủ sở hữu. Tối đa 500 dòng, 2 MB. Nhập dòng hợp lệ, bỏ dòng lỗi. `import_jobs` lưu nhật ký, không lưu file gốc. | |
+| Thư viện | `openpyxl` + `defusedxml` (đọc .xlsx an toàn), `httpx` chuyển sang thư viện chạy thật. File tải lên gửi dạng nhị phân thô, không cần `python-multipart`. | |
+| Thêm nhân viên | Nút "+ Thêm nhân viên" trên màn hình Nhân viên, dùng API tạo thành viên của Bước 1. | |
+| Giả lập | Mã giả `MOCK-BM-1` (BM demo), `MOCK-BM-2` (BM thứ hai, 3 Trang mới), `MOCK-BM-NOLEADS` (thiếu quyền form), `MOCK-INVALID`. Chỉ nhận khi `MOCK_MODE=true`. | |

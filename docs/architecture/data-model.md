@@ -74,7 +74,7 @@ Mở đợt mới: khóa dòng `contacts` (`SELECT … FOR UPDATE`) rồi mới 
 
 | Bảng | Cột chính |
 |---|---|
-| `import_jobs` | type, file_name, status, rows_total, rows_ok, rows_failed, report jsonb, created_by_member_id. Không lưu file gốc. |
+| `import_jobs` | type, file_name, status (`previewed`/`applied`), rows_total, rows_ok, rows_failed, report jsonb (các dòng đã chuẩn hóa và lỗi, không có mật khẩu), created_by_member_id, applied_at. Không lưu file gốc. |
 
 ## Quảng cáo, Trang, cảnh báo (Bước 7)
 
