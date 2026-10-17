@@ -1,0 +1,18 @@
+{
+  "_ghi_chu": "Form giả cho MOCK_MODE. Tên và số điện thoại đều giả; không đưa dữ liệu khách thật vào đây.",
+  "900000000000001": {
+    "name": "[Form tư vấn Phần Mềm Giá Rẻ]",
+    "field_data": [
+      {"name": "full_name", "values": ["[Khách 1042]"]},
+      {"name": "phone_number", "values": ["+84900000142"]},
+      {"name": "city", "values": ["[Tỉnh giả]"]}
+    ]
+  },
+  "900000000000002": {
+    "name": "[Form đăng ký FISS]",
+    "field_data": [
+      {"name": "full_name", "values": ["[Khách 2077]"]},
+      {"name": "phone_number", "values": ["0900000277"]}
+    ]
+  }
+}

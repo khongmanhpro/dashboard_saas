@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     meta_app_secret: SecretStr = SecretStr("")
     meta_graph_version: str = ""
     meta_webhook_verify_token: SecretStr = SecretStr("")
+    # app_id của tin trả lời tự động (chào mừng, trả lời nhanh), cách nhau dấu phẩy. Echo có
+    # app_id trong danh sách này không tính là Trang đã trả lời.
+    meta_automated_app_ids: str = ""
 
     # Một hoặc nhiều khóa Fernet, cách nhau dấu phẩy. Khóa đầu dùng để mã hóa.
     token_encryption_key: SecretStr
@@ -129,6 +132,10 @@ class Settings(BaseSettings):
     @property
     def cookie_secure(self) -> bool:
         return self.app_base_url.startswith("https://")
+
+    @property
+    def automated_app_ids(self) -> frozenset[str]:
+        return frozenset(x.strip() for x in self.meta_automated_app_ids.split(",") if x.strip())
 
     @property
     def fernet_keys(self) -> list[str]:

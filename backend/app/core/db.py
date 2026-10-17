@@ -61,7 +61,10 @@ async def set_tenant(session: AsyncSession, ctx: TenantContext) -> None:
 
 
 def _make_engine(url: str) -> AsyncEngine:
-    return create_async_engine(url, pool_pre_ping=True, pool_size=10, max_overflow=10)
+    # hide_parameters: lỗi SQL không kèm giá trị tham số (nội dung tin nhắn, SĐT) khi ghi log.
+    return create_async_engine(
+        url, pool_pre_ping=True, pool_size=10, max_overflow=10, hide_parameters=True
+    )
 
 
 @lru_cache
@@ -77,6 +80,11 @@ def get_admin_engine() -> AsyncEngine:
 @lru_cache
 def _app_sessionmaker() -> async_sessionmaker[AsyncSession]:
     return async_sessionmaker(get_app_engine(), expire_on_commit=False)
+
+
+def app_sessionmaker() -> async_sessionmaker[AsyncSession]:
+    """Session của tài khoản ứng dụng (bị RLS). Worker đặt tenant bằng `set_tenant`."""
+    return _app_sessionmaker()
 
 
 @lru_cache

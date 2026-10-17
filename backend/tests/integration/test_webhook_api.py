@@ -75,7 +75,8 @@ async def test_valid_post_is_enqueued(client: httpx.AsyncClient) -> None:
     jobs = await (await get_queue()).queued_jobs()
     assert len(jobs) == 1
     assert jobs[0].function == PROCESS_JOB
-    assert jobs[0].args == (PAYLOAD,)
+    assert jobs[0].args[0].data == PAYLOAD
+    assert "messaging" not in repr(jobs[0].args[0])
 
 
 async def test_same_body_twice_is_enqueued_once(client: httpx.AsyncClient) -> None:

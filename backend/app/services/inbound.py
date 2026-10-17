@@ -1,0 +1,409 @@
+"""Nghiệp vụ khi nhận sự kiện từ Trang: khách, đợt khách, tin nhắn, thời gian trả lời, leadgen.
+
+Mọi hàm chạy trong một transaction đã đặt `app.workspace_id` (worker lo việc này) và luôn
+khóa dòng `contacts` trước khi quyết định đợt, nên các sự kiện của cùng một khách xử lý tuần tự.
+
+Thời gian trả lời được **tính lại từ dữ liệu trong DB** mỗi khi có tin mới của đợt: tin đầu
+tiên là tin khách sớm nhất, trả lời là tin Trang không tự động sớm nhất sau mốc đó. Nhờ vậy
+Meta gửi lặp hoặc sai thứ tự thì kết quả vẫn đúng.
+"""
+
+from __future__ import annotations
+
+import datetime as dt
+import logging
+import uuid
+from dataclasses import dataclass
+from typing import Any
+from zoneinfo import ZoneInfo
+
+from sqlalchemy import ColumnElement, or_, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import get_settings
+from app.core.ids import uuid7
+from app.meta.events import LeadgenEvent, MessageEvent, ReferralEvent
+from app.meta.leadgen import mock_field_data
+from app.models import (
+    Contact,
+    Lead,
+    LeadEvent,
+    LeadEventType,
+    LeadgenFetchStatus,
+    LeadgenSubmission,
+    LeadSource,
+    LeadStatus,
+    Message,
+    MessageDirection,
+    Page,
+    WebhookEvent,
+    WebhookEventStatus,
+    Workspace,
+    WorkspaceSettings,
+)
+from app.services.assignment import owner_at
+from app.services.phone import normalize_vn_phone
+from app.services.response_time import business_seconds
+
+log = logging.getLogger(__name__)
+
+# Referral đến trước tin nhắn (khách bấm quảng cáo rồi mới gõ): giữ chờ tối đa chừng này.
+PENDING_REFERRAL_WINDOW = dt.timedelta(hours=24)
+
+
+class Outcome:
+    PROCESSED = "processed"
+    DUPLICATE = "duplicate"
+    REFERRAL_PENDING = "referral_pending"
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceRules:
+    tz: ZoneInfo
+    work_start: dt.time
+    work_end: dt.time
+    result_deadline: dt.timedelta
+    session_gap: dt.timedelta
+    automated_app_ids: frozenset[str]
+
+    def business_seconds(self, start: dt.datetime, end: dt.datetime) -> int:
+        return business_seconds(
+            start, end, tz=self.tz, work_start=self.work_start, work_end=self.work_end
+        )
+
+
+async def load_rules(db: AsyncSession, workspace_id: uuid.UUID) -> WorkspaceRules:
+    ws = await db.get(Workspace, workspace_id)
+    settings = await db.get(WorkspaceSettings, workspace_id)
+    if ws is None or settings is None:
+        raise LookupError("workspace chưa có cài đặt")
+    return WorkspaceRules(
+        tz=ZoneInfo(ws.timezone),
+        work_start=settings.work_start,
+        work_end=settings.work_end,
+        result_deadline=dt.timedelta(hours=settings.result_deadline_hours),
+        session_gap=dt.timedelta(days=settings.lead_session_gap_days),
+        automated_app_ids=get_settings().automated_app_ids,
+    )
+
+
+# ---------------------------------------------------------------- khách và đợt
+
+
+async def lock_contact(db: AsyncSession, page: Page, psid: str, seen_at: dt.datetime) -> Contact:
+    """Tạo khách nếu chưa có, rồi khóa dòng cho tới hết transaction."""
+    await db.execute(
+        pg_insert(Contact)
+        .values(
+            id=uuid7(),
+            workspace_id=page.workspace_id,
+            page_id=page.id,
+            psid=psid,
+            first_seen_at=seen_at,
+        )
+        .on_conflict_do_nothing(index_elements=["page_id", "psid"])
+    )
+    contact = (
+        await db.execute(
+            select(Contact)
+            .where(Contact.page_id == page.id, Contact.psid == psid)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one()
+    if seen_at < contact.first_seen_at:
+        contact.first_seen_at = seen_at
+    return contact
+
+
+async def _latest_lead(
+    db: AsyncSession, contact_id: uuid.UUID, *, started_by: dt.datetime | None = None
+) -> Lead | None:
+    query = select(Lead).where(Lead.contact_id == contact_id)
+    if started_by is not None:
+        query = query.where(Lead.first_inbound_at <= started_by)
+    return await db.scalar(query.order_by(Lead.episode_no.desc()).limit(1))
+
+
+def _add_event(
+    db: AsyncSession, lead: Lead, type_: LeadEventType, at: dt.datetime, data: dict[str, Any]
+) -> None:
+    db.add(
+        LeadEvent(
+            workspace_id=lead.workspace_id, lead_id=lead.id, type=type_, occurred_at=at, data=data
+        )
+    )
+
+
+def _apply_referral(lead: Lead, referral: dict[str, Any] | None) -> None:
+    if not referral or lead.fb_ad_id is not None:
+        return
+    lead.referral = referral
+    ad_id = referral.get("ad_id")
+    lead.fb_ad_id = str(ad_id) if ad_id else None
+
+
+async def _claim_pending_referral(
+    db: AsyncSession, page: Page, psid: str, before: dt.datetime
+) -> dict[str, Any] | None:
+    """Referral của khách này đến ngay trước tin nhắn mở đợt (chưa gắn được vào đợt nào)."""
+    row = await db.scalar(
+        select(WebhookEvent)
+        .where(
+            WebhookEvent.fb_page_id == page.fb_page_id,
+            WebhookEvent.kind == "referral",
+            WebhookEvent.status == WebhookEventStatus.IGNORED,
+            WebhookEvent.dedupe_key.startswith(f"ref:{psid}:", autoescape=True),
+        )
+        .order_by(WebhookEvent.id.desc())
+        .limit(1)
+        .with_for_update()
+    )
+    if row is None:
+        return None
+    occurred_ms = int(row.dedupe_key.rsplit(":", 1)[1])
+    occurred = dt.datetime.fromtimestamp(occurred_ms / 1000, tz=dt.UTC)
+    if not (before - PENDING_REFERRAL_WINDOW <= occurred <= before):
+        return None
+    row.status = WebhookEventStatus.PROCESSED
+    referral = row.payload.get("referral")
+    return referral if isinstance(referral, dict) else None
+
+
+async def _lead_for_inbound(
+    db: AsyncSession, page: Page, contact: Contact, ev: MessageEvent, rules: WorkspaceRules
+) -> Lead:
+    latest = await _latest_lead(db, contact.id)
+    if latest is not None:
+        last = latest.last_inbound_at or latest.first_inbound_at
+        if ev.sent_at - last <= rules.session_gap:
+            return latest
+
+    owner = await owner_at(db, page.id, ev.sent_at)
+    lead = Lead(
+        id=uuid7(),
+        workspace_id=page.workspace_id,
+        page_id=page.id,
+        contact_id=contact.id,
+        episode_no=(latest.episode_no + 1) if latest else 1,
+        owner_member_id=owner,
+        source=LeadSource.MESSAGE,
+        first_inbound_at=ev.sent_at,
+        first_inbound_mid=ev.mid,
+        last_inbound_at=ev.sent_at,
+        status=LeadStatus.NEW,
+        result_due_at=ev.sent_at + rules.result_deadline,
+    )
+    _apply_referral(
+        lead, ev.referral or await _claim_pending_referral(db, page, ev.psid, ev.sent_at)
+    )
+    db.add(lead)
+    await db.flush()
+
+    # Echo đến trước tin mở đợt (Meta gửi sai thứ tự) thì chuyển sang đợt mới.
+    unattached: ColumnElement[bool] = Message.lead_id.is_(None)
+    if latest is not None:
+        unattached = or_(unattached, Message.lead_id == latest.id)
+    await db.execute(
+        update(Message)
+        .where(
+            Message.contact_id == contact.id,
+            Message.direction == MessageDirection.OUT,
+            Message.sent_at >= ev.sent_at,
+            unattached,
+        )
+        .values(lead_id=lead.id)
+    )
+    _add_event(
+        db,
+        lead,
+        LeadEventType.CREATED,
+        ev.sent_at,
+        {
+            "source": LeadSource.MESSAGE.value,
+            "episode_no": lead.episode_no,
+            "owner_member_id": str(owner) if owner else None,
+        },
+    )
+    return lead
+
+
+async def refresh_response(db: AsyncSession, lead: Lead, rules: WorkspaceRules) -> None:
+    """Tính lại tin đầu tiên, trả lời đầu tiên và số giây trả lời trong giờ làm việc."""
+    if lead.source != LeadSource.MESSAGE:
+        return
+    first = (
+        await db.execute(
+            select(Message.sent_at, Message.mid)
+            .where(Message.lead_id == lead.id, Message.direction == MessageDirection.IN)
+            .order_by(Message.sent_at, Message.id)
+            .limit(1)
+        )
+    ).first()
+    if first is not None and first.sent_at < lead.first_inbound_at:
+        lead.first_inbound_at = first.sent_at
+        lead.first_inbound_mid = first.mid
+        lead.result_due_at = first.sent_at + rules.result_deadline
+
+    reply = (
+        await db.execute(
+            select(Message.sent_at, Message.mid)
+            .where(
+                Message.lead_id == lead.id,
+                Message.direction == MessageDirection.OUT,
+                Message.is_automated.is_(False),
+                Message.sent_at >= lead.first_inbound_at,
+            )
+            .order_by(Message.sent_at, Message.id)
+            .limit(1)
+        )
+    ).first()
+    if reply is None:
+        return
+    seconds = rules.business_seconds(lead.first_inbound_at, reply.sent_at)
+    if lead.first_reply_mid == reply.mid and lead.response_business_seconds == seconds:
+        return
+    first_time = lead.first_reply_at is None
+    lead.first_reply_at = reply.sent_at
+    lead.first_reply_mid = reply.mid
+    lead.response_business_seconds = seconds
+    if not first_time:
+        return
+    _add_event(
+        db, lead, LeadEventType.REPLIED, reply.sent_at, {"response_business_seconds": seconds}
+    )
+    if lead.status == LeadStatus.NEW:
+        lead.status = LeadStatus.CONTACTED
+        lead.status_changed_at = reply.sent_at
+        _add_event(
+            db,
+            lead,
+            LeadEventType.STATUS_CHANGED,
+            reply.sent_at,
+            {"from": LeadStatus.NEW.value, "to": LeadStatus.CONTACTED.value, "auto": True},
+        )
+
+
+# ---------------------------------------------------------------- từng loại sự kiện
+
+
+async def handle_message(
+    db: AsyncSession, page: Page, rules: WorkspaceRules, ev: MessageEvent
+) -> str:
+    contact = await lock_contact(db, page, ev.psid, ev.sent_at)
+    if await db.scalar(select(Message.id).where(Message.mid == ev.mid)) is not None:
+        return Outcome.DUPLICATE
+
+    lead: Lead | None
+    if ev.kind == "in":
+        lead = await _lead_for_inbound(db, page, contact, ev, rules)
+        _apply_referral(lead, ev.referral)
+        if contact.last_inbound_at is None or ev.sent_at > contact.last_inbound_at:
+            contact.last_inbound_at = ev.sent_at
+        if lead.last_inbound_at is None or ev.sent_at > lead.last_inbound_at:
+            lead.last_inbound_at = ev.sent_at
+        automated = False
+    else:
+        lead = await _latest_lead(db, contact.id, started_by=ev.sent_at)
+        automated = ev.app_id is not None and ev.app_id in rules.automated_app_ids
+        # Để sếp biết app_id nào là tin tự động mà điền META_AUTOMATED_APP_IDS.
+        log.info("echo", extra={"ctx": {"app_id": ev.app_id or "none", "automated": automated}})
+
+    db.add(
+        Message(
+            workspace_id=page.workspace_id,
+            page_id=page.id,
+            contact_id=contact.id,
+            lead_id=lead.id if lead else None,
+            mid=ev.mid,
+            direction=MessageDirection.IN if ev.kind == "in" else MessageDirection.OUT,
+            is_echo=ev.kind == "echo",
+            app_id=ev.app_id,
+            is_automated=automated,
+            sent_at=ev.sent_at,
+            text=ev.text,
+            has_attachments=ev.has_attachments,
+            meta={"metadata": ev.metadata} if ev.metadata else None,
+        )
+    )
+    await db.flush()
+    if lead is not None:
+        await refresh_response(db, lead, rules)
+    return Outcome.PROCESSED
+
+
+async def handle_referral(
+    db: AsyncSession, page: Page, rules: WorkspaceRules, ev: ReferralEvent
+) -> str:
+    contact = await lock_contact(db, page, ev.psid, ev.occurred_at)
+    lead = await _latest_lead(db, contact.id, started_by=ev.occurred_at)
+    if lead is not None:
+        last = lead.last_inbound_at or lead.first_inbound_at
+        if ev.occurred_at - last <= rules.session_gap:
+            _apply_referral(lead, ev.referral)
+            return Outcome.PROCESSED
+    # Chưa có đợt phù hợp: tin nhắn tới sau sẽ nhận referral này (_claim_pending_referral).
+    return Outcome.REFERRAL_PENDING
+
+
+async def handle_leadgen(
+    db: AsyncSession, page: Page, rules: WorkspaceRules, ev: LeadgenEvent
+) -> str:
+    exists = await db.scalar(
+        select(LeadgenSubmission.id).where(LeadgenSubmission.leadgen_id == ev.leadgen_id)
+    )
+    if exists is not None:
+        return Outcome.DUPLICATE
+
+    field_data: dict[str, str] | None = None
+    if get_settings().mock_mode:
+        field_data = mock_field_data(ev.form_id)
+    # Chế độ thật: cần mã của Trang để gọi Graph API (Bước 6), tạm đánh dấu pending.
+    fetch_status = (
+        LeadgenFetchStatus.FETCHED if field_data is not None else LeadgenFetchStatus.PENDING
+    )
+    field_data = field_data or {}
+    phone = normalize_vn_phone(field_data.get("phone_number", ""))
+
+    owner = await owner_at(db, page.id, ev.created_time)
+    lead = Lead(
+        id=uuid7(),
+        workspace_id=page.workspace_id,
+        page_id=page.id,
+        contact_id=None,
+        episode_no=1,
+        owner_member_id=owner,
+        source=LeadSource.LEADGEN,
+        fb_ad_id=ev.fb_ad_id,
+        first_inbound_at=ev.created_time,
+        status=LeadStatus.NEW,
+        result_due_at=ev.created_time + rules.result_deadline,
+        phone=phone,
+        phone_source="leadgen" if phone else None,
+        phone_captured_at=ev.created_time if phone else None,
+    )
+    db.add(lead)
+    await db.flush()
+    db.add(
+        LeadgenSubmission(
+            workspace_id=page.workspace_id,
+            leadgen_id=ev.leadgen_id,
+            page_id=page.id,
+            form_id=ev.form_id,
+            fb_ad_id=ev.fb_ad_id,
+            created_time=ev.created_time,
+            field_data=field_data,
+            fetch_status=fetch_status,
+            lead_id=lead.id,
+        )
+    )
+    _add_event(
+        db,
+        lead,
+        LeadEventType.CREATED,
+        ev.created_time,
+        {"source": LeadSource.LEADGEN.value, "owner_member_id": str(owner) if owner else None},
+    )
+    await db.flush()
+    return Outcome.PROCESSED

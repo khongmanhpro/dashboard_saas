@@ -19,6 +19,7 @@ from redis.exceptions import RedisError
 from app.api.deps import api_error
 from app.core.config import get_settings
 from app.core.queue import get_queue
+from app.meta.events import WebhookPayload
 from app.meta.signature import SIGNATURE_HEADER, verify_signature
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -78,12 +79,14 @@ async def receive_event(request: Request) -> str:
     job_id = "wh:" + hashlib.sha256(body).hexdigest()
     try:
         queue = await get_queue()
-        await queue.enqueue_job(PROCESS_JOB, payload, _job_id=job_id)
+        await queue.enqueue_job(PROCESS_JOB, WebhookPayload(payload), _job_id=job_id)
     except (RedisError, OSError):
         log.exception("không đẩy được webhook vào hàng đợi")
         raise api_error(503, "queue_unavailable") from None
     log.info(
         "nhận webhook",
-        extra={"object": payload.get("object"), "entries": len(payload.get("entry") or [])},
+        extra={
+            "ctx": {"object": payload.get("object"), "entries": len(payload.get("entry") or [])}
+        },
     )
     return "EVENT_RECEIVED"
