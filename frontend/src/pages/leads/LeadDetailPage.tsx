@@ -11,6 +11,7 @@ import {
   type LeadStatus,
   type TimelineItem,
 } from "../../api/leads";
+import { useRemind } from "../../api/mobile";
 import type { Me } from "../../api/types";
 import { usePublicConfig } from "../../auth/useAuth";
 import { errorMessage, format, t } from "../../i18n";
@@ -31,7 +32,7 @@ import {
 
 // Đường dẫn hộp thư của Trang trong Business Suite. Đường dẫn tới đúng hội thoại kiểm tra lại
 // khi ứng dụng Meta đã Live (quyết định Bước 3).
-function inboxUrl(fbPageId: string): string {
+export function inboxUrl(fbPageId: string): string {
   return `https://business.facebook.com/latest/inbox/all?asset_id=${encodeURIComponent(fbPageId)}`;
 }
 
@@ -134,7 +135,7 @@ function describe(item: TimelineItem, lead: LeadDetail, timeZone: string): Row {
   }
 }
 
-function Timeline({ lead, timeZone }: { lead: LeadDetail; timeZone: string }) {
+export function Timeline({ lead, timeZone }: { lead: LeadDetail; timeZone: string }) {
   return (
     <section className="card" aria-labelledby="timeline-title">
       <div className="section-head">
@@ -186,7 +187,7 @@ function initialForm(lead: LeadDetail, timeZone: string): ResultForm {
   return EMPTY_RESULT_FORM;
 }
 
-function ResultPanel({ lead, timeZone }: { lead: LeadDetail; timeZone: string }) {
+export function ResultPanel({ lead, timeZone }: { lead: LeadDetail; timeZone: string }) {
   const [form, setForm] = useState<ResultForm>(() => initialForm(lead, timeZone));
   const [saved, setSaved] = useState(false);
   const setCalled = useSetCalled(lead.id);
@@ -341,7 +342,28 @@ function ResultPanel({ lead, timeZone }: { lead: LeadDetail; timeZone: string })
   );
 }
 
-function SourcePanel({ lead }: { lead: LeadDetail }) {
+export function RemindPanel({ lead }: { lead: LeadDetail }) {
+  const remind = useRemind(lead.id);
+  return (
+    <section className="card result-form" aria-label={t.lead.result.remind}>
+      <button type="button" className="btn btn--block" disabled={remind.isPending} onClick={() => remind.mutate()}>
+        {remind.isPending ? t.lead.result.reminding : t.lead.result.remind}
+      </button>
+      {remind.isSuccess ? (
+        <div className="alert alert--ok" role="status">
+          {t.lead.result.reminded}
+        </div>
+      ) : null}
+      {remind.error instanceof ApiError ? (
+        <div className="alert alert--error" role="alert">
+          {errorMessage(remind.error.code)}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+export function SourcePanel({ lead }: { lead: LeadDetail }) {
   let firstReply: string;
   if (lead.source === "leadgen") firstReply = t.lead.source.notMeasured;
   else if (lead.response_business_seconds === null) firstReply = t.lead.source.notReplied;
@@ -453,6 +475,7 @@ export function LeadDetailPage() {
           ) : (
             <section className="card note">{t.lead.result.readOnly}</section>
           )}
+          {data.permissions.can_remind ? <RemindPanel lead={data} /> : null}
           <SourcePanel lead={data} />
         </aside>
       </div>

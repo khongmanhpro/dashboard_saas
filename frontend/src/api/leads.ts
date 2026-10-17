@@ -76,7 +76,7 @@ export interface LeadDetail extends LeadCard {
   phones: string[];
   timeline: TimelineItem[];
   timeline_truncated: boolean;
-  permissions: { can_update: boolean; can_edit_result: boolean; edit_until: string | null };
+  permissions: { can_update: boolean; can_edit_result: boolean; can_remind: boolean; edit_until: string | null };
 }
 
 export interface LeadFilters {

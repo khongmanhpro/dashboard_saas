@@ -1,0 +1,357 @@
+/* Ứng dụng điện thoại cho nhân viên (docs/design/MobileStaff.dc.html). Ô bấm tối thiểu 44–48px. */
+
+.mobile {
+  background: var(--color-bg);
+}
+.m-content {
+  flex: 1;
+  padding-bottom: calc(72px + env(safe-area-inset-bottom));
+}
+.m-pad {
+  padding: 16px;
+}
+.m-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.m-title {
+  margin: 0;
+  font-size: 20px;
+}
+
+/* ---------- Đầu trang ---------- */
+.m-hero {
+  background: var(--color-primary);
+  color: #fff;
+  padding: calc(16px + env(safe-area-inset-top)) 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.m-hero__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.m-hero__page {
+  font-size: 13px;
+  opacity: 0.85;
+}
+.m-hero__hello {
+  font-size: 20px;
+  font-weight: 700;
+}
+.m-hero__score {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.m-hero__points {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 64px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.16);
+}
+.m-hero__points b {
+  font-size: 26px;
+  line-height: 1.1;
+}
+.m-hero__points span {
+  font-size: 12px;
+}
+.m-hero__rank {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.m-hero .delta--up { color: #b9f0cf; }
+.m-hero .delta--down { color: #ffd2cc; }
+.m-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.m-hero__stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.m-hero__stats span {
+  font-size: 11px;
+  opacity: 0.85;
+}
+.m-hero__stats b {
+  font-size: 16px;
+}
+
+/* ---------- Tab ---------- */
+.m-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.m-tabs button {
+  min-height: var(--control-height-touch);
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.m-tabs button[aria-selected="true"] {
+  color: var(--color-primary);
+  font-weight: 600;
+  border-bottom-color: var(--color-primary);
+}
+.m-tabs span {
+  font-size: 12px;
+  background: var(--color-neutral-bg);
+  border-radius: var(--radius-pill);
+  padding: 0 7px;
+}
+
+/* ---------- Thẻ khách ---------- */
+.m-list {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.m-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.m-card__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.m-card__name {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--color-text);
+}
+.m-card__snippet {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.m-card__meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.m-card__reply {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: 10px;
+  background: var(--color-primary-soft);
+  font-weight: 600;
+}
+.m-card__actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  gap: 8px;
+}
+.m-action {
+  min-height: var(--control-height-touch);
+  border-radius: 10px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-nav);
+  font-weight: 600;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.m-action--call {
+  border: 0;
+  background: var(--color-primary);
+  color: #fff;
+}
+.m-action--call:hover {
+  color: #fff;
+}
+.m-action--done {
+  background: var(--color-primary-soft);
+  color: var(--color-info-fg);
+  border-color: transparent;
+}
+.m-card__done {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--color-neutral-bg);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  font-size: 14px;
+}
+.m-card__done--won {
+  background: var(--color-good-bg);
+  color: var(--color-good-fg);
+}
+.m-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+/* ---------- Bảng chọn ---------- */
+.m-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.m-sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(16, 24, 40, 0.45);
+}
+.m-sheet__panel {
+  position: relative;
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto;
+  background: var(--color-surface);
+  border-radius: 16px 16px 0 0;
+  padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.m-sheet__panel h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.m-sheet__panel .note {
+  margin: -8px 0 0;
+}
+.m-sheet__grip {
+  align-self: center;
+  width: 40px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-border-strong);
+}
+.m-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.m-options button {
+  min-height: var(--control-height-touch);
+  border-radius: 10px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  font-size: 14px;
+  cursor: pointer;
+}
+.m-options button[aria-pressed="true"] {
+  border: 2px solid var(--color-primary);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+.m-options input,
+.m-options textarea {
+  grid-column: 1 / -1;
+  min-height: var(--control-height-touch);
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  font: inherit;
+}
+
+/* ---------- Nhắc việc ---------- */
+.m-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font: inherit;
+  cursor: pointer;
+}
+.m-notice span {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+.m-notice time {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.m-notice--unread {
+  border-left: 4px solid var(--color-accent);
+}
+
+/* ---------- Thanh điều hướng dưới ---------- */
+.m-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  max-width: 480px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.m-nav a {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+.m-nav a[aria-current="page"] {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+.m-nav .nav-count {
+  margin-left: 0;
+}

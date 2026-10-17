@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, ApiError } from "../api/client";
 import type { LoginResponse, Me, PublicConfig } from "../api/types";
+import { disablePush } from "../mobile/push";
 
 export const ME_KEY = ["me"] as const;
 
@@ -45,7 +46,11 @@ export function useLogin() {
 export function useLogout() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () => api<void>("/api/auth/logout", { method: "POST" }),
+    mutationFn: async () => {
+      // Máy này không nhận nhắc việc của người vừa đăng xuất nữa.
+      await disablePush().catch(() => undefined);
+      await api<void>("/api/auth/logout", { method: "POST" });
+    },
     onSettled: () => {
       client.clear();
       client.setQueryData(ME_KEY, null);

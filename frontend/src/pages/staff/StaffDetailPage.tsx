@@ -32,7 +32,7 @@ function rawText(part: ScorePart): string {
   }
 }
 
-function Parts({ data, canFormula }: { data: StaffDetail; canFormula: boolean }) {
+export function Parts({ data, canFormula }: { data: StaffDetail; canFormula: boolean }) {
   return (
     <section className="card" aria-labelledby="parts-title">
       <div className="section-head section-head--row">
@@ -72,7 +72,7 @@ function Parts({ data, canFormula }: { data: StaffDetail; canFormula: boolean })
   );
 }
 
-function Funnel({ data }: { data: StaffDetail }) {
+export function Funnel({ data }: { data: StaffDetail }) {
   const total = data.funnel[0]?.value ?? 0;
   return (
     <section className="card" aria-labelledby="funnel-title">

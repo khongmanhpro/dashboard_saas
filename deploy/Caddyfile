@@ -18,6 +18,10 @@
 		reverse_proxy backend:8000
 	}
 
+	# Service worker và manifest phải luôn lấy bản mới, nếu không máy người dùng giữ bản cũ.
+	@pwa path /sw.js /manifest.webmanifest
+	header @pwa Cache-Control "no-cache"
+
 	handle {
 		root * /srv
 		try_files {path} /index.html
