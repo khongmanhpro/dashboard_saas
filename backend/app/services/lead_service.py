@@ -517,10 +517,11 @@ async def _timeline(
             )
         )
     # Mục M: nhắc việc gửi cùng lúc, cùng người gửi gộp thành một dòng; `types` giữ thứ tự gửi.
-    reminder_types: dict[tuple[dt.datetime, str | None], list[str]] = {}
+    # Người gửi so theo member, không theo tên hiển thị (hai người có thể trùng tên).
+    reminder_types: dict[tuple[dt.datetime, uuid.UUID | None], list[str]] = {}
     for ev, actor in events:
         if ev.type == LeadEventType.REMINDER_SENT:
-            key = (ev.occurred_at, actor)
+            key = (ev.occurred_at, ev.actor_member_id)
             types = reminder_types.get(key)
             if types is None:
                 types = reminder_types[key] = []

@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.meta.events import WebhookPayload
 from app.mock import payloads as p
-from app.models import Lead, LeadEvent, LeadEventType, LeadStatus
+from app.models import Lead, LeadEvent, LeadEventType, LeadStatus, MemberRole, Workspace
 from app.workers.webhook import process_webhook
 from tests.integration import factories as f
 from tests.integration.leads_fixtures import NOW, Org, lead_id_of, send
@@ -123,6 +123,40 @@ async def test_reminders_sent_together_are_one_timeline_row(
     detail = (await (await as_role("owner")).get(f"/api/leads/{lead_id}")).json()
     rows = [i for i in detail["timeline"] if i["type"] == "reminder_sent"]
     assert [r["data"]["types"] for r in rows] == [["overdue", "phone_not_called"], ["wait_30"]]
+
+
+async def test_reminders_from_same_named_people_stay_separate(
+    as_role: Any, admin_db: AsyncSession
+) -> None:
+    """Mục M: gộp theo người gửi (member), không theo tên hiển thị trùng nhau."""
+    lead_id = await lead_id_of(admin_db, "p1-b")
+    ws = await admin_db.get(
+        Workspace, await admin_db.scalar(select(Lead.workspace_id).where(Lead.id == lead_id))
+    )
+    assert ws is not None
+    at = NOW - dt.timedelta(hours=1)
+    senders = []
+    for _ in range(2):
+        user = await f.create_user(admin_db, full_name="[Quản lý trùng tên]")
+        senders.append(await f.create_member(admin_db, ws, user, MemberRole.MANAGER))
+    for sender in senders:
+        admin_db.add(
+            LeadEvent(
+                workspace_id=ws.id,
+                lead_id=lead_id,
+                type=LeadEventType.REMINDER_SENT,
+                actor_member_id=sender.id,
+                occurred_at=at,
+                data={"type": "manual"},
+            )
+        )
+    await admin_db.commit()
+    detail = (await (await as_role("owner")).get(f"/api/leads/{lead_id}")).json()
+    rows = [i for i in detail["timeline"] if i["type"] == "reminder_sent"]
+    assert [(r["actor"], r["data"]["types"]) for r in rows] == [
+        ("[Quản lý trùng tên]", ["manual"]),
+        ("[Quản lý trùng tên]", ["manual"]),
+    ]
 
 
 async def test_chip_and_status_filters(as_role: Any) -> None:
