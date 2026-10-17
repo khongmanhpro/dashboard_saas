@@ -1,0 +1,148 @@
+{
+  "_ghi_chu": [
+    "Kịch bản cho `python -m app.mock.simulate`. Giờ theo múi giờ workspace (Asia/Ho_Chi_Minh).",
+    "at: 'N HH:MM[:SS]' = ngày thứ N tính từ ngày gốc (hôm nay - 40 ngày); 'now-Xs' = X giây trước lúc chạy.",
+    "send: in (khách nhắn), echo (Trang trả lời), referral (bấm quảng cáo), leadgen (gửi form), resend (gửi lại bước trước, khác body).",
+    "assign: đổi người phụ trách Trang tại thời điểm at (tài khoản theo phần trước @ của email demo).",
+    "Khách là nhãn A, B...: mỗi lần chạy sinh PSID mới. Không dùng tên hay SĐT thật."
+  ],
+  "scenarios": [
+    {
+      "key": "in_hours",
+      "title": "Trong giờ: 09:00 → 09:12",
+      "page": "FISS",
+      "steps": [
+        {"send": "in", "customer": "A", "at": "0 09:00"},
+        {"send": "echo", "customer": "A", "at": "0 09:12"}
+      ],
+      "expect": [{"customer": "A", "minutes": 12, "owner": "staff187", "status": "contacted"}]
+    },
+    {
+      "key": "late_night",
+      "title": "Khách nhắn 23:00, trả lời 08:10 hôm sau",
+      "page": "FISS",
+      "steps": [
+        {"send": "in", "customer": "A", "at": "0 23:00"},
+        {"send": "echo", "customer": "A", "at": "1 08:10"}
+      ],
+      "expect": [{"customer": "A", "minutes": 10, "owner": "staff187", "status": "contacted"}]
+    },
+    {
+      "key": "overnight",
+      "title": "Qua đêm: 21:50 → 08:20 hôm sau",
+      "page": "Phần Mềm Giá Rẻ",
+      "steps": [
+        {"send": "in", "customer": "A", "at": "2 21:50"},
+        {"send": "echo", "customer": "A", "at": "3 08:20"}
+      ],
+      "expect": [{"customer": "A", "minutes": 30, "owner": "staff186", "status": "contacted"}]
+    },
+    {
+      "key": "early_morning",
+      "title": "Sáng sớm: 06:30 → 07:45 (trước giờ mở cửa)",
+      "page": "Phần Mềm Giá Rẻ",
+      "steps": [
+        {"send": "in", "customer": "A", "at": "4 06:30"},
+        {"send": "echo", "customer": "A", "at": "4 07:45"}
+      ],
+      "expect": [{"customer": "A", "minutes": 0, "owner": "staff186", "status": "contacted"}]
+    },
+    {
+      "key": "automated_echo",
+      "title": "Echo tự động sau 5 giây, người trả lời sau 25 phút",
+      "page": "Phần Mềm Giá Rẻ",
+      "steps": [
+        {"send": "in", "customer": "A", "at": "5 10:00"},
+        {"send": "echo", "customer": "A", "at": "5 10:00:05", "app_id": "1000000000000001"},
+        {"send": "echo", "customer": "A", "at": "5 10:25"}
+      ],
+      "expect": [{"customer": "A", "minutes": 25, "status": "contacted", "messages": 3}]
+    },
+    {
+      "key": "business_suite",
+      "title": "Trả lời từ Business Suite (echo có app_id khác) vẫn tính",
+      "page": "Shop Thỏ",
+      "steps": [
+        {"send": "in", "customer": "A", "at": "6 14:00"},
+        {"send": "echo", "customer": "A", "at": "6 14:03", "app_id": "2000000000000002"}
+      ],
+      "expect": [{"customer": "A", "minutes": 3, "owner": "lead", "status": "contacted"}]
+    },
+    {
+      "key": "duplicate",
+      "title": "Meta gửi lặp cùng tin nhắn",
+      "page": "FISS",
+      "steps": [
+        {"send": "in", "customer": "A", "at": "7 09:00"},
+        {"send": "resend"},
+        {"send": "echo", "customer": "A", "at": "7 09:05"},
+        {"send": "resend"}
+      ],
+      "expect": [{"customer": "A", "minutes": 5, "episodes": 1, "messages": 2}]
+    },
+    {
+      "key": "echo_first",
+      "title": "Echo đến trước tin của khách (sai thứ tự)",
+      "page": "FISS",
+      "steps": [
+        {"send": "echo", "customer": "A", "at": "8 09:15"},
+        {"send": "in", "customer": "A", "at": "8 09:00"}
+      ],
+      "expect": [{"customer": "A", "minutes": 15, "status": "contacted"}]
+    },
+    {
+      "key": "no_owner",
+      "title": "Trang chưa có người phụ trách",
+      "page": "Mua Sắm Thông Minh",
+      "steps": [
+        {"send": "in", "customer": "A", "at": "9 09:00"},
+        {"send": "echo", "customer": "A", "at": "9 09:06"}
+      ],
+      "expect": [{"customer": "A", "minutes": 6, "owner": null, "status": "contacted"}]
+    },
+    {
+      "key": "silent_31_days",
+      "title": "Im lặng 31 ngày rồi nhắn lại: mở đợt 2",
+      "page": "Phần Mềm Giá Rẻ",
+      "steps": [
+        {"send": "in", "customer": "A", "at": "0 09:00"},
+        {"send": "in", "customer": "A", "at": "31 09:01"}
+      ],
+      "expect": [{"customer": "A", "episodes": 2, "minutes": null, "status": "new"}]
+    },
+    {
+      "key": "reassign",
+      "title": "Đổi người phụ trách giữa chừng: khách cũ giữ người cũ",
+      "page": "Shop Thỏ",
+      "steps": [
+        {"send": "in", "customer": "A", "at": "now-60s"},
+        {"assign": "manager", "at": "now-50s"},
+        {"send": "in", "customer": "A", "at": "now-40s"},
+        {"send": "in", "customer": "B", "at": "now-30s"},
+        {"assign": "lead", "at": "now-20s"}
+      ],
+      "expect": [
+        {"customer": "A", "owner": "lead", "episodes": 1},
+        {"customer": "B", "owner": "manager"}
+      ]
+    },
+    {
+      "key": "ad_referral",
+      "title": "Khách nhắn từ quảng cáo",
+      "page": "FISS",
+      "steps": [
+        {"send": "in", "customer": "A", "at": "10 11:00", "ad_id": "23800000000000101"}
+      ],
+      "expect": [{"customer": "A", "fb_ad_id": "23800000000000101", "status": "new"}]
+    },
+    {
+      "key": "leadgen",
+      "title": "Khách gửi form khách hàng tiềm năng",
+      "page": "Phần Mềm Giá Rẻ",
+      "steps": [
+        {"send": "leadgen", "customer": "A", "at": "11 15:00", "form_id": "900000000000001", "ad_id": "23800000000000102"}
+      ],
+      "expect": [{"customer": "A", "source": "leadgen", "phone": "0900000142", "owner": "staff186", "minutes": null}]
+    }
+  ]
+}

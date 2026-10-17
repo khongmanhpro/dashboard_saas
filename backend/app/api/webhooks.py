@@ -46,6 +46,11 @@ async def verify_subscription(
     return challenge
 
 
+def job_id_for(body: bytes) -> str:
+    """Cùng một body gửi lại (Meta retry) thì cùng job id, arq không đẩy lần hai."""
+    return "wh:" + hashlib.sha256(body).hexdigest()
+
+
 async def _read_body(request: Request) -> bytes:
     declared = request.headers.get("content-length")
     if declared is not None and declared.isdigit() and int(declared) > MAX_BODY_BYTES:
@@ -75,8 +80,8 @@ async def receive_event(request: Request) -> str:
     if not isinstance(payload, dict):
         raise api_error(400, "invalid_json")
 
-    # Cùng một body gửi lại (Meta retry) thì arq bỏ qua; worker còn chặn lặp theo mid/leadgen_id.
-    job_id = "wh:" + hashlib.sha256(body).hexdigest()
+    # Worker còn chặn lặp theo mid/leadgen_id khi Meta gửi lại với body khác.
+    job_id = job_id_for(body)
     try:
         queue = await get_queue()
         await queue.enqueue_job(PROCESS_JOB, WebhookPayload(payload), _job_id=job_id)

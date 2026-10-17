@@ -17,6 +17,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 AppEnv = Literal["development", "test", "staging", "production"]
 
+# app_id giả của tin tự động trong dữ liệu mẫu (tests/fixtures/meta/simulate_scenarios.json).
+# Chỉ có hiệu lực khi MOCK_MODE=true.
+MOCK_AUTOMATED_APP_ID = "1000000000000001"
+
 _WEAK_SECRETS = {"changeme", "secret", "password", "dev", "test", "123456"}
 MIN_SECRET_KEY_LENGTH = 32
 
@@ -135,7 +139,10 @@ class Settings(BaseSettings):
 
     @property
     def automated_app_ids(self) -> frozenset[str]:
-        return frozenset(x.strip() for x in self.meta_automated_app_ids.split(",") if x.strip())
+        ids = {x.strip() for x in self.meta_automated_app_ids.split(",") if x.strip()}
+        if self.mock_mode:
+            ids.add(MOCK_AUTOMATED_APP_ID)
+        return frozenset(ids)
 
     @property
     def fernet_keys(self) -> list[str]:

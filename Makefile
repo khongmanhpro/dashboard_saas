@@ -2,7 +2,7 @@ COMPOSE := docker compose
 # Container quản trị (có mật khẩu quản trị DB): test, CLI, migration.
 ADMIN := $(COMPOSE) run --rm -T migrate
 
-.PHONY: env up down logs ps test test-frontend e2e lint migrate bootstrap seed
+.PHONY: env up down logs ps test test-frontend e2e lint migrate bootstrap seed simulate
 
 env:            ## Tạo .env dev với bí mật ngẫu nhiên (không ghi đè)
 	python3 scripts/init_env.py
@@ -39,3 +39,6 @@ bootstrap:      ## Tạo workspace + chủ sở hữu đầu tiên từ BOOTSTRA
 
 seed:           ## Dữ liệu demo cho máy dev (mật khẩu ghi vào backend/.dev-credentials)
 	$(ADMIN) python -m app.mock.seed
+
+simulate:       ## Giả lập webhook cho 4 Trang demo và kiểm tra số phút trả lời (cần make up, make seed)
+	$(ADMIN) python -m app.mock.simulate
