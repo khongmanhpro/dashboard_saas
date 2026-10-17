@@ -19,6 +19,8 @@ _PHONE = re.compile(r"(?<![\d])(?:\+?84|0)[\s.\-]?[35789](?:[\s.\-]?\d){8}(?![\d
 _SECRET_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # Mã truy cập Meta (user/system user/page token đều bắt đầu bằng EAA).
     (re.compile(r"EAA[A-Za-z0-9]{10,}"), _REDACTED),
+    # Mã bot Telegram (dạng 123456789:AA...), kể cả khi nằm trong URL /bot<mã>/.
+    (re.compile(r"(?<!\d)\d{6,12}:[A-Za-z0-9_\-]{30,}"), _REDACTED),
     # Chuỗi mã hóa Fernet.
     (re.compile(r"gAAAAA[A-Za-z0-9_\-=]{20,}"), _REDACTED),
     # Tham số trên URL hoặc dạng key=value.

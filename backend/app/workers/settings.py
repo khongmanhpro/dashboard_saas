@@ -7,6 +7,7 @@
 - `send_reminders`: mỗi 5 phút, nhắc việc và thông báo đẩy (app.workers.reminders).
 - `check_bms`: mỗi 6 giờ, kiểm tra mã, quyền BM, Trang mới, form leadgen (app.workers.meta_checks).
 - `sync_meta`: mỗi giờ phút 40, chi tiêu quảng cáo, bài đăng, số liệu Trang (app.workers.meta_sync).
+- `send_alerts`: mỗi giờ phút 0, cảnh báo Telegram và tóm tắt 08:00 (app.workers.alerts).
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from app.core.config import get_settings
 from app.core.db import dispose_engines
 from app.core.logging import setup_logging
 from app.core.queue import redis_settings as queue_redis_settings
+from app.workers.alerts import send_alerts
 from app.workers.meta_checks import check_bms
 from app.workers.meta_sync import sync_meta
 from app.workers.reminders import send_reminders
@@ -76,6 +78,13 @@ class WorkerSettings:
             minute=15,
             second=0,
             timeout=30 * 60,
+            run_at_startup=False,
+        ),
+        cron(
+            send_alerts,
+            minute=0,
+            second=30,
+            timeout=15 * 60,
             run_at_startup=False,
         ),
         cron(

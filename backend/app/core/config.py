@@ -83,8 +83,8 @@ class Settings(BaseSettings):
     bootstrap_owner_password: SecretStr = SecretStr("")
 
     # --- Cảnh báo (Bước 7) ---
+    # Một bot cho cả hệ thống; chat ID nhận cảnh báo do Chủ sở hữu từng workspace nhập.
     telegram_bot_token: SecretStr = SecretStr("")
-    telegram_chat_id: str = ""
 
     @field_validator("app_timezone")
     @classmethod

@@ -552,6 +552,9 @@ async def check_workspace(
         if rank[outcome.status] > rank[outcome.previous]:
             counts["worse"] += 1
             await _notify_owners(db, bm, outcome.status, now)
+            from app.services.alert_service import notify_bm_status
+
+            await notify_bm_status(db, bm, outcome.status, now)
     return counts
 
 

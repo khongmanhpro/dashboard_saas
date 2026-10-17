@@ -37,6 +37,7 @@ def test_does_not_mask_unrelated_numbers() -> None:
         'payload {"password": "hunter2-hunter2"}',
         "cipher gAAAAABlZ3VuX2ZlcnBldF9jaXBoZXJ0ZXh0X2V4YW1wbGU=",
         "cookie: fp_session=abcdef123456",
+        "POST https://api.telegram.org/bot1234567890:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw/sendMessage",
     ],
 )
 def test_redacts_secrets(raw: str) -> None:
@@ -49,6 +50,7 @@ def test_redacts_secrets(raw: str) -> None:
         "hunter2-hunter2",
         "X2ZlcnBldF9",
         "abcdef123456",
+        "AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw",
     ):
         assert leaked not in out
 

@@ -8,6 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.api import (
+    alerts,
     auth,
     bms,
     health,
@@ -57,6 +58,7 @@ def create_app() -> FastAPI:
     app.include_router(bms.router)
     app.include_router(imports.router)
     app.include_router(reports.router)
+    app.include_router(alerts.router)
     app.include_router(webhooks.router)
 
     @app.exception_handler(RequestValidationError)

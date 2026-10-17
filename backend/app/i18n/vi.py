@@ -77,3 +77,40 @@ EXPORT_PAGE_STATUS = {
     "declining": "Giảm tương tác",
     "disconnected": "Mất kết nối",
 }
+
+# ---------------------------------------------------------------- cảnh báo Telegram (Bước 7)
+# Không đưa SĐT hay nội dung tin nhắn của khách vào tin cảnh báo.
+
+ALERT_TEXTS: dict[str, str] = {
+    "test": "Kết nối Telegram thành công. Cảnh báo của {workspace} sẽ gửi vào đây.",
+    "bm_missing_permissions": (
+        "BM thiếu quyền: {name}. Vào Kết nối BM để xem và cấp lại quyền.\n{link}"
+    ),
+    "bm_disconnected": (
+        "BM mất kết nối: {name}. {pages} Trang dừng cập nhật. Dán mã mới trong Kết nối BM.\n{link}"
+    ),
+    "cost_per_result": (
+        "Chiến dịch {name}: chi phí/kết quả hôm nay {value} (ngưỡng {limit}), "
+        "đã chi {spend}.\n{link}"
+    ),
+    "cost_per_won": (
+        "Chiến dịch {name}: chi phí/khách chốt 7 ngày {value} (ngưỡng {limit}). "
+        "Đã chi {spend}, chốt {won} khách.\n{link}"
+    ),
+    "cost_per_won_none": (
+        "Chiến dịch {name}: đã chi {spend} trong 7 ngày nhưng chưa chốt khách nào "
+        "(ngưỡng {limit}).\n{link}"
+    ),
+    "frequency": (
+        "Chiến dịch {name}: tần suất 7 ngày khoảng {value} lần mỗi người (ngưỡng {limit}). "
+        "Khách đã thấy quảng cáo nhiều lần.\n{link}"
+    ),
+    "daily_summary": (
+        "Tóm tắt ngày {date} · {workspace}\n"
+        "Khách mới: {new}\n"
+        "Chốt: {won} · Doanh thu: {revenue}\n"
+        "Chi tiêu quảng cáo: {spend} · Chi phí/khách chốt: {cpw}\n"
+        "Khách quá 48 giờ chưa có kết quả: {overdue}\n{link}"
+    ),
+}
+NO_VALUE = "–"

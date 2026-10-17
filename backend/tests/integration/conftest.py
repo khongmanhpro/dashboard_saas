@@ -22,6 +22,7 @@ from app.models import Base
 
 # Fixture dữ liệu khách dùng chung cho nhiều file test (org, as_role).
 from tests.integration.leads_fixtures import as_role, org  # noqa: F401
+from tests.integration.report_fixtures import as_user, demo  # noqa: F401
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 
