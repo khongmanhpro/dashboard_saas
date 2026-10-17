@@ -544,8 +544,22 @@ async def get_lead(
         phones=[p if can_phone else mask_phone(p) for p in phones],
         timeline=timeline,
         timeline_truncated=truncated,
-        permissions=permissions_for(ctx, lead, now),
+        permissions=await _with_remind(db, ctx, lead, permissions_for(ctx, lead, now)),
     )
+
+
+async def _with_remind(
+    db: AsyncSession, ctx: AuthContext, lead: Lead, perms: LeadPermissions
+) -> LeadPermissions:
+    owners = await member_ids_for(db, ctx, ctx.scope(Perm.REMINDER_SEND))
+    can = (
+        lead.owner_member_id is not None
+        and lead.owner_member_id != ctx.member_id
+        and ctx.can(Perm.REMINDER_SEND)
+        and (owners is None or lead.owner_member_id in owners)
+        and lead.status not in _FINAL
+    )
+    return perms.model_copy(update={"can_remind": can})
 
 
 # ---------------------------------------------------------------- API ghi

@@ -19,6 +19,9 @@ os.environ["TOKEN_ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 os.environ["MOCK_MODE"] = "true"
 os.environ["META_APP_SECRET"] = secrets.token_hex(16)
 os.environ["META_WEBHOOK_VERIFY_TOKEN"] = secrets.token_urlsafe(24)
+# Không dùng khóa VAPID của máy dev; test nào cần thì tự đặt.
+os.environ["VAPID_PUBLIC_KEY"] = ""
+os.environ["VAPID_PRIVATE_KEY"] = ""
 os.environ["LOG_LEVEL"] = "WARNING"
 os.environ["POSTGRES_DB"] = os.environ.get("TEST_POSTGRES_DB", "fanpage_test")
 os.environ.setdefault("POSTGRES_HOST", "localhost")

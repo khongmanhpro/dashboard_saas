@@ -81,6 +81,8 @@ class TimelineItem(BaseModel):
 class LeadPermissions(BaseModel):
     can_update: bool
     can_edit_result: bool
+    # Trưởng nhóm / Quản lý nhắc người phụ trách (reminder.send).
+    can_remind: bool = False
     # Nhân viên tự sửa kết quả tới mốc này (7 ngày sau lần có kết quả đầu tiên).
     edit_until: dt.datetime | None
 
