@@ -60,7 +60,7 @@ function RuleEditor({
       <button
         type="button"
         role="switch"
-        className="switch"
+        className="toggle-switch"
         aria-checked={rule.enabled}
         aria-label={t.alerts.rules[rule.type]}
         onClick={() => onChange({ ...rule, enabled: !rule.enabled })}

@@ -102,6 +102,17 @@ function alertItems(data: Overview): AlertItem[] {
       mobile: "",
     });
   }
+  if (a.unassigned_leads) {
+    items.push({
+      key: "unassigned_leads",
+      num: a.unassigned_leads,
+      title: t.overview.alerts.unassignedLeads,
+      desc: t.overview.alerts.unassignedLeadsDesc,
+      href: "/staff?period=rolling_7",
+      tone: "info",
+      mobile: format(t.overview.mobileAlerts.unassignedLeads, { n: a.unassigned_leads }),
+    });
+  }
   if (a.expensive_campaigns !== null) {
     items.push({
       key: "expensive",
@@ -190,54 +201,64 @@ function FunnelSection({ data, range }: { data: Overview; range: RangeKey }) {
       key: "phone",
       value: f.phone,
       rate: format(t.overview.funnelRate.phone, { rate: ratio(f.phone, f.replied) }),
-      loss: f.replied_no_phone
-        ? { text: format(t.overview.funnelLoss.noPhone, { n: f.replied_no_phone }), href: `/leads?period=${period}`, tone: "muted" }
+      loss: f.no_phone
+        ? { text: format(t.overview.funnelLoss.noPhone, { n: f.no_phone }), href: `/leads?period=${period}`, tone: "muted" }
         : null,
     },
     {
       key: "called",
       value: f.called,
       rate: format(t.overview.funnelRate.called, { rate: ratio(f.called, f.phone) }),
-      loss: f.phone_not_called
+      loss: f.not_called
         ? {
-            text: format(t.overview.funnelLoss.notCalled, { n: f.phone_not_called }),
+            text: format(t.overview.funnelLoss.notCalled, { n: f.not_called }),
             href: `/leads?chip=phone_not_called&period=${period}`,
             tone: "warn",
           }
         : null,
     },
-    {
-      key: "won",
-      value: f.won,
-      rate: format(t.overview.funnelRate.won, { rate: ratio(f.won, f.called), rateNew: ratio(f.won, f.new) }),
-      loss:
-        f.lost || f.callback
-          ? { text: format(t.overview.funnelLoss.lost, { lost: f.lost, callback: f.callback }), href: `/leads?period=${period}`, tone: "muted" }
-          : null,
-    },
   ] as const;
+  const results = (["won", "lost", "callback", "pending"] as const).map((key) => ({ key, value: f[key] }));
   return (
     <section className="card card--tight only-desktop" aria-labelledby="funnel-title" data-testid="overview-funnel">
       <div className="card__head">
         <h2 id="funnel-title">{t.overview.funnelTitle}</h2>
         <span>{t.overview.funnelHint}</span>
       </div>
-      <div className="funnel">
+      <div className="ov-funnel">
         {steps.map((s) => (
-          <div className="funnel__step" key={s.key}>
-            <span className="funnel__label">{t.overview.funnel[s.key]}</span>
-            <span className="funnel__value">{formatNumber(s.value)}</span>
-            <div className="funnel__track">
-              <div className="funnel__bar" style={{ width: `${Math.max(4, f.new ? Math.round((s.value / f.new) * 100) : 0)}%` }} />
+          <div className="ov-funnel__step" key={s.key}>
+            <span className="ov-funnel__label">{t.overview.funnel[s.key]}</span>
+            <span className="ov-funnel__value">{formatNumber(s.value)}</span>
+            <div className="ov-funnel__track">
+              <div className="ov-funnel__bar" style={{ width: `${Math.max(4, f.new ? Math.round((s.value / f.new) * 100) : 0)}%` }} />
             </div>
-            <span className="funnel__rate">{s.rate}</span>
+            <span className="ov-funnel__rate">{s.rate}</span>
             {s.loss ? (
-              <Link to={s.loss.href} className={`funnel__loss funnel__loss--${s.loss.tone}`}>
+              <Link to={s.loss.href} className={`ov-funnel__loss ov-funnel__loss--${s.loss.tone}`}>
                 {s.loss.text}
               </Link>
             ) : null}
           </div>
         ))}
+      </div>
+      <span className="card__note">{t.overview.funnelNote}</span>
+      <div className="result-bar" data-testid="overview-results">
+        <span className="result-bar__title">{format(t.overview.resultTitle, { n: formatNumber(f.new) })}</span>
+        <div className="result-bar__track" role="img" aria-label={results.map((r) => `${t.overview.result[r.key]} ${r.value}`).join(", ")}>
+          {results.map((r) => (
+            <span key={r.key} className={`result-bar__seg result-bar__seg--${r.key}`} style={{ flex: r.value }} />
+          ))}
+        </div>
+        <div className="ov-legend">
+          {results.map((r) => (
+            <span key={r.key}>
+              <i className={`result-bar__seg--${r.key}`} aria-hidden="true" />
+              {t.overview.result[r.key]} <b>{formatNumber(r.value)}</b> ({ratio(r.value, f.new)})
+            </span>
+          ))}
+        </div>
+        <span className="card__note">{t.overview.resultNote}</span>
       </div>
     </section>
   );
@@ -251,8 +272,10 @@ function DailyChart({ data }: { data: Overview }) {
   return (
     <div className="card card--tight">
       <div className="card__head">
-        <h2>{t.overview.dailyTitle}</h2>
-        <span className="legend">
+        <h2>
+          {t.overview.dailyTitle} <span className="card__note">{t.overview.dailyHint}</span>
+        </h2>
+        <span className="ov-legend">
           <span>
             <i className="legend__new" aria-hidden="true" />
             {t.overview.dailyNew}
@@ -323,11 +346,13 @@ function Campaigns({ data }: { data: Overview }) {
   );
 }
 
-function Board({ title, rows, weak }: { title: string; rows: BoardRow[]; weak: boolean }) {
+function Board({ title, period, rows, weak }: { title: string; period: string; rows: BoardRow[]; weak: boolean }) {
   return (
     <div className="card card--tight">
       <div className="card__head">
-        <h2>{title}</h2>
+        <h2>
+          {title} <span className="card__note">{period}</span>
+        </h2>
         <Link to="/staff">{t.overview.boardLink}</Link>
       </div>
       {rows.length === 0 ? <p className="muted">{t.overview.boardEmpty}</p> : null}
@@ -354,6 +379,14 @@ function Board({ title, rows, weak }: { title: string; rows: BoardRow[]; weak: b
       </div>
     </div>
   );
+}
+
+function boardPeriod(data: Overview): string {
+  const b = data.boards;
+  return format(b.same_as_range ? t.overview.boardSame : t.overview.boardOther, {
+    from: shortDate(b.first_day),
+    to: shortDate(b.last_day),
+  });
 }
 
 function MobileExtras({ data }: { data: Overview }) {
@@ -437,13 +470,23 @@ export function OverviewPage() {
           <Kpis data={data} mobile />
           <MobileExtras data={data} />
           <FunnelSection data={data} range={range.range} />
-          <section className="grid-2 only-desktop">
+          <section className="report-grid only-desktop">
             <DailyChart data={data} />
             <Campaigns data={data} />
           </section>
-          <section className="grid-2 only-desktop">
-            <Board title={t.overview.topTitle} rows={data.boards.top} weak={false} />
-            <Board title={t.overview.bottomTitle} rows={data.boards.bottom} weak />
+          <section className="report-grid only-desktop">
+            <Board
+              title={format(t.overview.topTitle, { n: data.boards.top.length })}
+              period={boardPeriod(data)}
+              rows={data.boards.top}
+              weak={false}
+            />
+            <Board
+              title={format(t.overview.bottomTitle, { n: data.boards.bottom.length })}
+              period={boardPeriod(data)}
+              rows={data.boards.bottom}
+              weak
+            />
           </section>
         </>
       )}

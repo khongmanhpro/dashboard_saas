@@ -32,8 +32,11 @@ export interface PeriodInfo {
   is_final: boolean;
 }
 
+export type MemberRole = "owner" | "manager" | "team_lead" | "staff" | "viewer";
+
 export interface LeaderboardRow {
   member: NamedRef;
+  role: MemberRole | null;
   team: NamedRef | null;
   pages: string[];
   is_self: boolean;
@@ -43,11 +46,23 @@ export interface LeaderboardRow {
   total: Num | null;
   delta: Num | null;
   lead_count: number | null;
+  won_count: number | null;
   median_response_seconds: number | null;
   phone_rate: Num | null;
   close_rate: Num | null;
   revenue_vnd: number | null;
   overdue_count: number | null;
+}
+
+/** Khách vào Trang lúc chưa có người phụ trách: không xếp hạng, không tính điểm. */
+export interface UnassignedRow {
+  lead_count: number;
+  won_count: number;
+  median_response_seconds: number | null;
+  phone_rate: Num | null;
+  close_rate: Num | null;
+  revenue_vnd: number;
+  overdue_count: number;
 }
 
 export interface Leaderboard {
@@ -57,6 +72,7 @@ export interface Leaderboard {
   insufficient_count: number | null;
   kpis: {
     lead_count: number;
+    won_count: number;
     median_response_seconds: number | null;
     phone_rate: Num | null;
     close_rate: Num | null;
@@ -65,6 +81,7 @@ export interface Leaderboard {
   } | null;
   teams: NamedRef[];
   rows: LeaderboardRow[];
+  unassigned: UnassignedRow | null;
   full_view: boolean;
 }
 
@@ -75,6 +92,10 @@ export interface ScorePart {
   score: Num | null;
   points: Num | null;
   raw: Record<string, number | Num | null>;
+  /** percentile: xếp trong workspace; linear: ngưỡng tốc độ; target: mục tiêu bài. */
+  method: "percentile" | "linear" | "target";
+  position: number | null;
+  peers: number | null;
 }
 
 export interface StaffDetail {
@@ -95,7 +116,10 @@ export interface StaffDetail {
   parts: ScorePart[];
   funnel: { key: "leads" | "replied" | "phone" | "called" | "won"; value: number; rate: Num | null; company_rate: Num | null }[];
   hours: { label: string; median_minutes: Num | null; count: number }[];
-  trend: { first_day: string; total: Num | null; tier: Tier | null }[];
+  trend: { first_day: string; total: Num | null; tier: Tier | null; is_final: boolean }[];
+  speed_full_minutes: number;
+  speed_zero_minutes: number;
+  posts_target: Num | null;
   recent: {
     id: string;
     display_name: string | null;

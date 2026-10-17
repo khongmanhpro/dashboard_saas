@@ -37,19 +37,22 @@ export interface OverviewAlerts {
   bm_disconnected_name: string | null;
   bm_disconnected_pages: number;
   expensive_campaigns: number | null;
+  unassigned_leads: number | null;
 }
 
+/** Phễu lồng nhau, kết quả tách riêng (docs/metrics.md). */
 export interface Funnel {
   new: number;
   replied: number;
+  unreplied: number;
   phone: number;
+  no_phone: number;
   called: number;
+  not_called: number;
   won: number;
   lost: number;
   callback: number;
-  unreplied: number;
-  replied_no_phone: number;
-  phone_not_called: number;
+  pending: number;
 }
 
 export interface BoardRow {
@@ -75,6 +78,7 @@ export interface Overview {
     close_rate: Metric;
     revenue_vnd: Metric;
     cost_per_won_vnd: Metric | null;
+    overdue_in_range: number;
   };
   funnel: Funnel;
   daily: { day: string; new: number; won: number }[];
@@ -87,7 +91,14 @@ export interface Overview {
     cost_per_won_vnd: number | null;
   }[] | null;
   missing_fx: string[];
-  boards: { period: PeriodType; top: BoardRow[]; bottom: BoardRow[] };
+  boards: {
+    period: PeriodType;
+    first_day: string;
+    last_day: string;
+    same_as_range: boolean;
+    top: BoardRow[];
+    bottom: BoardRow[];
+  };
   teams: NamedRef[];
   is_mock: boolean;
 }
@@ -109,6 +120,8 @@ export interface PageReportRow {
   leads_7d: number;
   median_response_seconds: number | null;
   won_7d: number;
+  revenue_7d: number;
+  overdue_7d: number;
   posts_week: number | null;
   views_30d: number | null;
   views_daily: (number | null)[];
@@ -125,6 +138,7 @@ export interface PageReportList {
   teams: NamedRef[];
   posts_target: number;
   can_assign: boolean;
+  range: RangeOut;
   is_mock: boolean;
 }
 

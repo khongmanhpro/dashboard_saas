@@ -242,7 +242,7 @@ export function PageDetailPage() {
       {tab === "overview" ? (
         <>
           <Kpis data={data} />
-          <section className="grid-2">
+          <section className="report-grid">
             <ViewsChart data={data} />
             <Heatmap data={data} />
           </section>

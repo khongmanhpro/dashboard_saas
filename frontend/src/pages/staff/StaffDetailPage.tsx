@@ -7,6 +7,7 @@ import type { Me } from "../../api/types";
 import { usePublicConfig } from "../../auth/useAuth";
 import { errorMessage, format, t } from "../../i18n";
 import { displayName, formatDateTime, formatDuration, initials } from "../../leads/format";
+import { shortDate } from "../../reports/format";
 import { formatCompactVnd, formatPercent, formatScore, trendPoints } from "../../staff/format";
 import { PeriodSwitch, TierBadge } from "./StaffPage";
 
@@ -32,6 +33,19 @@ function rawText(part: ScorePart): string {
     case "on_time":
       return r.rate === null ? none : format(t.staffDetail.raw.on_time, { rate: formatPercent(rate) });
   }
+}
+
+/** Cách quy đổi số liệu thô ra điểm 0–100 của từng tiêu chí (decisions.md mục J). */
+function howText(part: ScorePart, data: StaffDetail): string {
+  if (part.score === null) return t.staffDetail.how.none;
+  const score = formatScore(part.score);
+  if (part.method === "linear") {
+    return format(t.staffDetail.how.linear, { full: data.speed_full_minutes, zero: data.speed_zero_minutes, score });
+  }
+  if (part.method === "target") {
+    return format(t.staffDetail.how.target, { target: formatScore(data.posts_target), score });
+  }
+  return format(t.staffDetail.how.percentile, { pos: part.position ?? "–", peers: part.peers ?? "–", score });
 }
 
 export function Parts({ data, canFormula }: { data: StaffDetail; canFormula: boolean }) {
@@ -61,6 +75,9 @@ export function Parts({ data, canFormula }: { data: StaffDetail; canFormula: boo
                 <span>
                   {rawText(part)} · {weight}
                 </span>
+                <span className="part__how" data-testid={`how-${part.key}`}>
+                  {howText(part, data)}
+                </span>
               </span>
               <span className="part__bar" aria-hidden="true">
                 <span style={{ width: `${part.score === null ? 0 : Number(part.score)}%` }} />
@@ -87,11 +104,9 @@ export function Funnel({ data }: { data: StaffDetail }) {
           const width = total ? (step.value / total) * 100 : 0;
           const avg = step.company_rate === null ? 100 : Number(step.company_rate) * 100;
           const rate =
-            step.rate === null
+            step.rate === null || step.key === "leads"
               ? ""
-              : step.key === "called"
-                ? format(t.staffDetail.calledOfPhone, { rate: formatPercent(step.rate) })
-                : formatPercent(step.rate);
+              : format(t.staffDetail.funnelRates[step.key], { rate: formatPercent(step.rate) });
           return (
             <div key={step.key} className="funnel__row">
               <span>{t.staffDetail.funnel[step.key]}</span>
@@ -117,6 +132,7 @@ export function Funnel({ data }: { data: StaffDetail }) {
           <span className="dot dot--avg" aria-hidden="true" />
           {t.staffDetail.companyAvg}
         </span>
+        <span>{t.staffDetail.funnelNote}</span>
         <span>{t.staffDetail.calledNote}</span>
       </div>
     </section>
@@ -154,27 +170,56 @@ function Hours({ data }: { data: StaffDetail }) {
 
 function Trend({ data }: { data: StaffDetail }) {
   const totals = data.trend.map((p) => (p.total === null ? null : Number(p.total)));
-  const points = trendPoints(totals, 520, 150);
+  const points = trendPoints(totals, 480, 150);
   return (
     <section className="card" aria-labelledby="trend-title">
       <div className="section-head section-head--row">
         <h2 id="trend-title">{format(t.staffDetail.trendTitle, { n: data.trend.length || 8 })}</h2>
+        <span>{t.staffDetail.trendHint}</span>
       </div>
       {data.trend.length === 0 ? (
         <p className="note">{t.staffDetail.trendEmpty}</p>
       ) : (
         <>
-          <svg className="trend" viewBox="-6 -6 532 162" role="img" aria-label={totals.map((v) => v ?? "–").join(", ")}>
+          <svg
+            className="trend"
+            viewBox="-34 -8 522 170"
+            role="img"
+            aria-label={data.trend
+              .map((p, i) => `${shortDate(p.first_day)}: ${totals[i] === null ? "–" : formatScore(String(totals[i]))}`)
+              .join(", ")}
+            data-testid="trend-chart"
+          >
             {[0, 50, 100].map((y) => (
-              <line key={y} x1="0" x2="520" y1={150 - y * 1.5} y2={150 - y * 1.5} className="trend__grid" />
+              <g key={y}>
+                <line x1="0" x2="480" y1={150 - y * 1.5} y2={150 - y * 1.5} className="trend__grid" />
+                <text x="-8" y={150 - y * 1.5 + 4} textAnchor="end" className="trend__axis">
+                  {y}
+                </text>
+              </g>
             ))}
             <polyline points={points} className="trend__line" />
+            {totals.map((v, i) =>
+              v === null ? null : (
+                <circle
+                  key={i}
+                  cx={totals.length > 1 ? (i * 480) / (totals.length - 1) : 0}
+                  cy={150 - v * 1.5}
+                  r="3.5"
+                  className={data.trend[i]?.is_final === false ? "trend__dot trend__dot--live" : "trend__dot"}
+                />
+              ),
+            )}
           </svg>
           <div className="trend__labels">
-            {data.trend.map((p, i) => (
-              <span key={p.first_day}>{format(t.staffDetail.weekShort, { n: i + 1 })}</span>
+            {data.trend.map((p) => (
+              <span key={p.first_day} title={p.is_final ? undefined : t.staffDetail.trendLive}>
+                {shortDate(p.first_day)}
+                {p.is_final ? "" : "*"}
+              </span>
             ))}
           </div>
+          {data.trend.some((p) => !p.is_final) ? <p className="note">* {t.staffDetail.trendLive}</p> : null}
         </>
       )}
     </section>

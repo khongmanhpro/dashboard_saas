@@ -57,7 +57,10 @@ function ScoreCell({ row }: { row: LeaderboardRow }) {
 export function StaffPage() {
   const me = useOutletContext<Me>();
   const timeZone = me.workspace.timezone;
-  const [period, setPeriod] = useState<PeriodType>("week");
+  const [params, setParams] = useSearchParams();
+  const [period, setPeriod] = useState<PeriodType>(
+    PERIOD_TYPES.find((p) => p === params.get("period")) ?? "week",
+  );
   const [search, setSearch] = useState("");
   const [teamId, setTeamId] = useState("");
   const [tier, setTier] = useState<Tier | "">("");
@@ -67,7 +70,6 @@ export function StaffPage() {
   const canSettings = "settings.manage" in me.permissions || "team.manage" in me.permissions;
   const canRecompute = "score_formula.edit" in me.permissions;
   const canManage = "member.manage" in me.permissions;
-  const [params, setParams] = useSearchParams();
   const [dialog, setDialog] = useState<"import" | "add" | null>(params.get("import") ? "import" : null);
   const closeDialog = () => {
     setDialog(null);
@@ -255,6 +257,9 @@ export function StaffPage() {
                           <span className="member-link__name">
                             {row.member.name}
                             {row.is_self ? <span className="tag tag--info">{t.staff.you}</span> : null}
+                            {row.role && row.role in t.staff.roleTags ? (
+                              <span className="tag">{t.staff.roleTags[row.role as keyof typeof t.staff.roleTags]}</span>
+                            ) : null}
                           </span>
                           <span className="member-link__team">{row.team?.name ?? t.staff.noTeam}</span>
                         </span>
@@ -283,6 +288,31 @@ export function StaffPage() {
                 </tr>
               );
             })}
+            {data?.unassigned && !teamId && !tier && !q ? (
+              <tr className="row--unassigned" data-testid="staff-unassigned">
+                <td>{t.staff.hidden}</td>
+                <td>
+                  <span className="member-link">
+                    <span>
+                      <span className="member-link__name">{t.staff.unassignedRow}</span>
+                      <span className="member-link__team">{t.staff.unassignedNote}</span>
+                    </span>
+                  </span>
+                </td>
+                <td />
+                <td className="muted">{t.staff.hidden}</td>
+                <td>{data.unassigned.lead_count}</td>
+                <td>
+                  {data.unassigned.median_response_seconds === null
+                    ? t.staff.hidden
+                    : formatDuration(data.unassigned.median_response_seconds)}
+                </td>
+                <td>{formatPercent(data.unassigned.phone_rate)}</td>
+                <td>{formatPercent(data.unassigned.close_rate)}</td>
+                <td>{formatCompactVnd(data.unassigned.revenue_vnd)}</td>
+                <td className={data.unassigned.overdue_count ? "timer--hot" : undefined}>{data.unassigned.overdue_count}</td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
         {!board.isLoading && rows.length === 0 ? (

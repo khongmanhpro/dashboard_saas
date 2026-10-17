@@ -79,7 +79,7 @@
 .status-pill--warn { background: var(--color-warn-bg); color: var(--color-warn-fg); }
 .status-pill--neutral { background: var(--color-neutral-bg); color: var(--color-text-secondary); }
 
-.grid-2 {
+.report-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
   gap: 12px;
@@ -166,38 +166,38 @@
 .alert-card--info .alert-card__num { color: var(--color-info-fg); }
 .alert-card--ok .alert-card__num { color: var(--color-good-fg); }
 
-.funnel {
+.ov-funnel {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
   gap: 10px;
 }
-.funnel__step {
+.ov-funnel__step {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.funnel__label { font-size: 13px; color: var(--color-text-secondary); }
-.funnel__value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.funnel__track { height: 10px; border-radius: var(--radius-pill); background: var(--color-board-bg); }
-.funnel__bar { height: 10px; border-radius: var(--radius-pill); background: var(--color-tier-b); }
-.funnel__rate { font-size: 12px; color: var(--color-text-secondary); }
-.funnel__loss { font-size: 12px; font-weight: 600; }
-.funnel__loss--bad { color: var(--color-bad-fg); }
-.funnel__loss--warn { color: var(--color-warn-fg); }
-.funnel__loss--muted { color: var(--color-text-secondary); }
+.ov-funnel__label { font-size: 13px; color: var(--color-text-secondary); }
+.ov-funnel__value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ov-funnel__track { height: 10px; border-radius: var(--radius-pill); background: var(--color-board-bg); }
+.ov-funnel__bar { height: 10px; border-radius: var(--radius-pill); background: var(--color-tier-b); }
+.ov-funnel__rate { font-size: 12px; color: var(--color-text-secondary); }
+.ov-funnel__loss { font-size: 12px; font-weight: 600; }
+.ov-funnel__loss--bad { color: var(--color-bad-fg); }
+.ov-funnel__loss--warn { color: var(--color-warn-fg); }
+.ov-funnel__loss--muted { color: var(--color-text-secondary); }
 
-.legend {
+.ov-legend {
   display: flex;
   gap: 12px;
   font-size: 12px;
   color: var(--color-text-secondary);
 }
-.legend span {
+.ov-legend span {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
-.legend i {
+.ov-legend i {
   width: 10px;
   height: 10px;
   border-radius: 3px;
@@ -602,7 +602,7 @@
 }
 .rule-row b { font-size: 14px; }
 .rule-row span { font-size: 12px; color: var(--color-text-muted); }
-.switch {
+.toggle-switch {
   position: relative;
   flex: none;
   width: 48px;
@@ -612,9 +612,9 @@
   cursor: pointer;
   background: var(--color-border-strong);
 }
-.switch[aria-checked="true"] { background: var(--color-primary); }
-.switch:disabled { cursor: not-allowed; opacity: 0.6; }
-.switch::after {
+.toggle-switch[aria-checked="true"] { background: var(--color-primary); }
+.toggle-switch:disabled { cursor: not-allowed; opacity: 0.6; }
+.toggle-switch::after {
   content: "";
   position: absolute;
   top: 3px;
@@ -625,7 +625,7 @@
   background: #fff;
   transition: left 0.15s;
 }
-.switch[aria-checked="true"]::after { left: 23px; }
+.toggle-switch[aria-checked="true"]::after { left: 23px; }
 .name-cell {
   display: flex;
   flex-direction: column;
@@ -690,3 +690,27 @@
   gap: 8px;
   margin-top: 6px;
 }
+
+/* Thanh kết quả của Tổng quan: Chốt + Hủy + Hẹn lại + Đang chờ = Khách mới. */
+.result-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-divider);
+}
+.result-bar__title { font-size: 13px; font-weight: 600; }
+.result-bar__track {
+  display: flex;
+  height: 12px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  background: var(--color-neutral-bg);
+  gap: 2px;
+}
+.result-bar__seg { min-width: 0; }
+.result-bar__seg--won { background: var(--color-status-won); }
+.result-bar__seg--lost { background: var(--color-status-lost); }
+.result-bar__seg--callback { background: var(--color-status-callback); }
+.result-bar__seg--pending { background: var(--color-border-strong); }
+.card__head h2 .card__note { font-weight: 400; margin-left: 6px; }

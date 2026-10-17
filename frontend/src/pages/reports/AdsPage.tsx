@@ -120,7 +120,7 @@ function Rules() {
             <button
               type="button"
               role="switch"
-              className="switch"
+              className="toggle-switch"
               aria-checked={rule.enabled}
               aria-label={t.alerts.rules[rule.type]}
               disabled={!data?.can_edit || toggle.isPending}
@@ -272,7 +272,7 @@ export function AdsPage() {
         <>
           <MissingFx currencies={data.missing_fx} />
           <Kpis data={data} />
-          <section className="grid-2">
+          <section className="report-grid">
             <CostBars data={data} />
             <Rules />
           </section>

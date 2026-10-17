@@ -18,7 +18,7 @@ import type { Me } from "../../api/types";
 import { PageHeader } from "../../components/PageHeader";
 import { errorMessage, format, t } from "../../i18n";
 import { formatDuration } from "../../leads/format";
-import { formatCount, formatNumber, linePoints, trendOf } from "../../reports/format";
+import { formatCount, formatNumber, linePoints, shortDate, trendOf } from "../../reports/format";
 import { formatScore } from "../../staff/format";
 import { TierBadge } from "../staff/StaffPage";
 import { StatusPill } from "./common";
@@ -161,7 +161,14 @@ export function PagesPage() {
         <div>
           <PageHeader title={t.pages.title} />
           {data ? (
-            <div className="page-sub">{format(t.pages.subtitle, { n: data.tabs.all, target: data.posts_target })}</div>
+            <div className="page-sub">
+              {format(t.pages.subtitle, {
+                n: data.tabs.all,
+                target: data.posts_target,
+                from: shortDate(data.range.first_day),
+                to: shortDate(data.range.last_day),
+              })}
+            </div>
           ) : null}
         </div>
         <div className="row-actions">

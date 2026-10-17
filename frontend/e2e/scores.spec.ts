@@ -78,7 +78,7 @@ test("Nhân viên chỉ thấy điểm của mình, người khác chỉ tên v�
   await expect(other).toBeVisible();
   await expect(other.locator(".score-cell")).toHaveCount(0);
   await expect(other.locator("td").nth(4)).toHaveText("—");
-  await expect(page.getByText("Khách nhận", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Khách mới", { exact: true }).first()).toBeVisible();
   await expect(page.locator(".kpis")).toHaveCount(0);
 });
 

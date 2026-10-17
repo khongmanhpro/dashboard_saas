@@ -564,3 +564,28 @@
   max-height: 320px;
   overflow-y: auto;
 }
+
+/* Cách quy đổi điểm, trục và điểm dữ liệu của biểu đồ theo tuần (decisions.md mục J). */
+.part__how {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.trend__axis {
+  font-size: 11px;
+  fill: var(--color-text-muted);
+}
+.trend__dot {
+  fill: var(--color-tier-b);
+}
+.trend__dot--live {
+  fill: var(--color-surface);
+  stroke: var(--color-tier-b);
+  stroke-width: 2;
+}
+.row--unassigned td {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+}
+.trend__labels {
+  padding-left: 6.5%;
+}
